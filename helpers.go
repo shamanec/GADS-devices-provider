@@ -100,7 +100,7 @@ func PrettifyJSON(data string) string {
 }
 
 // Unmarshal request body into a struct
-func UnmarshalRequestBody(body io.ReadCloser, v interface{}) error {
+func UnmarshalReader(body io.ReadCloser, v interface{}) error {
 	reqBody, err := ioutil.ReadAll(body)
 	if err != nil {
 		return err

@@ -56,6 +56,34 @@ func RestartContainer(w http.ResponseWriter, r *http.Request) {
 	SimpleJSONResponse(w, "Successfully attempted to restart container with ID: "+container_id, 200)
 }
 
+// @Summary      Remove container for device
+// @Description  Removes a running container for a disconnected registered device by device UDID
+// @Tags         device-containers
+// @Param        config body RemoveDeviceContainerData true "Remove container for device"
+// @Success      202
+// @Router       /device-containers/remove [post]
+func RemoveDeviceContainer(w http.ResponseWriter, r *http.Request) {
+	var data RemoveDeviceContainerData
+
+	// Read the request data
+	err := UnmarshalReader(r.Body, &data)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "device_container_remove",
+		}).Error("Could not unmarshal request body when removing container: " + err.Error())
+		return
+	}
+
+	// Check if container exists and get the container ID
+	container_exists, container_id, _ := checkContainerExistsByName(data.Udid)
+
+	if container_exists {
+		// Start removing the container in a goroutine and immediately reply with Accepted
+		go removeContainerByID(container_id)
+	}
+	w.WriteHeader(http.StatusAccepted)
+}
+
 // @Summary      Get container logs
 // @Description  Get logs of container by provided container ID
 // @Tags         containers
@@ -118,7 +146,7 @@ func CreateDeviceContainer(w http.ResponseWriter, r *http.Request) {
 	var data CreateDeviceContainerRequest
 
 	// Read the request data
-	err := UnmarshalRequestBody(r.Body, &data)
+	err := UnmarshalReader(r.Body, &data)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "device_container_create",
@@ -631,4 +659,41 @@ func RestartContainerInternal(container_id string) error {
 	}).Info("Successfully attempted to restart container with ID: " + container_id)
 
 	return nil
+}
+
+// Remove any docker container by container ID
+func removeContainerByID(container_id string) {
+	log.WithFields(log.Fields{
+		"event": "docker_container_remove",
+	}).Info("Attempting to remove container with ID: " + container_id)
+
+	// Create a new context and Docker client
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "docker_container_remove",
+		}).Error("Could not create docker client while attempting to remove container with ID: " + container_id + ". Error: " + err.Error())
+		return
+	}
+
+	// Stop the container by the provided container ID
+	if err := cli.ContainerStop(ctx, container_id, nil); err != nil {
+		log.WithFields(log.Fields{
+			"event": "docker_container_remove",
+		}).Error("Could not remove container with ID: " + container_id + ". Error: " + err.Error())
+		return
+	}
+
+	// Remove the stopped container
+	if err := cli.ContainerRemove(ctx, container_id, types.ContainerRemoveOptions{}); err != nil {
+		log.WithFields(log.Fields{
+			"event": "docker_container_remove",
+		}).Error("Could not remove container with ID: " + container_id + ". Error: " + err.Error())
+		return
+	}
+
+	log.WithFields(log.Fields{
+		"event": "docker_container_remove",
+	}).Info("Successfully removed container with ID: " + container_id)
 }

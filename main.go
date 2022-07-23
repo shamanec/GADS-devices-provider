@@ -24,8 +24,15 @@ func handleRequests() {
 	myRouter := mux.NewRouter().StrictSlash(true)
 
 	myRouter.HandleFunc("/available-devices", GetAvailableDevicesInfo).Methods("GET")
+	myRouter.HandleFunc("/device-containers/remove", RemoveDeviceContainer).Methods("POST")
+	myRouter.HandleFunc("/device-containers/create", CreateDeviceContainer).Methods("POST")
+	myRouter.HandleFunc("/containers/{container_id}/restart", RestartContainer).Methods("POST")
+	myRouter.HandleFunc("/containers/{container_id}/remove", RemoveContainer).Methods("POST")
+	myRouter.HandleFunc("/containers/{container_id}/logs", GetContainerLogs).Methods("GET")
+	myRouter.HandleFunc("/configuration/setup-udev-listener", SetupUdevListener).Methods("POST")
+	myRouter.HandleFunc("/configuration/remove-udev-listener", RemoveUdevListener).Methods("POST")
 
-	log.Fatal(http.ListenAndServe(":10002", myRouter))
+	log.Fatal(http.ListenAndServe(":10001", myRouter))
 }
 
 func main() {
