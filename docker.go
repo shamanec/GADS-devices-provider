@@ -280,6 +280,7 @@ func CreateIOSContainer(device_udid string) {
 	containerized_usbmuxd := configData.EnvConfig.ContainerizedUsbmuxd
 	screen_size := deviceConfig.ScreenSize
 	container_server_port := strconv.Itoa(deviceConfig.ContainerServerPort)
+	device_model := deviceConfig.DeviceModel
 
 	// Create docker client
 	ctx := context.Background()
@@ -316,6 +317,7 @@ func CreateIOSContainer(device_udid string) {
 			"CONTAINERIZED_USBMUXD=" + containerized_usbmuxd,
 			"SCREEN_SIZE=" + screen_size,
 			"CONTAINER_SERVER_PORT=" + container_server_port,
+			"DEVICE_MODEL=" + device_model,
 			"DEVICE_OS=ios"},
 	}
 
@@ -470,6 +472,7 @@ func CreateAndroidContainer(device_udid string) {
 	devices_host := configData.AppiumConfig.DevicesHost
 	hub_protocol := configData.AppiumConfig.SeleniumHubProtocolType
 	container_server_port := strconv.Itoa(deviceConfig.ContainerServerPort)
+	device_model := deviceConfig.DeviceModel
 
 	// Create the docker client
 	ctx := context.Background()
@@ -499,6 +502,7 @@ func CreateAndroidContainer(device_udid string) {
 			"DEVICES_HOST=" + devices_host,
 			"HUB_PROTOCOL=" + hub_protocol,
 			"CONTAINER_SERVER_PORT" + container_server_port,
+			"DEVICE_MODEL=" + device_model,
 			"DEVICE_OS=android"},
 	}
 
