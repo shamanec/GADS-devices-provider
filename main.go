@@ -9,6 +9,7 @@ import (
 )
 
 var project_log_file *os.File
+var ProviderPort = "10001"
 
 func setLogging() {
 	log.SetFormatter(&log.JSONFormatter{})
@@ -32,7 +33,7 @@ func handleRequests() {
 	myRouter.HandleFunc("/configuration/setup-udev-listener", SetupUdevListener).Methods("POST")
 	myRouter.HandleFunc("/configuration/remove-udev-listener", RemoveUdevListener).Methods("POST")
 
-	log.Fatal(http.ListenAndServe(":10001", myRouter))
+	log.Fatal(http.ListenAndServe(":"+ProviderPort, myRouter))
 }
 
 func main() {
