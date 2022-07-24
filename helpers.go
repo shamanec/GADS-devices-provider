@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -30,7 +29,6 @@ type AppiumConfig struct {
 }
 
 type EnvConfig struct {
-	SudoPassword         string `json:"sudo_password"`
 	ConnectSeleniumGrid  bool   `json:"connect_selenium_grid"`
 	SupervisionPassword  string `json:"supervision_password"`
 	ContainerizedUsbmuxd string `json:"containerized_usbmuxd"`
@@ -189,48 +187,18 @@ func UnmarshalReader(body io.ReadCloser, v interface{}) error {
 	return nil
 }
 
-// Delete file using shell, needed when deleting from a protected folder. Needs `sudo_password` set in configs/config.json
-func DeleteFileShell(filePath string, sudoPassword string) error {
-	commandString := "echo '" + sudoPassword + "' | sudo -S rm " + filePath
-	cmd := exec.Command("bash", "-c", commandString)
-	err := cmd.Run()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "delete_file_shell",
-		}).Error("Could not delete file:" + filePath + " with shell. Error:" + err.Error())
-		return err
-	}
-	return nil
-}
-
-// Copy file using shell, needed when copying to a protected folder. Needs `sudo_password` set in configs/config.json
-func CopyFileShell(currentFilePath string, newFilePath string, sudoPassword string) error {
-	commandString := "echo '" + sudoPassword + "' | sudo -S cp " + currentFilePath + " " + newFilePath
-	cmd := exec.Command("bash", "-c", commandString)
-	err := cmd.Run()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "copy_file_shel",
-		}).Error("Could not copy file:" + currentFilePath + " to:" + newFilePath + ". Error:" + err.Error())
-		return err
-	}
-	return nil
-}
-
 // Get an env value from ./configs/config.json
-func GetEnvValue(key string) (string, error) {
+func GetEnvValue(key string) string {
 	configData, err := GetConfigJsonData()
 	if err != nil {
-		return "", err
+		return ""
 	}
 
-	if key == "sudo_password" {
-		return configData.EnvConfig.SudoPassword, nil
-	} else if key == "supervision_password" {
-		return configData.EnvConfig.SupervisionPassword, nil
+	if key == "supervision_password" {
+		return configData.EnvConfig.SupervisionPassword
 	} else if key == "connect_selenium_grid" {
-		return strconv.FormatBool(configData.EnvConfig.ConnectSeleniumGrid), nil
+		return strconv.FormatBool(configData.EnvConfig.ConnectSeleniumGrid)
 	} else {
-		return "", errors.New("You did not provide proper env json key.")
+		return ""
 	}
 }

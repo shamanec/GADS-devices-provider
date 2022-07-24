@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -51,6 +52,7 @@ func RestartContainer(w http.ResponseWriter, r *http.Request) {
 	err := RestartContainerInternal(container_id)
 	if err != nil {
 		JSONError(w, "docker_container_restart", "Could not restart container with ID: "+container_id, 500)
+		return
 	}
 
 	SimpleJSONResponse(w, "Successfully attempted to restart container with ID: "+container_id, 200)
@@ -238,6 +240,8 @@ func CreateIOSContainer(device_udid string) {
 	log.WithFields(log.Fields{
 		"event": "ios_container_create",
 	}).Info("Attempting to create a container for iOS device with udid: " + device_udid)
+
+	time.Sleep(2 * time.Second)
 
 	// Get the config data
 	configData, err := GetConfigJsonData()

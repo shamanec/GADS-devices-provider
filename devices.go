@@ -92,6 +92,8 @@ func getRunningDeviceContainerNames() ([]string, error) {
 		return nil, err
 	}
 
+	defer cli.Close()
+
 	// Get the current containers list
 	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
 	if err != nil {
