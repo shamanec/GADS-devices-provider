@@ -13,7 +13,7 @@ var ProviderPort = "10001"
 
 func setLogging() {
 	log.SetFormatter(&log.JSONFormatter{})
-	project_log_file, err := os.OpenFile("./logs/project.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
+	project_log_file, err := os.OpenFile("./logs/provider.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
 		panic(err)
 	}
@@ -30,8 +30,8 @@ func handleRequests() {
 	myRouter.HandleFunc("/containers/{container_id}/restart", RestartContainer).Methods("POST")
 	myRouter.HandleFunc("/containers/{container_id}/remove", RemoveContainer).Methods("POST")
 	myRouter.HandleFunc("/containers/{container_id}/logs", GetContainerLogs).Methods("GET")
-	myRouter.HandleFunc("/configuration/setup-udev-listener", SetupUdevListener).Methods("POST")
-	myRouter.HandleFunc("/configuration/remove-udev-listener", RemoveUdevListener).Methods("POST")
+	myRouter.HandleFunc("/configuration/create-udev-rules", CreateUdevRules).Methods("POST")
+	myRouter.HandleFunc("/provider-logs", GetLogs).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(":"+ProviderPort, myRouter))
 }

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -60,59 +61,8 @@ type JsonResponse struct {
 	Message string `json:"message"`
 }
 
-// Get a ConfigJsonData pointer with the current configuration from config.json
-func GetConfigJsonData() (*ConfigJsonData, error) {
-	var data ConfigJsonData
-	jsonFile, err := os.Open("./configs/config.json")
-	if err != nil {
-		return nil, err
-	}
-	defer jsonFile.Close()
-
-	bs, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(bs, &data)
-	if err != nil {
-		return nil, err
-	}
-
-	return &data, nil
-}
-
-// Convert interface into JSON string
-func ConvertToJSONString(data interface{}) string {
-	b, err := json.Marshal(data)
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	return string(b)
-}
-
-// Prettify JSON with indentation and stuff
-func PrettifyJSON(data string) string {
-	var prettyJSON bytes.Buffer
-	json.Indent(&prettyJSON, []byte(data), "", "  ")
-	return prettyJSON.String()
-}
-
-// Unmarshal request body into a struct
-func UnmarshalReader(body io.ReadCloser, v interface{}) error {
-	reqBody, err := ioutil.ReadAll(body)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(reqBody, v)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+//=======================//
+//=====API FUNCTIONS=====//
 
 // Write to a ResponseWriter an event and message with a response code
 func JSONError(w http.ResponseWriter, event string, error_string string, code int) {
@@ -136,6 +86,109 @@ func SimpleJSONResponse(w http.ResponseWriter, response_message string, code int
 	json.NewEncoder(w).Encode(message)
 }
 
+// @Summary      Get provider logs
+// @Description  Provides provider logs as plain text response
+// @Tags         provider-logs
+// @Produces	 text
+// @Success      200
+// @Failure      200
+// @Router       /provider-logs [get]
+func GetLogs(w http.ResponseWriter, r *http.Request) {
+	// Create the command string to read the last 1000 lines of provider.log
+	commandString := "tail -n 1000 ./logs/project.log"
+
+	// Create the command
+	cmd := exec.Command("bash", "-c", commandString)
+
+	// Create a buffer for the output
+	var out bytes.Buffer
+
+	// Pipe the Stdout of the command to the buffer pointer
+	cmd.Stdout = &out
+
+	// Execute the command
+	err := cmd.Run()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "get_project_logs",
+		}).Warning("Attempted to get project logs but no logs available.")
+
+		// Reply with generic message on error
+		fmt.Fprintf(w, "No logs available.")
+		return
+	}
+
+	// Reply with the read logs lines
+	fmt.Fprintf(w, out.String())
+}
+
+//=======================//
+//=======FUNCTIONS=======//
+
+// Get a ConfigJsonData pointer with the current configuration from config.json
+func GetConfigJsonData() (*ConfigJsonData, error) {
+	var data ConfigJsonData
+	jsonFile, err := os.Open("./configs/config.json")
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "get_config_data",
+		}).Error("Could not open config file: " + err.Error())
+		return nil, err
+	}
+	defer jsonFile.Close()
+
+	bs, err := ioutil.ReadAll(jsonFile)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "get_config_data",
+		}).Error("Could not read config file to byte slice: " + err.Error())
+		return nil, err
+	}
+
+	err = json.Unmarshal(bs, &data)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "get_config_data",
+		}).Error("Could not unmarshal config file: " + err.Error())
+		return nil, err
+	}
+
+	return &data, nil
+}
+
+// Convert interface into JSON string
+func ConvertToJSONString(data interface{}) (string, error) {
+	b, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "convert_interface_to_json",
+		}).Error("Could not marshal interface to json: " + err.Error())
+		return "", err
+	}
+	return string(b), nil
+}
+
+// Unmarshal request body into a struct
+func UnmarshalReader(body io.ReadCloser, v interface{}) error {
+	reqBody, err := ioutil.ReadAll(body)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "unmarshal_reader",
+		}).Error("Could not read reader into byte slice: " + err.Error())
+		return err
+	}
+
+	err = json.Unmarshal(reqBody, v)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "unmarshal_reader",
+		}).Error("Could not unmarshal reader: " + err.Error())
+		return err
+	}
+
+	return nil
+}
+
 // Delete file using shell, needed when deleting from a protected folder. Needs `sudo_password` set in configs/config.json
 func DeleteFileShell(filePath string, sudoPassword string) error {
 	commandString := "echo '" + sudoPassword + "' | sudo -S rm " + filePath
@@ -145,7 +198,7 @@ func DeleteFileShell(filePath string, sudoPassword string) error {
 		log.WithFields(log.Fields{
 			"event": "delete_file_shell",
 		}).Error("Could not delete file:" + filePath + " with shell. Error:" + err.Error())
-		return errors.New("Could not delete file: " + filePath + "with shell")
+		return err
 	}
 	return nil
 }
@@ -157,9 +210,27 @@ func CopyFileShell(currentFilePath string, newFilePath string, sudoPassword stri
 	err := cmd.Run()
 	if err != nil {
 		log.WithFields(log.Fields{
-			"event": "delete_file_shell",
+			"event": "copy_file_shel",
 		}).Error("Could not copy file:" + currentFilePath + " to:" + newFilePath + ". Error:" + err.Error())
-		return errors.New("Could not copy file:" + currentFilePath + " with shell.")
+		return err
 	}
 	return nil
+}
+
+// Get an env value from ./configs/config.json
+func GetEnvValue(key string) (string, error) {
+	configData, err := GetConfigJsonData()
+	if err != nil {
+		return "", err
+	}
+
+	if key == "sudo_password" {
+		return configData.EnvConfig.SudoPassword, nil
+	} else if key == "supervision_password" {
+		return configData.EnvConfig.SupervisionPassword, nil
+	} else if key == "connect_selenium_grid" {
+		return strconv.FormatBool(configData.EnvConfig.ConnectSeleniumGrid), nil
+	} else {
+		return "", errors.New("You did not provide proper env json key.")
+	}
 }

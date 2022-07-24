@@ -27,7 +27,38 @@ type DeviceInfo struct {
 	DeviceHost                string `json:"device_host"`
 }
 
-func getAvailableDevicesInfo(runningContainers []string) []DeviceInfo {
+//=======================//
+//=====API FUNCTIONS=====//
+
+func GetAvailableDevicesInfo(w http.ResponseWriter, r *http.Request) {
+	runningContainerNames, err := getRunningDeviceContainerNames()
+	if err != nil {
+		JSONError(w, "get_available_devices", "Could not get available devices", 500)
+		return
+	}
+
+	devicesInfo, err := getAvailableDevicesInfo(runningContainerNames)
+	if err != nil {
+		JSONError(w, "get_available_devices", "Could not get available devices", 500)
+		return
+	}
+
+	var info = AvailableDevicesInfo{
+		DevicesInfo: devicesInfo,
+	}
+
+	responseData, err := ConvertToJSONString(info)
+	if err != nil {
+		JSONError(w, "get_available_devices", "Could not get available devices", 500)
+		return
+	}
+	fmt.Fprintf(w, responseData)
+}
+
+//=======================//
+//=======FUNCTIONS=======//
+
+func getAvailableDevicesInfo(runningContainers []string) ([]DeviceInfo, error) {
 	var combinedInfo []DeviceInfo
 
 	for _, containerName := range runningContainers {
@@ -35,58 +66,65 @@ func getAvailableDevicesInfo(runningContainers []string) []DeviceInfo {
 		re := regexp.MustCompile("[^_]*$")
 		device_udid := re.FindStringSubmatch(containerName)
 
+		// Get the info for the respective device from config.json
 		var device_config *DeviceInfo
-		device_config = getDeviceInfo(device_udid[0])
+		device_config, err := getDeviceInfo(device_udid[0])
+		if err != nil {
+			return nil, err
+		}
 
+		// Append the respective device info to the combined info
 		combinedInfo = append(combinedInfo, *device_config)
 	}
 
-	return combinedInfo
+	return combinedInfo, nil
 }
 
-func getRunningDeviceContainerNames() []string {
+func getRunningDeviceContainerNames() ([]string, error) {
 	var containerNames []string
 
+	// Create a new docker client
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		return containerNames
+		log.WithFields(log.Fields{
+			"event": "get_running_container_names",
+		}).Error("Could not create new docker client: " + err.Error())
+		return nil, err
 	}
 
 	// Get the current containers list
 	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
 	if err != nil {
-		return containerNames
+		log.WithFields(log.Fields{
+			"event": "get_running_container_names",
+		}).Error("Could not get docker containers list: " + err.Error())
+		return nil, err
 	}
 
 	// Loop through the containers list
 	for _, container := range containers {
 		// Parse plain container name
 		containerName := strings.Replace(container.Names[0], "/", "", -1)
+
+		// Check if container is for ios or android device and its status is 'Up'
 		if (strings.Contains(containerName, "iosDevice") || strings.Contains(containerName, "androidDevice")) && strings.Contains(container.Status, "Up") {
 			containerNames = append(containerNames, containerName)
 		}
 	}
-	return containerNames
+	return containerNames, nil
 }
 
-func GetAvailableDevicesInfo(w http.ResponseWriter, r *http.Request) {
-	var runningContainerNames = getRunningDeviceContainerNames()
-	var info = AvailableDevicesInfo{
-		DevicesInfo: getAvailableDevicesInfo(runningContainerNames),
-	}
-	fmt.Fprintf(w, PrettifyJSON(ConvertToJSONString(info)))
-}
-
-func getDeviceInfo(device_udid string) *DeviceInfo {
+func getDeviceInfo(device_udid string) (*DeviceInfo, error) {
 	// Get the config data
 	configData, err := GetConfigJsonData()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_container_create",
 		}).Error("Could not unmarshal config.json file when trying to create a container for device with udid: " + device_udid)
-		return nil
+		return nil, err
 	}
 
+	// Loop through the device configs and find the one that corresponds to the provided device UDID
 	var deviceConfig DeviceConfig
 	for _, v := range configData.DeviceConfig {
 		if v.DeviceUDID == device_udid {
@@ -94,6 +132,7 @@ func getDeviceInfo(device_udid string) *DeviceInfo {
 		}
 	}
 
+	// Return the info for the device
 	return &DeviceInfo{
 		DeviceModel:               deviceConfig.DeviceModel,
 		DeviceOSVersion:           deviceConfig.DeviceOSVersion,
@@ -102,5 +141,5 @@ func getDeviceInfo(device_udid string) *DeviceInfo {
 		DeviceUDID:                deviceConfig.DeviceUDID,
 		DeviceImage:               deviceConfig.DeviceImage,
 		DeviceHost:                configData.AppiumConfig.DevicesHost,
-	}
+	}, nil
 }
