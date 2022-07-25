@@ -36,15 +36,15 @@ type EnvConfig struct {
 
 type DeviceConfig struct {
 	OS                  string `json:"os"`
-	AppiumPort          int    `json:"appium_port"`
+	AppiumPort          string `json:"appium_port"`
 	DeviceName          string `json:"device_name"`
 	DeviceOSVersion     string `json:"device_os_version"`
 	DeviceUDID          string `json:"device_udid"`
-	WDAMjpegPort        int    `json:"wda_mjpeg_port"`
-	WDAPort             int    `json:"wda_port"`
+	WDAMjpegPort        string `json:"wda_mjpeg_port"`
+	WDAPort             string `json:"wda_port"`
 	ScreenSize          string `json:"screen_size"`
-	StreamPort          int    `json:"stream_port"`
-	ContainerServerPort int    `json:"container_server_port"`
+	AndroidStreamPort   string `json:"android_stream_port"`
+	ContainerServerPort string `json:"container_server_port"`
 	DeviceModel         string `json:"device_model"`
 	DeviceImage         string `json:"device_image"`
 	DeviceHost          string `json:"device_host"`

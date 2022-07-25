@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -271,11 +270,11 @@ func CreateIOSContainer(device_udid string) {
 	}
 
 	// Get the device specific config data
-	appium_port := strconv.Itoa(deviceConfig.AppiumPort)
+	appium_port := deviceConfig.AppiumPort
 	device_name := deviceConfig.DeviceName
 	device_os_version := deviceConfig.DeviceOSVersion
-	wda_mjpeg_port := strconv.Itoa(deviceConfig.WDAMjpegPort)
-	wda_port := strconv.Itoa(deviceConfig.WDAPort)
+	wda_mjpeg_port := deviceConfig.WDAMjpegPort
+	wda_port := deviceConfig.WDAPort
 	wda_bundle_id := configData.AppiumConfig.WDABundleID
 	selenium_hub_port := configData.AppiumConfig.SeleniumHubPort
 	selenium_hub_host := configData.AppiumConfig.SeleniumHubHost
@@ -283,7 +282,7 @@ func CreateIOSContainer(device_udid string) {
 	hub_protocol := configData.AppiumConfig.SeleniumHubProtocolType
 	containerized_usbmuxd := configData.EnvConfig.ContainerizedUsbmuxd
 	screen_size := deviceConfig.ScreenSize
-	container_server_port := strconv.Itoa(deviceConfig.ContainerServerPort)
+	container_server_port := deviceConfig.ContainerServerPort
 	device_model := deviceConfig.DeviceModel
 
 	// Create docker client
@@ -467,15 +466,15 @@ func CreateAndroidContainer(device_udid string) {
 	}
 
 	// Get the device config data
-	appium_port := strconv.Itoa(deviceConfig.AppiumPort)
+	appium_port := deviceConfig.AppiumPort
 	device_name := deviceConfig.DeviceName
 	device_os_version := deviceConfig.DeviceOSVersion
-	stream_port := strconv.Itoa(deviceConfig.StreamPort)
+	stream_port := deviceConfig.AndroidStreamPort
 	selenium_hub_port := configData.AppiumConfig.SeleniumHubPort
 	selenium_hub_host := configData.AppiumConfig.SeleniumHubHost
 	devices_host := configData.AppiumConfig.DevicesHost
 	hub_protocol := configData.AppiumConfig.SeleniumHubProtocolType
-	container_server_port := strconv.Itoa(deviceConfig.ContainerServerPort)
+	container_server_port := deviceConfig.ContainerServerPort
 	device_model := deviceConfig.DeviceModel
 
 	// Create the docker client

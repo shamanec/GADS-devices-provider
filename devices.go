@@ -21,10 +21,15 @@ type DeviceInfo struct {
 	DeviceModel               string `json:"device_model"`
 	DeviceOSVersion           string `json:"device_os_version"`
 	DeviceOS                  string `json:"device_os"`
-	DeviceContainerServerPort int    `json:"container_server_port"`
+	DeviceContainerServerPort string `json:"container_server_port"`
 	DeviceUDID                string `json:"device_udid"`
 	DeviceImage               string `json:"device_image"`
 	DeviceHost                string `json:"device_host"`
+	WdaPort                   string `json:"wda_port"`
+	WdaMjpegPort              string `json:"wda_mjpeg_port"`
+	ScreenSize                string `json:"screen_size"`
+	AppiumPort                string `json:"appium_port"`
+	AndroidStreamPort         string `json:"android_stream_port"`
 }
 
 //=======================//
@@ -61,6 +66,14 @@ func GetAvailableDevicesInfo(w http.ResponseWriter, r *http.Request) {
 func getAvailableDevicesInfo(runningContainers []string) ([]DeviceInfo, error) {
 	var combinedInfo []DeviceInfo
 
+	configData, err := GetConfigJsonData()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "ios_container_create",
+		}).Error("Could not unmarshal config.json file when getting devices info")
+		return nil, err
+	}
+
 	for _, containerName := range runningContainers {
 		// Extract the device UDID from the container name
 		re := regexp.MustCompile("[^_]*$")
@@ -68,7 +81,7 @@ func getAvailableDevicesInfo(runningContainers []string) ([]DeviceInfo, error) {
 
 		// Get the info for the respective device from config.json
 		var device_config *DeviceInfo
-		device_config, err := getDeviceInfo(device_udid[0])
+		device_config, err := getDeviceInfo(device_udid[0], configData)
 		if err != nil {
 			return nil, err
 		}
@@ -116,16 +129,7 @@ func getRunningDeviceContainerNames() ([]string, error) {
 	return containerNames, nil
 }
 
-func getDeviceInfo(device_udid string) (*DeviceInfo, error) {
-	// Get the config data
-	configData, err := GetConfigJsonData()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_container_create",
-		}).Error("Could not unmarshal config.json file when trying to create a container for device with udid: " + device_udid)
-		return nil, err
-	}
-
+func getDeviceInfo(device_udid string, configData *ConfigJsonData) (*DeviceInfo, error) {
 	// Loop through the device configs and find the one that corresponds to the provided device UDID
 	var deviceConfig DeviceConfig
 	for _, v := range configData.DeviceConfig {
@@ -143,5 +147,10 @@ func getDeviceInfo(device_udid string) (*DeviceInfo, error) {
 		DeviceUDID:                deviceConfig.DeviceUDID,
 		DeviceImage:               deviceConfig.DeviceImage,
 		DeviceHost:                configData.AppiumConfig.DevicesHost,
+		WdaPort:                   deviceConfig.WDAPort,
+		WdaMjpegPort:              deviceConfig.WDAMjpegPort,
+		AppiumPort:                deviceConfig.AppiumPort,
+		ScreenSize:                deviceConfig.ScreenSize,
+		AndroidStreamPort:         deviceConfig.AndroidStreamPort,
 	}, nil
 }
