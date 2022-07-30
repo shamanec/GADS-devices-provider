@@ -29,7 +29,7 @@
 
 ## iOS setup
 ### Dependencies
-1. Install usbmuxd (from apt is sufficient)  
+1. Install usbmuxd - `sudo apt install usbmuxd`  
 
 ### Known limitations
 1. It is not possible to execute **driver.executeScript("mobile: startPerfRecord")** with Appium to record application performance since Xcode tools are not available.  
@@ -81,7 +81,7 @@ You need an Apple Developer account to sign and build `WebDriverAgent`
   * `device_model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
 
 ### Containerized usbmuxd connections - RECOMMENDED
-Using the usual approach we are mounting `/var/run/usbmuxd` to each container. This in practice shares the socket for all iOS devices connected to the host with all the containers. This way we cannot share a specific device over the network and also a single `usbmuxd` host failure will reflect on all containers. There is a way that we can have `usbmuxd` running inside each container without running on the host at all.  
+The usual approach would be to mount `/var/run/usbmuxd` to each container. This in practice shares the socket for all iOS devices connected to the host with all the containers. This way we cannot share a specific device over the network and also a single `usbmuxd` host failure will reflect on all containers. There is a way that we can have `usbmuxd` running inside each container without running on the host at all.  
 
 **Note1** `usbmuxd` HAS to be installed on the host even if we don't really use it. I could not make it work without it.  
 **Note2** `usbmuxd` has to be completely disabled on the host so it doesn't automatically start/stop when you connect/disconnect devices.  
@@ -93,7 +93,7 @@ Using the usual approach we are mounting `/var/run/usbmuxd` to each container. T
 **NB** It is preferable to have supervised the devices in advance and provided supervision file and password to make setup even more autonomous.  
 **NB** Please note that this way the devices will not be available to the host, but you shouldn't really need that unless you are setting up new devices and need to find out the UDIDs, in this case just revert the usbmuxd change with `sudo systemctl unmask usbmuxd`, do what you need to do and mask it again, restart all containers or your system and you should be good to go.  
 
-With this approach we mount the symlink of each device created by the udev rules to each separate container. This in turn makes only a specific device available to its respective container which gives us more separation and flexibility of sharing devices. One small downside is that if device is disconnected and connected again its respective container will always perform a restart. The reason for this is that upon disconnection the symlink mounted to the container is lost (even if its name is persistent) which forces us to restart the container to remount the newly created symlink when device is reconnected - which is a small price to pay for better stability.  
+With this approach we mount the symlink of each device created by the udev rules to each separate container. This in turn makes only a specific device available to its respective container which gives us better isolation from host and more stability. One small downside is that if device is disconnected and connected again its respective container will always perform a restart. The reason for this is that upon disconnection the symlink mounted to the container is lost (even if its name is persistent) which forces us to restart the container to remount the newly created symlink when device is reconnected - which is a small price to pay for better stability.  
 
 ### Access iOS devices from a Mac for remote development  
 1. Execute `sudo socat TCP-LISTEN:10015,reuseaddr,fork UNIX-CONNECT:/var/run/usbmuxd` on the Linux host with the devices.  
