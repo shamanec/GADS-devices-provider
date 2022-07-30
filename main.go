@@ -4,8 +4,11 @@ import (
 	"net/http"
 	"os"
 
+	_ "github.com/shamanec/GADS-devices-provider/docs"
+
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 var project_log_file *os.File
@@ -23,6 +26,14 @@ func setLogging() {
 func handleRequests() {
 	// Create a new instance of the mux router
 	myRouter := mux.NewRouter().StrictSlash(true)
+
+	myRouter.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
+	myRouter.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"), //The url pointing to API definition
+		httpSwagger.DeepLinking(true),
+		httpSwagger.DocExpansion("none"),
+		httpSwagger.DomID("#swagger-ui"),
+	))
 
 	myRouter.HandleFunc("/available-devices", GetAvailableDevicesInfo).Methods("GET")
 	myRouter.HandleFunc("/device-containers/remove", RemoveDeviceContainer).Methods("POST")

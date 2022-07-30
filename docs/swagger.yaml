@@ -1,0 +1,181 @@
+definitions:
+  main.CreateDeviceContainerRequest:
+    properties:
+      device_type:
+        type: string
+      udid:
+        type: string
+    type: object
+  main.JsonErrorResponse:
+    properties:
+      error_message:
+        type: string
+      event:
+        type: string
+    type: object
+  main.JsonResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  main.RemoveDeviceContainerData:
+    properties:
+      udid:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /configuration/create-udev-rules:
+    post:
+      description: Creates 90-device.rules file to be used by udev
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.JsonResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JsonErrorResponse'
+      summary: Creates the udev rules for device symlink and container creation
+      tags:
+      - configuration
+  /containers/{container_id}/logs:
+    get:
+      description: Get logs of container by provided container ID
+      parameters:
+      - description: Container ID
+        in: path
+        name: container_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.JsonResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JsonErrorResponse'
+      summary: Get container logs
+      tags:
+      - containers
+  /containers/{container_id}/remove:
+    post:
+      description: Removes container by provided container ID
+      parameters:
+      - description: Container ID
+        in: path
+        name: container_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.JsonResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JsonErrorResponse'
+      summary: Remove container
+      tags:
+      - containers
+  /containers/{container_id}/restart:
+    post:
+      description: Restarts container by provided container ID
+      parameters:
+      - description: Container ID
+        in: path
+        name: container_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.JsonResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JsonErrorResponse'
+      summary: Restart container
+      tags:
+      - containers
+  /device-containers:
+    post:
+      description: Refreshes the device-containers data by returning an updated HTML
+        table
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: ""
+        "500":
+          description: ""
+      summary: Refresh the device-containers data
+  /device-containers/create:
+    post:
+      description: Creates a container for a connected registered device
+      parameters:
+      - description: Create container for device
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateDeviceContainerRequest'
+      responses:
+        "202":
+          description: ""
+      summary: Create container for device
+      tags:
+      - device-containers
+  /device-containers/remove:
+    post:
+      description: Removes a running container for a disconnected registered device
+        by device UDID
+      parameters:
+      - description: Remove container for device
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/main.RemoveDeviceContainerData'
+      responses:
+        "202":
+          description: ""
+      summary: Remove container for device
+      tags:
+      - device-containers
+  /provider-logs:
+    get:
+      description: Provides provider logs as plain text response
+      responses:
+        "200":
+          description: ""
+      summary: Get provider logs
+      tags:
+      - provider-logs
+  /refresh-device-containers:
+    post:
+      description: Refreshes the device-containers data by returning an updated HTML
+        table
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: ""
+        "500":
+          description: ""
+      summary: Refresh the device-containers data
+swagger: "2.0"

@@ -92,7 +92,7 @@ func SimpleJSONResponse(w http.ResponseWriter, response_message string, code int
 // @Router       /provider-logs [get]
 func GetLogs(w http.ResponseWriter, r *http.Request) {
 	// Create the command string to read the last 1000 lines of provider.log
-	commandString := "tail -n 1000 ./logs/project.log"
+	commandString := "tail -n 1000 ./logs/provider.log"
 
 	// Create the command
 	cmd := exec.Command("bash", "-c", commandString)

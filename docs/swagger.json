@@ -1,0 +1,277 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/configuration/create-udev-rules": {
+            "post": {
+                "description": "Creates 90-device.rules file to be used by udev",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Creates the udev rules for device symlink and container creation",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.JsonResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.JsonErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/containers/{container_id}/logs": {
+            "get": {
+                "description": "Get logs of container by provided container ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "containers"
+                ],
+                "summary": "Get container logs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Container ID",
+                        "name": "container_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.JsonResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.JsonErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/containers/{container_id}/remove": {
+            "post": {
+                "description": "Removes container by provided container ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "containers"
+                ],
+                "summary": "Remove container",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Container ID",
+                        "name": "container_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.JsonResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.JsonErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/containers/{container_id}/restart": {
+            "post": {
+                "description": "Restarts container by provided container ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "containers"
+                ],
+                "summary": "Restart container",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Container ID",
+                        "name": "container_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.JsonResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.JsonErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/device-containers": {
+            "post": {
+                "description": "Refreshes the device-containers data by returning an updated HTML table",
+                "produces": [
+                    "text/html"
+                ],
+                "summary": "Refresh the device-containers data",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/device-containers/create": {
+            "post": {
+                "description": "Creates a container for a connected registered device",
+                "tags": [
+                    "device-containers"
+                ],
+                "summary": "Create container for device",
+                "parameters": [
+                    {
+                        "description": "Create container for device",
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateDeviceContainerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/device-containers/remove": {
+            "post": {
+                "description": "Removes a running container for a disconnected registered device by device UDID",
+                "tags": [
+                    "device-containers"
+                ],
+                "summary": "Remove container for device",
+                "parameters": [
+                    {
+                        "description": "Remove container for device",
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.RemoveDeviceContainerData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/provider-logs": {
+            "get": {
+                "description": "Provides provider logs as plain text response",
+                "tags": [
+                    "provider-logs"
+                ],
+                "summary": "Get provider logs",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/refresh-device-containers": {
+            "post": {
+                "description": "Refreshes the device-containers data by returning an updated HTML table",
+                "produces": [
+                    "text/html"
+                ],
+                "summary": "Refresh the device-containers data",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "500": {
+                        "description": ""
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "main.CreateDeviceContainerRequest": {
+            "type": "object",
+            "properties": {
+                "device_type": {
+                    "type": "string"
+                },
+                "udid": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.JsonErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error_message": {
+                    "type": "string"
+                },
+                "event": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.JsonResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.RemoveDeviceContainerData": {
+            "type": "object",
+            "properties": {
+                "udid": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
