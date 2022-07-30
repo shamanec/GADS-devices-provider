@@ -40,10 +40,9 @@ type DeviceConfig struct {
 	DeviceName          string `json:"device_name"`
 	DeviceOSVersion     string `json:"device_os_version"`
 	DeviceUDID          string `json:"device_udid"`
-	WDAMjpegPort        string `json:"wda_mjpeg_port"`
+	StreamPort          string `json:"stream_port"`
 	WDAPort             string `json:"wda_port"`
 	ScreenSize          string `json:"screen_size"`
-	AndroidStreamPort   string `json:"android_stream_port"`
 	ContainerServerPort string `json:"container_server_port"`
 	DeviceModel         string `json:"device_model"`
 	DeviceImage         string `json:"device_image"`

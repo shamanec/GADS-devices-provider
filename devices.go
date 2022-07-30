@@ -26,10 +26,9 @@ type DeviceInfo struct {
 	DeviceImage               string `json:"device_image"`
 	DeviceHost                string `json:"device_host"`
 	WdaPort                   string `json:"wda_port"`
-	WdaMjpegPort              string `json:"wda_mjpeg_port"`
+	StreamPort                string `json:"stream_port"`
 	ScreenSize                string `json:"screen_size"`
 	AppiumPort                string `json:"appium_port"`
-	AndroidStreamPort         string `json:"android_stream_port"`
 }
 
 //=======================//
@@ -148,9 +147,8 @@ func getDeviceInfo(device_udid string, configData *ConfigJsonData) (*DeviceInfo,
 		DeviceImage:               deviceConfig.DeviceImage,
 		DeviceHost:                configData.AppiumConfig.DevicesHost,
 		WdaPort:                   deviceConfig.WDAPort,
-		WdaMjpegPort:              deviceConfig.WDAMjpegPort,
+		StreamPort:                deviceConfig.StreamPort,
 		AppiumPort:                deviceConfig.AppiumPort,
 		ScreenSize:                deviceConfig.ScreenSize,
-		AndroidStreamPort:         deviceConfig.AndroidStreamPort,
 	}, nil
 }

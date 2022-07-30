@@ -306,7 +306,7 @@ func CreateIOSContainer(device_udid string) {
 	appium_port := deviceConfig.AppiumPort
 	device_name := deviceConfig.DeviceName
 	device_os_version := deviceConfig.DeviceOSVersion
-	wda_mjpeg_port := deviceConfig.WDAMjpegPort
+	wda_mjpeg_port := deviceConfig.StreamPort
 	wda_port := deviceConfig.WDAPort
 	wda_bundle_id := configData.AppiumConfig.WDABundleID
 	selenium_hub_port := configData.AppiumConfig.SeleniumHubPort
@@ -502,7 +502,7 @@ func CreateAndroidContainer(device_udid string) {
 	appium_port := deviceConfig.AppiumPort
 	device_name := deviceConfig.DeviceName
 	device_os_version := deviceConfig.DeviceOSVersion
-	stream_port := deviceConfig.AndroidStreamPort
+	stream_port := deviceConfig.StreamPort
 	selenium_hub_port := configData.AppiumConfig.SeleniumHubPort
 	selenium_hub_host := configData.AppiumConfig.SeleniumHubHost
 	devices_host := configData.AppiumConfig.DevicesHost

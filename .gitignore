@@ -1,5 +1,4 @@
 logs/*
 GADS-devices-provider
 minicap/*
-logs
-minicap
+configs/supervision.p12
