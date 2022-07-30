@@ -32,6 +32,7 @@ func handleRequests() {
 	myRouter.HandleFunc("/containers/{container_id}/logs", GetContainerLogs).Methods("GET")
 	myRouter.HandleFunc("/configuration/create-udev-rules", CreateUdevRules).Methods("POST")
 	myRouter.HandleFunc("/provider-logs", GetLogs).Methods("GET")
+	myRouter.HandleFunc("/device-containers", GetDeviceContainers).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(":"+ProviderPort, myRouter))
 }

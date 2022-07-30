@@ -65,9 +65,10 @@
     {
       "os": "android",
       "appium_port": "4881",
+      "screen_size": "1080x2241",
       "device_udid": "WCR7N18B14002300",
       "device_name": "Huawei_P20_Pro",
-      "stream_port": "20201",
+      "android_stream_port": "20201",
       "device_os_version": "10",
       "container_server_port": "20205",
       "device_model": "Huawei P20 Pro",
@@ -76,9 +77,10 @@
     {
       "os": "android",
       "appium_port": "4882",
+      "screen_size": "1080x2241",
       "device_udid": "MUN0218928000401",
       "device_name": "Huawei_Bejbe",
-      "stream_port": "20202",
+      "android_stream_port": "20202",
       "device_os_version": "10",
       "container_server_port": "20206",
       "device_model": "Huawei Mate 20"
@@ -86,9 +88,10 @@
     {
       "os": "android",
       "appium_port": "4883",
+      "screen_size": "1080x2241",
       "device_udid": "RQ30041UV0",
       "device_name": "Sony_Xperia",
-      "stream_port": "20203",
+      "android_stream_port": "20203",
       "device_os_version": "7",
       "container_server_port": "20207",
       "device_model": "Sony Xperia"

@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -232,6 +236,35 @@ func RemoveContainer(w http.ResponseWriter, r *http.Request) {
 		"event": "docker_container_remove",
 	}).Info("Successfully removed container with ID: " + key)
 	SimpleJSONResponse(w, "Successfully removed container with ID: "+key, 200)
+}
+
+// @Summary      Refresh the device-containers data
+// @Description  Refreshes the device-containers data by returning an updated HTML table
+// @Produce      html
+// @Success      200
+// @Failure      500
+// @Router       /refresh-device-containers [post]
+func RefreshDeviceContainers(w http.ResponseWriter, r *http.Request) {
+	// Generate the data for each device container row in a slice of ContainerRow
+	rows, err := deviceContainerRows()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	// Make functions available in html template
+	funcMap := template.FuncMap{
+		// The name "title" is what the function will be called in the template text.
+		"contains": strings.Contains,
+	}
+
+	// Parse the template and return response with the container table rows
+	// This will generate only the device table, not the whole page
+	var tmpl = template.Must(template.New("device_containers_table").Funcs(funcMap).ParseFiles("static/device_containers_table.html"))
+
+	// Reply with the new table
+	if err := tmpl.ExecuteTemplate(w, "device_containers_table", rows); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // Create an iOS container for a specific device(by UDID) using data from config.json so if device is not registered there it will not attempt to create a container for it
@@ -494,6 +527,7 @@ func CreateAndroidContainer(device_udid string) {
 			nat.Port("4723"):                struct{}{},
 			nat.Port("4724"):                struct{}{},
 			nat.Port(container_server_port): struct{}{},
+			nat.Port(stream_port):           struct{}{},
 		},
 		Env: []string{"ON_GRID=" + on_grid,
 			"APPIUM_PORT=" + appium_port,
@@ -703,4 +737,71 @@ func removeContainerByID(container_id string) {
 	log.WithFields(log.Fields{
 		"event": "docker_container_remove",
 	}).Info("Successfully removed container with ID: " + container_id)
+}
+
+// @Summary      Refresh the device-containers data
+// @Description  Refreshes the device-containers data by returning an updated HTML table
+// @Produce      html
+// @Success      200
+// @Failure      500
+// @Router       /device-containers [post]
+func GetDeviceContainers(w http.ResponseWriter, r *http.Request) {
+	deviceContainers, err := deviceContainerRows()
+	if err != nil {
+		fmt.Fprintf(w, "Could not get device containers")
+		return
+	}
+
+	json, err := ConvertToJSONString(deviceContainers)
+
+	fmt.Fprintf(w, json)
+}
+
+type DeviceContainerInfo struct {
+	ContainerID     string
+	ImageName       string
+	ContainerStatus string
+	ContainerPorts  string
+	ContainerName   string
+	DeviceUDID      string
+}
+
+// Generate the data for device containers table in the UI
+func deviceContainerRows() ([]DeviceContainerInfo, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the current containers list
+	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []DeviceContainerInfo
+
+	// Loop through the containers list
+	for _, container := range containers {
+		// Parse plain container name
+		containerName := strings.Replace(container.Names[0], "/", "", -1)
+
+		// Get all the container ports from the returned array into string
+		containerPorts := ""
+		for i, s := range container.Ports {
+			if i > 0 {
+				containerPorts += "\n"
+			}
+			containerPorts += "{" + s.IP + ", " + strconv.Itoa(int(s.PrivatePort)) + ", " + strconv.Itoa(int(s.PublicPort)) + ", " + s.Type + "}"
+		}
+
+		// Extract the device UDID from the container name
+		re := regexp.MustCompile("[^_]*$")
+		match := re.FindStringSubmatch(containerName)
+
+		// Create a table row data and append it to the slice
+		var containerRow = DeviceContainerInfo{ContainerID: container.ID, ImageName: container.Image, ContainerStatus: container.Status, ContainerPorts: containerPorts, ContainerName: containerName, DeviceUDID: match[0]}
+		rows = append(rows, containerRow)
+	}
+	return rows, nil
 }
