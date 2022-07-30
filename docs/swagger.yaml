@@ -159,7 +159,7 @@ paths:
       - device-containers
   /provider-logs:
     get:
-      description: Provides provider logs as plain text response
+      description: Gets provider logs as plain text response
       responses:
         "200":
           description: ""

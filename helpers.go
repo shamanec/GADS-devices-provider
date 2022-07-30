@@ -84,7 +84,7 @@ func SimpleJSONResponse(w http.ResponseWriter, response_message string, code int
 }
 
 // @Summary      Get provider logs
-// @Description  Provides provider logs as plain text response
+// @Description  Gets provider logs as plain text response
 // @Tags         provider-logs
 // @Produces	 text
 // @Success      200

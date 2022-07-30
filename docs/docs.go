@@ -223,7 +223,7 @@ var doc = `{
         },
         "/provider-logs": {
             "get": {
-                "description": "Provides provider logs as plain text response",
+                "description": "Gets provider logs as plain text response",
                 "tags": [
                     "provider-logs"
                 ],
