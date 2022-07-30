@@ -22,17 +22,17 @@ You can access Swagger documentation on `http://localhost:{ProviderPort}/swagger
 
 ### Build Android Docker image
 1. Cd into the project folder.  
-2. Execute `docker build -f Dockerfile-Android -t android-appium .`
+2. Execute `docker build -f Dockerfile-Android -t android-appium .`  
 
 ### Setup udev rules
+**NB** Before this step you need to register your devices in `./configs/config.json` according to [Devices setup](./docs/devices-setup.md)  
 1. Execute `curl -X POST http://localhost:{ProviderPort}/configuration/create-udev-rules`  
 2. Copy the newly created `90-device.rules` file to `/etc/udev/rules.d/`.  
 3. Execute `sudo udevadm control --reload-rules`  
 
-### Update the project config  
-1. Open the Project Config page.  
-2. Tap on "Change config".  
-3. Update your Selenium Grid values and the bundle ID of the used WebDriverAgent.  
+### Update the Appium config  
+1. Open `./configs/config.json` 
+3. Update your Selenium Grid values and the bundle ID of the used WebDriverAgent in `appium-config`.  
 
 ### Update host udev rules service
 1. Open /lib/systemd/system/systemd-udevd.service ('sudo systemctl status udev.service' to find out if its a different file)  
