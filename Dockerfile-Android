@@ -33,11 +33,6 @@ RUN mkdir -p ~/.android && \
 
 ENV PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools
 
-#Grab GADS-docker-cli from github and extract it in /usr/local/bin
-RUN wget https://github.com/shamanec/GADS-docker-cli/releases/latest/download/docker-cli.zip
-RUN unzip docker-cli.zip -d /usr/local/bin
-RUN rm docker-cli.zip
-
 # Setup nvm and install latest appium
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
 RUN export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \

@@ -502,7 +502,6 @@ func CreateAndroidContainer(device_udid string) {
 	appium_port := deviceConfig.AppiumPort
 	device_name := deviceConfig.DeviceName
 	device_os_version := deviceConfig.DeviceOSVersion
-	stream_port := deviceConfig.StreamPort
 	selenium_hub_port := configData.AppiumConfig.SeleniumHubPort
 	selenium_hub_host := configData.AppiumConfig.SeleniumHubHost
 	devices_host := configData.AppiumConfig.DevicesHost
@@ -526,9 +525,7 @@ func CreateAndroidContainer(device_udid string) {
 		Image: "android-appium",
 		ExposedPorts: nat.PortSet{
 			nat.Port("4723"):                struct{}{},
-			nat.Port("4724"):                struct{}{},
 			nat.Port(container_server_port): struct{}{},
-			nat.Port(stream_port):           struct{}{},
 		},
 		Env: []string{"ON_GRID=" + on_grid,
 			"APPIUM_PORT=" + appium_port,
@@ -539,11 +536,13 @@ func CreateAndroidContainer(device_udid string) {
 			"SELENIUM_HUB_HOST=" + selenium_hub_host,
 			"DEVICES_HOST=" + devices_host,
 			"HUB_PROTOCOL=" + hub_protocol,
-			"CONTAINER_SERVER_PORT" + container_server_port,
+			"CONTAINER_SERVER_PORT=" + container_server_port,
 			"DEVICE_MODEL=" + device_model,
 			"REMOTE_CONTROL=" + remote_control,
 			"DEVICE_OS=android"},
 	}
+
+	bindOptions := &mount.BindOptions{Propagation: "shared"}
 
 	mounts := []mount.Mount{
 		{
@@ -561,6 +560,12 @@ func CreateAndroidContainer(device_udid string) {
 			Source: "/home/shamanec/.android",
 			Target: "/root/.android",
 		},
+		{
+			Type:        mount.TypeBind,
+			Source:      "/dev/device_" + device_udid,
+			Target:      "/dev/device_" + device_udid,
+			BindOptions: bindOptions,
+		},
 	}
 
 	if remote_control == "true" {
@@ -573,14 +578,9 @@ func CreateAndroidContainer(device_udid string) {
 
 	// Create the host config
 	host_config := &container.HostConfig{
+		Privileged:    true,
 		RestartPolicy: container.RestartPolicy{Name: "on-failure", MaximumRetryCount: 3},
 		PortBindings: nat.PortMap{
-			nat.Port("4724"): []nat.PortBinding{
-				{
-					HostIP:   "0.0.0.0",
-					HostPort: stream_port,
-				},
-			},
 			nat.Port("4723"): []nat.PortBinding{
 				{
 					HostIP:   "0.0.0.0",

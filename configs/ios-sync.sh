@@ -42,11 +42,8 @@ start-wda() {
   done
   if [[ -z $deviceIP ]]; then
     echo "[$(date +'%d/%m/%Y %H:%M:%S')] ERROR! Unable to parse WDA host device ip from log file!"
-    docker-cli add-wda-url --wda_url="" --wda_stream_url=""
     # Below exit completely destroys container as there is no sense to continue with undefined WDA_HOST ip!
     exit -1
-    else
-      docker-cli add-wda-url --wda_url="http:$deviceIP:$WDA_PORT" --wda_stream_url="http:$deviceIP:$MJPEG_PORT"
   fi
 }
 
