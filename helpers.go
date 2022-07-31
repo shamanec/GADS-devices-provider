@@ -32,6 +32,7 @@ type EnvConfig struct {
 	ConnectSeleniumGrid  bool   `json:"connect_selenium_grid"`
 	SupervisionPassword  string `json:"supervision_password"`
 	ContainerizedUsbmuxd string `json:"containerized_usbmuxd"`
+	RemoteControl        string `json:"remote_control"`
 }
 
 type DeviceConfig struct {

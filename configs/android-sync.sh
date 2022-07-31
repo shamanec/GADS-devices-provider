@@ -33,15 +33,27 @@ start-appium() {
 }
 
 export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
 if [ ${ON_GRID} == "true" ]; then
   /opt/nodeconfiggen.sh > /opt/nodeconfig.json
 fi
+
+sleep 2
+
 adb forward tcp:1313 localabstract:minicap
+
+sleep 2
+
 touch /opt/logs/minicap.log
 touch /opt/logs/appium-logs.log
+
 /opt/container_server 2>&1 &
-cd /root/minicap/ && ./run.sh autosize >>/opt/logs/minicap.log 2>&1 &
-docker-cli stream-minicap --port=4724 >>/opt/logs/minicap.log 2>&1 &
+
+if [ ${REMOTE_CONTROL} == "true" ]; then
+  cd /root/minicap/ && ./run.sh autosize >>/opt/logs/minicap.log 2>&1 &
+  docker-cli stream-minicap --port=4724 >>/opt/logs/minicap.log 2>&1 &
+fi
+
 while true; do
   check-appium-status
   sleep 10

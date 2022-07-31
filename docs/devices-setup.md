@@ -1,5 +1,8 @@
 ## Android setup
 ### Minicap setup
+
+**NB** You can skip this step if you are not going to use remote control with [GADS](https://github.com/shamanec/GADS). In `./configs/config.json` change `remote_control` to `false` in `env-config`  
+
 1. Setup Android SDK.  
 2. Download and setup Android NDK.  
 3. Clone [minicap](https://github.com/shamanec/minicap.git) in the main project folder in a `minicap` folder(default).  

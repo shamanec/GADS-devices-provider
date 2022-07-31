@@ -1,6 +1,6 @@
 {
   "appium-config": {
-    "devices_host": "192.168.1.8",
+    "devices_host": "192.168.1.5",
     "selenium_hub_host": "192.168.1.8",
     "selenium_hub_port": "4444",
     "selenium_hub_protocol_type": "http",
@@ -9,7 +9,8 @@
   "env-config": {
     "connect_selenium_grid": false,
     "supervision_password": "patladjan1",
-    "containerized_usbmuxd": "true"
+    "containerized_usbmuxd": "true",
+    "remote_control": "true"
   },
   "devices-config": [
     {
