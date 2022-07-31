@@ -509,6 +509,7 @@ func CreateAndroidContainer(device_udid string) {
 	hub_protocol := configData.AppiumConfig.SeleniumHubProtocolType
 	container_server_port := deviceConfig.ContainerServerPort
 	device_model := deviceConfig.DeviceModel
+	remote_control := configData.EnvConfig.RemoteControl
 
 	// Create the docker client
 	ctx := context.Background()
@@ -540,7 +541,34 @@ func CreateAndroidContainer(device_udid string) {
 			"HUB_PROTOCOL=" + hub_protocol,
 			"CONTAINER_SERVER_PORT" + container_server_port,
 			"DEVICE_MODEL=" + device_model,
+			"REMOTE_CONTROL=" + remote_control,
 			"DEVICE_OS=android"},
+	}
+
+	mounts := []mount.Mount{
+		{
+			Type:   mount.TypeBind,
+			Source: project_dir + "/logs/container_" + device_name + "-" + device_udid,
+			Target: "/opt/logs",
+		},
+		{
+			Type:   mount.TypeBind,
+			Source: project_dir + "/apps",
+			Target: "/opt/apk",
+		},
+		{
+			Type:   mount.TypeBind,
+			Source: "/home/shamanec/.android",
+			Target: "/root/.android",
+		},
+	}
+
+	if remote_control == "true" {
+		mounts = append(mounts, mount.Mount{
+			Type:   mount.TypeBind,
+			Source: project_dir + "/minicap",
+			Target: "/root/minicap",
+		})
 	}
 
 	// Create the host config
@@ -566,28 +594,7 @@ func CreateAndroidContainer(device_udid string) {
 				},
 			},
 		},
-		Mounts: []mount.Mount{
-			{
-				Type:   mount.TypeBind,
-				Source: project_dir + "/logs/container_" + device_name + "-" + device_udid,
-				Target: "/opt/logs",
-			},
-			{
-				Type:   mount.TypeBind,
-				Source: project_dir + "/apps",
-				Target: "/opt/ipa",
-			},
-			{
-				Type:   mount.TypeBind,
-				Source: "/home/shamanec/.android",
-				Target: "/root/.android",
-			},
-			{
-				Type:   mount.TypeBind,
-				Source: project_dir + "/minicap",
-				Target: "/root/minicap",
-			},
-		},
+		Mounts: mounts,
 		Resources: container.Resources{
 			Devices: []container.DeviceMapping{
 				{
