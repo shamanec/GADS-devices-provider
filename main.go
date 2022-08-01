@@ -23,6 +23,13 @@ func setLogging() {
 	log.SetOutput(project_log_file)
 }
 
+func originHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		h.ServeHTTP(w, r)
+	})
+}
+
 func handleRequests() {
 	// Create a new instance of the mux router
 	myRouter := mux.NewRouter().StrictSlash(true)
@@ -42,10 +49,10 @@ func handleRequests() {
 	myRouter.HandleFunc("/containers/{container_id}/remove", RemoveContainer).Methods("POST")
 	myRouter.HandleFunc("/containers/{container_id}/logs", GetContainerLogs).Methods("GET")
 	myRouter.HandleFunc("/configuration/create-udev-rules", CreateUdevRules).Methods("POST")
-	myRouter.HandleFunc("/provider-logs", GetLogs).Methods("GET")
+	myRouter.HandleFunc("/provider-logs", GetLogs)
 	myRouter.HandleFunc("/device-containers", GetDeviceContainers).Methods("GET")
 
-	log.Fatal(http.ListenAndServe(":"+ProviderPort, myRouter))
+	log.Fatal(http.ListenAndServe(":"+ProviderPort, originHandler(myRouter)))
 }
 
 func main() {
