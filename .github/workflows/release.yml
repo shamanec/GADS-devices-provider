@@ -2,6 +2,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
 name: Release provider
 jobs:
   build_and_release:
@@ -31,5 +33,5 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: device-provider.zip
           asset_name: device-provider.zip
-          tag: latest
+          tag: ${{ github.ref }}
           overwrite: true
