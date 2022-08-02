@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -69,7 +70,7 @@ func getAvailableDevicesInfo(runningContainers []string) ([]DeviceInfo, error) {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_container_create",
-		}).Error("Could not unmarshal config.json file when getting devices info")
+		}).Error("Could not get config data when getting devices info")
 		return nil, err
 	}
 
@@ -82,6 +83,9 @@ func getAvailableDevicesInfo(runningContainers []string) ([]DeviceInfo, error) {
 		var device_config *DeviceInfo
 		device_config, err := getDeviceInfo(device_udid[0], configData)
 		if err != nil {
+			log.WithFields(log.Fields{
+				"event": "ios_container_create",
+			}).Error("Could not get info for device " + device_udid[0] + " from config data")
 			return nil, err
 		}
 
@@ -92,6 +96,7 @@ func getAvailableDevicesInfo(runningContainers []string) ([]DeviceInfo, error) {
 	return combinedInfo, nil
 }
 
+// Get all running containers on host and filter them out for iOS and Android containers
 func getRunningDeviceContainerNames() ([]string, error) {
 	var containerNames []string
 
@@ -135,6 +140,13 @@ func getDeviceInfo(device_udid string, configData *ConfigJsonData) (*DeviceInfo,
 		if v.DeviceUDID == device_udid {
 			deviceConfig = v
 		}
+	}
+
+	if deviceConfig == (DeviceConfig{}) {
+		log.WithFields(log.Fields{
+			"event": "get_device_info_from_config",
+		}).Error("Device with udid " + device_udid + " was not found in config data.")
+		return nil, errors.New("")
 	}
 
 	// Return the info for the device

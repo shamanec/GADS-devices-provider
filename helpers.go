@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"strconv"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -29,7 +28,7 @@ type AppiumConfig struct {
 }
 
 type EnvConfig struct {
-	ConnectSeleniumGrid  bool   `json:"connect_selenium_grid"`
+	ConnectSeleniumGrid  string `json:"connect_selenium_grid"`
 	SupervisionPassword  string `json:"supervision_password"`
 	ContainerizedUsbmuxd string `json:"containerized_usbmuxd"`
 	RemoteControl        string `json:"remote_control"`
@@ -197,7 +196,7 @@ func GetEnvValue(key string) string {
 	if key == "supervision_password" {
 		return configData.EnvConfig.SupervisionPassword
 	} else if key == "connect_selenium_grid" {
-		return strconv.FormatBool(configData.EnvConfig.ConnectSeleniumGrid)
+		return configData.EnvConfig.ConnectSeleniumGrid
 	} else {
 		return ""
 	}
