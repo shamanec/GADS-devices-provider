@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -13,9 +14,9 @@ import (
 )
 
 var project_log_file *os.File
-var ProviderPort *string
-var LogsPath *string
-var ConfigPath *string
+var ProviderPort = flag.String("port", "10001", "The port to run the server on")
+var LogsPath = flag.String("logs", "./", "The folder where logs will be stored")
+var ConfigPath = flag.String("config", "./configs/config.json", "The path to the config.json file")
 
 func setLogging() {
 	log.SetFormatter(&log.JSONFormatter{})
@@ -59,11 +60,8 @@ func handleRequests() {
 }
 
 func main() {
-	ProviderPort = flag.String("port", "10001", "The port to run the server on")
-	LogsPath = flag.String("logs", "./", "The folder where logs will be stored")
-	ConfigPath = flag.String("config", "./configs/config.json", "The path to the config.json file")
-
 	flag.Parse()
+	fmt.Printf("Starting provider on port:%v, keeping logs at:%v, using config.json at:%v", *ProviderPort, *LogsPath, *ConfigPath)
 
 	setLogging()
 	handleRequests()
