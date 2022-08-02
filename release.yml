@@ -1,0 +1,26 @@
+on:
+  push:
+    branches:
+      - main
+name: Release provider
+jobs:
+  build_on_linux_and_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17.x
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Build
+        run: |
+          sed -i 's/version \= \"local-build\"/version = \"${{ env.release_tag }}\"/' main.go
+          mkdir bin
+          go build -ldflags="-s -w" -o bin/device-provider
+          zip -j device-provider-linux.zip bin/device-provider
+      - uses: AButler/upload-release-assets@v2.0
+        with:
+          files: "*.zip"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: ${{ env.release_tag }}
