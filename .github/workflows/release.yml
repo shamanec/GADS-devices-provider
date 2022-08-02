@@ -25,4 +25,5 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: device-provider.zip
           asset_name: device-provider.zip
+          tag: ${{ github.ref }}
           overwrite: false
