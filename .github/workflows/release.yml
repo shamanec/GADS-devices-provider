@@ -18,9 +18,12 @@ jobs:
           sed -i 's/version \= \"local-build\"/version = \"${{ env.release_tag }}\"/' main.go
           mkdir bin
           go build -ldflags="-s -w" -o bin/device-provider
-          zip -j device-provider-linux.zip bin/device-provider
-      - uses: AButler/upload-release-assets@v2.0
+          zip -j device-provider.zip bin/device-provider
+      - name: Upload release
+        uses: svenstaro/upload-release-action@v2
         with:
-          files: "*.zip"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: ${{ env.release_tag }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: device-provider.zip
+          asset_name: device-provider.zip
+          tag: ${{ env.release_tag }}
+          overwrite: true
