@@ -299,7 +299,7 @@ func CreateIOSContainer(device_udid string) {
 	if deviceConfig == (DeviceConfig{}) {
 		log.WithFields(log.Fields{
 			"event": "ios_container_create",
-		}).Error("Device with UDID:" + device_udid + " is not registered in the './configs/config.json' file. No container will be created.")
+		}).Error("Device with UDID:" + device_udid + " is not registered in the 'config.json' file. No container will be created.")
 		return
 	}
 
@@ -390,7 +390,7 @@ func CreateIOSContainer(device_udid string) {
 
 	mounts = append(mounts, mount.Mount{
 		Type:   mount.TypeBind,
-		Source: project_dir + "/logs/container_" + device_name + "-" + device_udid,
+		Source: *LogsPath + "logs/container_" + device_name + "-" + device_udid,
 		Target: "/opt/logs",
 	})
 
@@ -434,7 +434,7 @@ func CreateIOSContainer(device_udid string) {
 	}
 
 	// Create a folder for logging for the container
-	err = os.MkdirAll("./logs/container_"+device_name+"-"+device_udid, os.ModePerm)
+	err = os.MkdirAll(*LogsPath+"container_"+device_name+"-"+device_udid, os.ModePerm)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_container_create",
@@ -493,7 +493,7 @@ func CreateAndroidContainer(device_udid string) {
 	if deviceConfig == (DeviceConfig{}) {
 		log.WithFields(log.Fields{
 			"event": "android_container_create",
-		}).Error("Device with UDID:" + device_udid + " is not registered in the './configs/config.json' file. No container will be created.")
+		}).Error("Device with UDID:" + device_udid + " is not registered in the 'config.json' file. No container will be created.")
 		return
 	}
 
@@ -546,7 +546,7 @@ func CreateAndroidContainer(device_udid string) {
 	mounts := []mount.Mount{
 		{
 			Type:   mount.TypeBind,
-			Source: project_dir + "/logs/container_" + device_name + "-" + device_udid,
+			Source: *LogsPath + "container_" + device_name + "-" + device_udid,
 			Target: "/opt/logs",
 		},
 		{
@@ -606,7 +606,7 @@ func CreateAndroidContainer(device_udid string) {
 	}
 
 	// Create a folder for logging for the container
-	err = os.MkdirAll("./logs/container_"+device_name+"-"+device_udid, os.ModePerm)
+	err = os.MkdirAll(*LogsPath+"container_"+device_name+"-"+device_udid, os.ModePerm)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "android_container_create",

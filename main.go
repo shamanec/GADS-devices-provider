@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"net/http"
 	"os"
 
@@ -12,11 +13,13 @@ import (
 )
 
 var project_log_file *os.File
-var ProviderPort = "10001"
+var ProviderPort *string
+var LogsPath *string
+var ConfigPath *string
 
 func setLogging() {
 	log.SetFormatter(&log.JSONFormatter{})
-	project_log_file, err := os.OpenFile("./logs/provider.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
+	project_log_file, err := os.OpenFile(*LogsPath+"provider.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
 		panic("Could not set log output" + err.Error())
 	}
@@ -52,10 +55,16 @@ func handleRequests() {
 	router.HandleFunc("/provider-logs", GetLogs)
 	router.HandleFunc("/device-containers", GetDeviceContainers).Methods("GET")
 
-	log.Fatal(http.ListenAndServe(":"+ProviderPort, originHandler(router)))
+	log.Fatal(http.ListenAndServe(":"+*ProviderPort, originHandler(router)))
 }
 
 func main() {
+	ProviderPort = flag.String("port", "10001", "The port to run the server on")
+	LogsPath = flag.String("logs", "./", "The folder where logs will be stored")
+	ConfigPath = flag.String("config", "./configs/config.json", "The path to the config.json file")
+
+	flag.Parse()
+
 	setLogging()
 	handleRequests()
 }

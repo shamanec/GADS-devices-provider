@@ -69,7 +69,7 @@ func getAvailableDevicesInfo(runningContainers []string) ([]DeviceInfo, error) {
 	configData, err := GetConfigJsonData()
 	if err != nil {
 		log.WithFields(log.Fields{
-			"event": "ios_container_create",
+			"event": "get_available_devices_info",
 		}).Error("Could not get config data when getting devices info")
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func getAvailableDevicesInfo(runningContainers []string) ([]DeviceInfo, error) {
 		device_config, err := getDeviceInfo(device_udid[0], configData)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"event": "ios_container_create",
+				"event": "get_available_devices_info",
 			}).Error("Could not get info for device " + device_udid[0] + " from config data")
 			return nil, err
 		}

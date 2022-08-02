@@ -125,7 +125,7 @@ func GetLogs(w http.ResponseWriter, r *http.Request) {
 // Get a ConfigJsonData pointer with the current configuration from config.json
 func GetConfigJsonData() (*ConfigJsonData, error) {
 	var data ConfigJsonData
-	jsonFile, err := os.Open("./configs/config.json")
+	jsonFile, err := os.Open(*LogsPath)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_config_data",
@@ -186,7 +186,7 @@ func UnmarshalReader(body io.ReadCloser, v interface{}) error {
 	return nil
 }
 
-// Get an env value from ./configs/config.json
+// Get an env value from config.json
 func GetEnvValue(key string) string {
 	configData, err := GetConfigJsonData()
 	if err != nil {

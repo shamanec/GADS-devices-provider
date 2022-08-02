@@ -1,7 +1,7 @@
 ## Android setup
 ### Minicap setup
 
-**NB** You can skip this step if you are not going to use remote control with [GADS](https://github.com/shamanec/GADS). In `./configs/config.json` change `remote_control` to `false` in `env-config`  
+**NB** You can skip this step if you are not going to use remote control with [GADS](https://github.com/shamanec/GADS). In `config.json` change `remote_control` to `false` in `env-config`  
 
 1. Setup Android SDK.  
 2. Download and setup Android NDK.  
@@ -13,7 +13,7 @@
 8. Execute `ndk-build NDK_DEBUG=1 1>&2`
 
 ### Register devices in config.json
-1. Open the `./configs/config.json` file.  
+1. Open the `config.json` file.  
 2. For each Android device add a new object inside the `devices-list` array in the json.  
 3. For each device provide:  
   * `os` - should be "android"  
@@ -64,12 +64,12 @@ You need an Apple Developer account to sign and build `WebDriverAgent`
 4. Connect each consecutive device and supervise it using the same supervision identity.  
 5. Export your supervision identity file and choose a password.  
 6. Save your new supervision identity file in the project `./configs` (or other) folder as `supervision.p12`.  
-7. Open `./configs/config.json` and set your `supervision_password` in `env-config`  
+7. Open `config.json` and set your `supervision_password` in `env-config`  
 
 **Note** You can also Trust manually when container is created but this is not optimal  
 
 ### Register your devices for the project
-1. Open the `./configs/config.json` file.  
+1. Open the `config.json` file.  
 2. For each iOS device add a new object inside the `devices-config` array in the json.  
 3. For each device provide:  
   * `os` - should be "ios"  
