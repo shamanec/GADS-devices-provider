@@ -7,6 +7,12 @@ jobs:
   build_and_release:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate build number
+        uses: einaregilsson/build-number@v3
+        with:
+          token: ${{secrets.github_token}}
+      - name: Test
+        run: echo $BUILD_NUMBER
       - name: Install Go
         uses: actions/setup-go@v2
         with:
