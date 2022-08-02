@@ -54,6 +54,9 @@ func RestartContainer(w http.ResponseWriter, r *http.Request) {
 	// Call the internal function to restart the container
 	err := RestartContainerInternal(container_id)
 	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "docker_container_restart",
+		}).Error("Restarting container with ID: " + container_id + " failed.")
 		JSONError(w, "docker_container_restart", "Could not restart container with ID: "+container_id, 500)
 		return
 	}
@@ -100,7 +103,7 @@ func RemoveDeviceContainer(w http.ResponseWriter, r *http.Request) {
 func GetContainerLogs(w http.ResponseWriter, r *http.Request) {
 	// Get the request path vars
 	vars := mux.Vars(r)
-	key := vars["container_id"]
+	container_id := vars["container_id"]
 
 	// Create the context and Docker client
 	ctx := context.Background()
@@ -108,8 +111,8 @@ func GetContainerLogs(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_container_logs",
-		}).Error("Could not create docker client while attempting to get logs for container with ID: " + key + ". Error: " + err.Error())
-		JSONError(w, "get_container_logs", "Could not get logs for container with ID: "+key, 500)
+		}).Error("Could not create docker client while attempting to get logs for container with ID: " + container_id + ". Error: " + err.Error())
+		JSONError(w, "get_container_logs", "Could not get logs for container with ID: "+container_id, 500)
 		return
 	}
 
@@ -117,12 +120,12 @@ func GetContainerLogs(w http.ResponseWriter, r *http.Request) {
 	options := types.ContainerLogsOptions{ShowStdout: true}
 
 	// Get the container logs
-	out, err := cli.ContainerLogs(ctx, key, options)
+	out, err := cli.ContainerLogs(ctx, container_id, options)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_container_logs",
-		}).Error("Could not get logs for container with ID: " + key + ". Error: " + err.Error())
-		JSONError(w, "get_container_logs", "Could not get logs for container with ID: "+key, 500)
+		}).Error("Could not get logs for container with ID: " + container_id + ". Error: " + err.Error())
+		JSONError(w, "get_container_logs", "Could not get logs for container with ID: "+container_id, 500)
 		return
 	}
 
@@ -137,7 +140,7 @@ func GetContainerLogs(w http.ResponseWriter, r *http.Request) {
 	if newStr != "" {
 		SimpleJSONResponse(w, newStr, 200)
 	} else {
-		SimpleJSONResponse(w, "There are no actual logs for this container.", 200)
+		SimpleJSONResponse(w, "There are no existing logs for this container.", 200)
 	}
 }
 
@@ -218,7 +221,7 @@ func RemoveContainer(w http.ResponseWriter, r *http.Request) {
 	if err := cli.ContainerStop(ctx, key, nil); err != nil {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
-		}).Error("Could not remove container with ID: " + key + ". Error: " + err.Error())
+		}).Error("Could not stop container with ID: " + key + ". Error: " + err.Error())
 		JSONError(w, "docker_container_remove", "Could not remove container with ID: "+key, 500)
 		return
 	}
@@ -285,17 +288,15 @@ func CreateIOSContainer(device_udid string) {
 	}
 
 	// Check if device is registered in config data
-	var device_in_config bool
 	var deviceConfig DeviceConfig
 	for _, v := range configData.DeviceConfig {
 		if v.DeviceUDID == device_udid {
-			device_in_config = true
 			deviceConfig = v
 		}
 	}
 
 	// Stop execution if device not in config data
-	if !device_in_config {
+	if deviceConfig == (DeviceConfig{}) {
 		log.WithFields(log.Fields{
 			"event": "ios_container_create",
 		}).Error("Device with UDID:" + device_udid + " is not registered in the './configs/config.json' file. No container will be created.")
@@ -481,17 +482,15 @@ func CreateAndroidContainer(device_udid string) {
 	}
 
 	// Check if device is registered in config data
-	var device_in_config bool
 	var deviceConfig DeviceConfig
 	for _, v := range configData.DeviceConfig {
 		if v.DeviceUDID == device_udid {
-			device_in_config = true
 			deviceConfig = v
 		}
 	}
 
 	// Stop execution if device not in config data
-	if !device_in_config {
+	if deviceConfig == (DeviceConfig{}) {
 		log.WithFields(log.Fields{
 			"event": "android_container_create",
 		}).Error("Device with UDID:" + device_udid + " is not registered in the './configs/config.json' file. No container will be created.")
@@ -639,7 +638,7 @@ func CreateAndroidContainer(device_udid string) {
 }
 
 // Check if container exists by name and also return container_id
-func checkContainerExistsByName(container_name string) (bool, string, string) {
+func checkContainerExistsByName(device_udid string) (bool, string, string) {
 	// Get all the containers
 	containers, _ := getContainersList()
 	container_exists := false
@@ -647,11 +646,11 @@ func checkContainerExistsByName(container_name string) (bool, string, string) {
 	container_status := ""
 
 	// Loop through the available containers
-	// If a container with the provided name exists
+	// If a container which name contains the device udid exists
 	// return true and also return the container ID and status
 	for _, container := range containers {
 		containerName := strings.Replace(container.Names[0], "/", "", -1)
-		if strings.Contains(containerName, container_name) {
+		if strings.Contains(containerName, device_udid) {
 			container_exists = true
 			container_id = container.ID
 			container_status = container.Status

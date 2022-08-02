@@ -7,7 +7,7 @@
     "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner"
   },
   "env-config": {
-    "connect_selenium_grid": false,
+    "connect_selenium_grid": "false",
     "supervision_password": "patladjan1",
     "containerized_usbmuxd": "true",
     "remote_control": "true"
