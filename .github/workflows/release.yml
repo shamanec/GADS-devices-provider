@@ -31,5 +31,5 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: device-provider.zip
           asset_name: device-provider.zip
-          tag: $BUILD_NUMBER
+          tag: "$BUILD_NUMBER"
           overwrite: false
