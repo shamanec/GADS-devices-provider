@@ -4,7 +4,7 @@ on:
       - main
 name: Release provider
 jobs:
-  build_on_linux_and_release:
+  build_and_release:
     runs-on: ubuntu-latest
     steps:
       - name: Install Go
@@ -25,5 +25,4 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: device-provider.zip
           asset_name: device-provider.zip
-          tag: ${{ env.release_tag }}
-          overwrite: true
+          overwrite: false
