@@ -14,13 +14,11 @@ import (
 )
 
 var project_log_file *os.File
-var ProviderPort = flag.String("port", "10001", "The port to run the server on")
-var LogsPath = flag.String("logs", "./", "The folder where logs will be stored")
-var ConfigPath = flag.String("config", "./configs/config.json", "The path to the config.json file")
+var ProviderPort string
 
 func setLogging() {
 	log.SetFormatter(&log.JSONFormatter{})
-	project_log_file, err := os.OpenFile(*LogsPath+"provider.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
+	project_log_file, err := os.OpenFile("./logs/provider.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
 		panic("Could not set log output" + err.Error())
 	}
@@ -56,12 +54,16 @@ func handleRequests() {
 	router.HandleFunc("/provider-logs", GetLogs)
 	router.HandleFunc("/device-containers", GetDeviceContainers).Methods("GET")
 
-	log.Fatal(http.ListenAndServe(":"+*ProviderPort, originHandler(router)))
+	log.Fatal(http.ListenAndServe(":"+ProviderPort, originHandler(router)))
 }
 
 func main() {
+	port_flag := flag.String("port", "10001", "The port to run the server on")
+
 	flag.Parse()
-	fmt.Printf("Starting provider on port:%v, keeping logs at:%v, using config.json at:%v", *ProviderPort, *LogsPath, *ConfigPath)
+	ProviderPort = *port_flag
+
+	fmt.Printf("Starting provider on port:%v\n", ProviderPort)
 
 	setLogging()
 	handleRequests()
