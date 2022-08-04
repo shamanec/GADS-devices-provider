@@ -51,7 +51,7 @@ if [ ${REMOTE_CONTROL} == "true" ]; then
   cd /root/minicap/ && ./run.sh autosize >>/opt/logs/minicap.log 2>&1 &
 fi
 
-/opt/container-server 2>&1 &
+container-server 2>&1 &
 
 while true; do
   check-appium-status

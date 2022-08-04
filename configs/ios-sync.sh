@@ -3,15 +3,15 @@
 # Start the WebDriverAgent on specific WDA and MJPEG ports
 start-wda-go-ios() {
   echo "[$(date +'%d/%m/%Y %H:%M:%S')] Starting WDA application on port $WDA_PORT"
-  ./go-ios/ios runwda --bundleid=$WDA_BUNDLEID --testrunnerbundleid=$WDA_BUNDLEID --xctestconfig=WebDriverAgentRunner.xctest --env USE_PORT=$WDA_PORT --env MJPEG_SERVER_PORT=$MJPEG_PORT --udid $DEVICE_UDID >"/opt/logs/wda-logs.log" 2>&1 &
+  ios runwda --bundleid=$WDA_BUNDLEID --testrunnerbundleid=$WDA_BUNDLEID --xctestconfig=WebDriverAgentRunner.xctest --env USE_PORT=$WDA_PORT --env MJPEG_SERVER_PORT=$MJPEG_PORT --udid $DEVICE_UDID >"/opt/logs/wda-logs.log" 2>&1 &
   sleep 2
 }
 
 # Kill the WebDriverAgent app if running on the device or just in case
 kill-wda() {
-  if ./go-ios/ios ps --udid $DEVICE_UDID | grep $WDA_BUNDLEID; then
+  if ios ps --udid $DEVICE_UDID | grep $WDA_BUNDLEID; then
     echo "[$(date +'%d/%m/%Y %H:%M:%S')] Attempting to kill WDA app on device"
-    ./go-ios/ios kill $WDA_BUNDLEID --udid=$DEVICE_UDID
+    ios kill $WDA_BUNDLEID --udid=$DEVICE_UDID
     sleep 2
   else
     echo "[$(date +'%d/%m/%Y %H:%M:%S')] WDA is not currently running on the device, nothing to kill."
@@ -21,7 +21,7 @@ kill-wda() {
 # Install the WebDriverAgent app on the device
 install-wda() {
   echo "[$(date +'%d/%m/%Y %H:%M:%S')] Installing WDA application on device"
-  ./go-ios/ios install --path=/opt/WebDriverAgent.ipa --udid=$DEVICE_UDID
+  ios install --path=/opt/WebDriverAgent.ipa --udid=$DEVICE_UDID
 }
 
 # Start the WDA service on the device using the WDA bundleId
@@ -97,9 +97,9 @@ start-appium() {
 # Skip mounting images if they are already mounted
 mount-disk-images() {
   echo "[$(date +'%d/%m/%Y %H:%M:%S')] Mounting Developer disk images to device with udid: ${DEVICE_UDID}"
-  if ./go-ios/ios image list --udid=$DEVICE_UDID 2>&1 | grep "none"; then
+  if ios image list --udid=$DEVICE_UDID 2>&1 | grep "none"; then
     echo "[$(date +'%d/%m/%Y %H:%M:%S')] Could not find Developer disk images on the device, mounting.."
-    ./go-ios/ios image auto --basedir=/opt/DeveloperDiskImages --udid=$DEVICE_UDID
+    ios image auto --basedir=/opt/DeveloperDiskImages --udid=$DEVICE_UDID
   else
     echo "[$(date +'%d/%m/%Y %H:%M:%S')] Developer disk images are already mounted on the device, nothing to do."
   fi
@@ -108,7 +108,7 @@ mount-disk-images() {
 # Pair device using the supervision identity
 pair-device() {
   echo "[$(date +'%d/%m/%Y %H:%M:%S')] Pairing device with udid ${DEVICE_UDID}"
-  ./go-ios/ios pair --p12file="/opt/supervision.p12" --password="${SUPERVISION_PASSWORD}" --udid="${DEVICE_UDID}" >> "/opt/logs/wda-sync.log"
+  ios pair --p12file="/opt/supervision.p12" --password="${SUPERVISION_PASSWORD}" --udid="${DEVICE_UDID}" >> "/opt/logs/wda-sync.log"
 }
 
 # Activate nvm
@@ -132,7 +132,7 @@ fi
 pair-device >> "/opt/logs/wda-sync.log"
 mount-disk-images >> "/opt/logs/wda-sync.log"
 sleep 2
-/opt/container-server 2>&1 &
+container-server 2>&1 &
 while true; do
   check-wda-status >> "/opt/logs/wda-sync.log"
   check-appium-status >> "/opt/logs/wda-sync.log"

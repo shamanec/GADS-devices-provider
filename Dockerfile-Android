@@ -40,7 +40,10 @@ RUN export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \
     nvm alias default 14.17.6 && \
     npm config set user 0 && npm config set unsafe-perm true && npm install -g appium
 
+#Grab GADS-docker-server from github and extract it in /usr/local/bin
+RUN wget https://github.com/shamanec/GADS-docker-server/releases/latest/download/container-server.zip
+RUN unzip container-server.zip -d /usr/local/bin
+
 COPY configs/android-sync.sh /
 COPY configs/nodeconfiggen-android.sh /opt/nodeconfiggen.sh
-COPY configs/container-server /opt
 ENTRYPOINT ["/bin/bash","-c","/android-sync.sh"]
