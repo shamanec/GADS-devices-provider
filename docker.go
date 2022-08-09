@@ -358,8 +358,8 @@ func CreateIOSContainer(device_udid string) {
 			"DEVICE_OS=ios"},
 	}
 
-	bindOptions := &mount.BindOptions{Propagation: "shared"}
 	var mounts []mount.Mount
+	var resources container.Resources
 
 	if containerized_usbmuxd == "false" {
 		// Mount all iOS devices on the host to the container with /var/run/usbmuxd
@@ -377,13 +377,13 @@ func CreateIOSContainer(device_udid string) {
 			},
 		}
 	} else {
-		// Mount the symlink for a specific device created by udev rule - usbmuxd will be started in the container itself
-		mounts = []mount.Mount{
-			{
-				Type:        mount.TypeBind,
-				Source:      "/dev/device_" + device_udid,
-				Target:      "/dev/device_" + device_udid,
-				BindOptions: bindOptions,
+		resources = container.Resources{
+			Devices: []container.DeviceMapping{
+				{
+					PathOnHost:        "/dev/device_" + device_udid,
+					PathInContainer:   "/dev/bus/usb/003/011",
+					CgroupPermissions: "rwm",
+				},
 			},
 		}
 	}
@@ -430,7 +430,8 @@ func CreateIOSContainer(device_udid string) {
 				},
 			},
 		},
-		Mounts: mounts,
+		Mounts:    mounts,
+		Resources: resources,
 	}
 
 	// Create a folder for logging for the container
@@ -541,8 +542,6 @@ func CreateAndroidContainer(device_udid string) {
 			"DEVICE_OS=android"},
 	}
 
-	bindOptions := &mount.BindOptions{Propagation: "shared"}
-
 	mounts := []mount.Mount{
 		{
 			Type:   mount.TypeBind,
@@ -563,7 +562,7 @@ func CreateAndroidContainer(device_udid string) {
 			Type:        mount.TypeBind,
 			Source:      "/dev/device_" + device_udid,
 			Target:      "/dev/device_" + device_udid,
-			BindOptions: bindOptions,
+			BindOptions: &mount.BindOptions{Propagation: "shared"},
 		},
 	}
 
@@ -573,6 +572,16 @@ func CreateAndroidContainer(device_udid string) {
 			Source: project_dir + "/minicap",
 			Target: "/root/minicap",
 		})
+	}
+
+	resources := container.Resources{
+		Devices: []container.DeviceMapping{
+			{
+				PathOnHost:        "/dev/device_" + device_udid,
+				PathInContainer:   "/dev/bus/usb/003/011",
+				CgroupPermissions: "rwm",
+			},
+		},
 	}
 
 	// Create the host config
@@ -593,16 +602,8 @@ func CreateAndroidContainer(device_udid string) {
 				},
 			},
 		},
-		Mounts: mounts,
-		Resources: container.Resources{
-			Devices: []container.DeviceMapping{
-				{
-					PathOnHost:        "/dev/device_" + device_udid,
-					PathInContainer:   "/dev/bus/usb/003/011",
-					CgroupPermissions: "rwm",
-				},
-			},
-		},
+		Mounts:    mounts,
+		Resources: resources,
 	}
 
 	// Create a folder for logging for the container
