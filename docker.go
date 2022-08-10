@@ -22,7 +22,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var project_dir, _ = os.Getwd()
 var on_grid = GetEnvValue("connect_selenium_grid")
 
 type CreateDeviceContainerRequest struct {
@@ -390,13 +389,13 @@ func CreateIOSContainer(device_udid string) {
 
 	mounts = append(mounts, mount.Mount{
 		Type:   mount.TypeBind,
-		Source: project_dir + "/logs/container_" + device_name + "-" + device_udid,
+		Source: ProjectDir + "/logs/container_" + device_name + "-" + device_udid,
 		Target: "/opt/logs",
 	})
 
 	mounts = append(mounts, mount.Mount{
 		Type:   mount.TypeBind,
-		Source: project_dir + "/apps",
+		Source: ProjectDir + "/apps",
 		Target: "/opt/ipa",
 	})
 
@@ -509,6 +508,10 @@ func CreateAndroidContainer(device_udid string) {
 	container_server_port := deviceConfig.ContainerServerPort
 	device_model := deviceConfig.DeviceModel
 	remote_control := configData.EnvConfig.RemoteControl
+	minicap_fps := deviceConfig.MinicapFPS
+	minicap_half_resolution := deviceConfig.MinicapHalfResolution
+	screen_size := deviceConfig.ScreenSize
+	screen_size_values := strings.Split(screen_size, "x")
 
 	// Create the docker client
 	ctx := context.Background()
@@ -539,23 +542,28 @@ func CreateAndroidContainer(device_udid string) {
 			"CONTAINER_SERVER_PORT=" + container_server_port,
 			"DEVICE_MODEL=" + device_model,
 			"REMOTE_CONTROL=" + remote_control,
+			"MINICAP_FPS=" + minicap_fps,
+			"MINICAP_HALF_RESOLUTION=" + minicap_half_resolution,
+			"SCREEN_WIDTH=" + screen_size_values[0],
+			"SCREEN_HEIGHT=" + screen_size_values[1],
+			"SCREEN_SIZE=" + screen_size,
 			"DEVICE_OS=android"},
 	}
 
 	mounts := []mount.Mount{
 		{
 			Type:   mount.TypeBind,
-			Source: project_dir + "/logs/container_" + device_name + "-" + device_udid,
+			Source: ProjectDir + "/logs/container_" + device_name + "-" + device_udid,
 			Target: "/opt/logs",
 		},
 		{
 			Type:   mount.TypeBind,
-			Source: project_dir + "/apps",
+			Source: ProjectDir + "/apps",
 			Target: "/opt/apk",
 		},
 		{
 			Type:   mount.TypeBind,
-			Source: "/home/shamanec/.android",
+			Source: HomeDir + "/.android",
 			Target: "/root/.android",
 		},
 		{
@@ -569,7 +577,7 @@ func CreateAndroidContainer(device_udid string) {
 	if remote_control == "true" {
 		mounts = append(mounts, mount.Mount{
 			Type:   mount.TypeBind,
-			Source: project_dir + "/minicap",
+			Source: ProjectDir + "/minicap",
 			Target: "/root/minicap",
 		})
 	}
@@ -811,4 +819,21 @@ func deviceContainerRows() ([]DeviceContainerInfo, error) {
 		rows = append(rows, containerRow)
 	}
 	return rows, nil
+}
+
+func calculateMinicapHalfScreenValues(screen_size string) (half_width string, half_height string) {
+	screen_size_values := strings.Split(screen_size, "x")
+	screen_width, err := strconv.Atoi(screen_size_values[0])
+	if err != nil {
+		return
+	}
+	screen_height, err := strconv.Atoi(screen_size_values[1])
+	if err != nil {
+		return
+	}
+
+	half_width = strconv.Itoa(screen_width / 2)
+	half_height = strconv.Itoa(screen_height / 2)
+
+	return
 }

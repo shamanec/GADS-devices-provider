@@ -63,6 +63,7 @@ If you have followed all the steps, set up and registered the devices and config
   * `device_udid` - UDID of the Android device, can get it with `adb devices`   
   * `container_server_port` - unique port for the Go server running inside the device containers  
   * `device_model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
+  * `minicap_fps` - non-mandatory field, if you notice a device struggling with the stream you can provide it for more granular control, if not provided `minicap` will run with uncapped FPS
 
 ### Kill adb-server
 1. You need to make sure that adb-server is not running on the host before you start devices containers.  
