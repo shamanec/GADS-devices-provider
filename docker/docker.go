@@ -20,17 +20,17 @@ import (
 )
 
 // Create an iOS container for a specific device(by UDID) using data from config.json so if device is not registered there it will not attempt to create a container for it
-func CreateIOSContainer(device_udid string) {
+func CreateIOSContainer(deviceUDID string) {
 	log.WithFields(log.Fields{
 		"event": "ios_container_create",
-	}).Info("Attempting to create a container for iOS device with udid: " + device_udid)
+	}).Info("Attempting to create a container for iOS device with udid: " + deviceUDID)
 
 	time.Sleep(2 * time.Second)
 
 	// Check if device is registered in config data
 	var deviceConfig util.DeviceConfig
 	for _, v := range provider.ConfigData.DeviceConfig {
-		if v.DeviceUDID == device_udid {
+		if v.DeviceUDID == deviceUDID {
 			deviceConfig = v
 		}
 	}
@@ -39,7 +39,7 @@ func CreateIOSContainer(device_udid string) {
 	if deviceConfig == (util.DeviceConfig{}) {
 		log.WithFields(log.Fields{
 			"event": "ios_container_create",
-		}).Error("Device with UDID:" + device_udid + " is not registered in the 'config.json' file. No container will be created.")
+		}).Error("Device with UDID:" + deviceUDID + " is not registered in the 'config.json' file. No container will be created.")
 		return
 	}
 
@@ -80,7 +80,7 @@ func CreateIOSContainer(device_udid string) {
 		},
 		Env: []string{"ON_GRID=" + provider.ConfigData.EnvConfig.ConnectSeleniumGrid,
 			"APPIUM_PORT=" + appiumPort,
-			"DEVICE_UDID=" + device_udid,
+			"DEVICE_UDID=" + deviceUDID,
 			"WDA_PORT=" + wdaPort,
 			"MJPEG_PORT=" + wdaMjpegPort,
 			"DEVICE_OS_VERSION=" + deviceOSVersion,
@@ -120,7 +120,7 @@ func CreateIOSContainer(device_udid string) {
 		resources = container.Resources{
 			Devices: []container.DeviceMapping{
 				{
-					PathOnHost:        "/dev/device_" + device_udid,
+					PathOnHost:        "/dev/device_" + deviceUDID,
 					PathInContainer:   "/dev/bus/usb/003/011",
 					CgroupPermissions: "rwm",
 				},
@@ -130,7 +130,7 @@ func CreateIOSContainer(device_udid string) {
 
 	mounts = append(mounts, mount.Mount{
 		Type:   mount.TypeBind,
-		Source: provider.ProjectDir + "/logs/container_" + deviceName + "-" + device_udid,
+		Source: provider.ProjectDir + "/logs/container_" + deviceName + "-" + deviceUDID,
 		Target: "/opt/logs",
 	})
 
@@ -141,7 +141,7 @@ func CreateIOSContainer(device_udid string) {
 	})
 
 	// Create the host config
-	host_config := &container.HostConfig{
+	hostConfig := &container.HostConfig{
 		Privileged:    true,
 		RestartPolicy: container.RestartPolicy{Name: "on-failure", MaximumRetryCount: 3},
 		PortBindings: nat.PortMap{
@@ -175,20 +175,20 @@ func CreateIOSContainer(device_udid string) {
 	}
 
 	// Create a folder for logging for the container
-	err = os.MkdirAll("./logs/container_"+deviceName+"-"+device_udid, os.ModePerm)
+	err = os.MkdirAll("./logs/container_"+deviceName+"-"+deviceUDID, os.ModePerm)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_container_create",
-		}).Error("Could not create logs folder when attempting to create a container for device with udid: " + device_udid + ". Error: " + err.Error())
+		}).Error("Could not create logs folder when attempting to create a container for device with udid: " + deviceUDID + ". Error: " + err.Error())
 		return
 	}
 
 	// Create the container
-	resp, err := cli.ContainerCreate(ctx, config, host_config, nil, nil, "iosDevice_"+device_udid)
+	resp, err := cli.ContainerCreate(ctx, config, hostConfig, nil, nil, "iosDevice_"+deviceUDID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_container_create",
-		}).Error("Could not create a container for device with udid: " + device_udid + ". Error: " + err.Error())
+		}).Error("Could not create a container for device with udid: " + deviceUDID + ". Error: " + err.Error())
 		return
 	}
 
@@ -197,26 +197,26 @@ func CreateIOSContainer(device_udid string) {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_container_create",
-		}).Error("Could not start container for device with udid: " + device_udid + ". Error: " + err.Error())
+		}).Error("Could not start container for device with udid: " + deviceUDID + ". Error: " + err.Error())
 		return
 	}
 
 	log.WithFields(log.Fields{
 		"event": "ios_container_create",
-	}).Info("Successfully created a container for iOS device with udid: " + device_udid)
+	}).Info("Successfully created a container for iOS device with udid: " + deviceUDID)
 }
 
 // Create an Android container for a specific device(by UDID) using data from config.json so if device is not registered there it will not attempt to create a container for it
 // If container already exists for this device it will do nothing
-func CreateAndroidContainer(device_udid string) {
+func CreateAndroidContainer(deviceUDID string) {
 	log.WithFields(log.Fields{
 		"event": "android_container_create",
-	}).Info("Attempting to create a container for Android device with udid: " + device_udid)
+	}).Info("Attempting to create a container for Android device with udid: " + deviceUDID)
 
 	// Check if device is registered in config data
 	var deviceConfig util.DeviceConfig
 	for _, v := range provider.ConfigData.DeviceConfig {
-		if v.DeviceUDID == device_udid {
+		if v.DeviceUDID == deviceUDID {
 			deviceConfig = v
 		}
 	}
@@ -225,7 +225,7 @@ func CreateAndroidContainer(device_udid string) {
 	if deviceConfig == (util.DeviceConfig{}) {
 		log.WithFields(log.Fields{
 			"event": "android_container_create",
-		}).Error("Device with UDID:" + device_udid + " is not registered in the 'config.json' file. No container will be created.")
+		}).Error("Device with UDID:" + deviceUDID + " is not registered in the 'config.json' file. No container will be created.")
 		return
 	}
 
@@ -251,7 +251,7 @@ func CreateAndroidContainer(device_udid string) {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "android_container_create",
-		}).Error("Could not create docker client when attempting to create a container for device with udid: " + device_udid)
+		}).Error("Could not create docker client when attempting to create a container for device with udid: " + deviceUDID)
 		return
 	}
 
@@ -264,7 +264,7 @@ func CreateAndroidContainer(device_udid string) {
 		},
 		Env: []string{"ON_GRID=" + provider.ConfigData.EnvConfig.ConnectSeleniumGrid,
 			"APPIUM_PORT=" + appiumPort,
-			"DEVICE_UDID=" + device_udid,
+			"DEVICE_UDID=" + deviceUDID,
 			"DEVICE_OS_VERSION=" + deviceOSVersion,
 			"DEVICE_NAME=" + deviceName,
 			"SELENIUM_HUB_PORT=" + seleniumHubPort,
@@ -285,7 +285,7 @@ func CreateAndroidContainer(device_udid string) {
 	mounts := []mount.Mount{
 		{
 			Type:   mount.TypeBind,
-			Source: provider.ProjectDir + "/logs/container_" + deviceName + "-" + device_udid,
+			Source: provider.ProjectDir + "/logs/container_" + deviceName + "-" + deviceUDID,
 			Target: "/opt/logs",
 		},
 		{
@@ -300,8 +300,8 @@ func CreateAndroidContainer(device_udid string) {
 		},
 		{
 			Type:        mount.TypeBind,
-			Source:      "/dev/device_" + device_udid,
-			Target:      "/dev/device_" + device_udid,
+			Source:      "/dev/device_" + deviceUDID,
+			Target:      "/dev/device_" + deviceUDID,
 			BindOptions: &mount.BindOptions{Propagation: "shared"},
 		},
 	}
@@ -317,7 +317,7 @@ func CreateAndroidContainer(device_udid string) {
 	resources := container.Resources{
 		Devices: []container.DeviceMapping{
 			{
-				PathOnHost:        "/dev/device_" + device_udid,
+				PathOnHost:        "/dev/device_" + deviceUDID,
 				PathInContainer:   "/dev/bus/usb/003/011",
 				CgroupPermissions: "rwm",
 			},
@@ -347,20 +347,20 @@ func CreateAndroidContainer(device_udid string) {
 	}
 
 	// Create a folder for logging for the container
-	err = os.MkdirAll("./logs/container_"+deviceName+"-"+device_udid, os.ModePerm)
+	err = os.MkdirAll("./logs/container_"+deviceName+"-"+deviceUDID, os.ModePerm)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "android_container_create",
-		}).Error("Could not create logs folder when attempting to create a container for device with udid: " + device_udid + ". Error: " + err.Error())
+		}).Error("Could not create logs folder when attempting to create a container for device with udid: " + deviceUDID + ". Error: " + err.Error())
 		return
 	}
 
 	// Create the container
-	resp, err := cli.ContainerCreate(ctx, config, host_config, nil, nil, "androidDevice_"+device_udid)
+	resp, err := cli.ContainerCreate(ctx, config, host_config, nil, nil, "androidDevice_"+deviceUDID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "android_container_create",
-		}).Error("Could not create a container for device with udid: " + device_udid + ". Error: " + err.Error())
+		}).Error("Could not create a container for device with udid: " + deviceUDID + ". Error: " + err.Error())
 		return
 	}
 
@@ -369,13 +369,13 @@ func CreateAndroidContainer(device_udid string) {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "android_container_create",
-		}).Error("Could not start container for device with udid: " + device_udid + ". Error: " + err.Error())
+		}).Error("Could not start container for device with udid: " + deviceUDID + ". Error: " + err.Error())
 		return
 	}
 
 	log.WithFields(log.Fields{
 		"event": "android_container_create",
-	}).Info("Successfully created a container for Android device with udid: " + device_udid)
+	}).Info("Successfully created a container for Android device with udid: " + deviceUDID)
 }
 
 // Check if container exists by name and also return container_id
@@ -450,10 +450,10 @@ func RestartContainer(container_id string) error {
 }
 
 // Remove any docker container by container ID
-func RemoveContainerByID(container_id string) {
+func RemoveContainerByID(containerID string) {
 	log.WithFields(log.Fields{
 		"event": "docker_container_remove",
-	}).Info("Attempting to remove container with ID: " + container_id)
+	}).Info("Attempting to remove container with ID: " + containerID)
 
 	// Create a new context and Docker client
 	ctx := context.Background()
@@ -461,29 +461,29 @@ func RemoveContainerByID(container_id string) {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
-		}).Error("Could not create docker client while attempting to remove container with ID: " + container_id + ". Error: " + err.Error())
+		}).Error("Could not create docker client while attempting to remove container with ID: " + containerID + ". Error: " + err.Error())
 		return
 	}
 
 	// Stop the container by the provided container ID
-	if err := cli.ContainerStop(ctx, container_id, nil); err != nil {
+	if err := cli.ContainerStop(ctx, containerID, nil); err != nil {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
-		}).Error("Could not remove container with ID: " + container_id + ". Error: " + err.Error())
+		}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
 		return
 	}
 
 	// Remove the stopped container
-	if err := cli.ContainerRemove(ctx, container_id, types.ContainerRemoveOptions{}); err != nil {
+	if err := cli.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{}); err != nil {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
-		}).Error("Could not remove container with ID: " + container_id + ". Error: " + err.Error())
+		}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
 		return
 	}
 
 	log.WithFields(log.Fields{
 		"event": "docker_container_remove",
-	}).Info("Successfully removed container with ID: " + container_id)
+	}).Info("Successfully removed container with ID: " + containerID)
 }
 
 type DeviceContainerInfo struct {
@@ -533,21 +533,4 @@ func DeviceContainerRows() ([]DeviceContainerInfo, error) {
 		rows = append(rows, containerRow)
 	}
 	return rows, nil
-}
-
-func calculateMinicapHalfScreenValues(screen_size string) (half_width string, half_height string) {
-	screen_size_values := strings.Split(screen_size, "x")
-	screen_width, err := strconv.Atoi(screen_size_values[0])
-	if err != nil {
-		return
-	}
-	screen_height, err := strconv.Atoi(screen_size_values[1])
-	if err != nil {
-		return
-	}
-
-	half_width = strconv.Itoa(screen_width / 2)
-	half_height = strconv.Itoa(screen_height / 2)
-
-	return
 }

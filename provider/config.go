@@ -11,7 +11,7 @@ var ProviderPort string
 var HomeDir string
 var ProjectDir string
 var err error
-var ConfigData *util.ConfigJsonData
+var ConfigData util.ConfigJsonData
 
 func SetupConfig() {
 	HomeDir, err = os.UserHomeDir()

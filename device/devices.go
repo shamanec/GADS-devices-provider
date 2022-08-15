@@ -97,7 +97,7 @@ func RunningDeviceContainerNames() ([]string, error) {
 	return containerNames, nil
 }
 
-func DeviceInfo(device_udid string, configData *util.ConfigJsonData) (*DeviceInformation, error) {
+func DeviceInfo(device_udid string, configData util.ConfigJsonData) (*DeviceInformation, error) {
 	// Loop through the device configs and find the one that corresponds to the provided device UDID
 	var deviceConfig util.DeviceConfig
 	for _, v := range configData.DeviceConfig {

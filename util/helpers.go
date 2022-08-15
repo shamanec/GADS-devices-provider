@@ -51,14 +51,14 @@ type DeviceConfig struct {
 //=======FUNCTIONS=======//
 
 // Get a ConfigJsonData pointer with the current configuration from config.json
-func GetConfigJsonData() (*ConfigJsonData, error) {
+func GetConfigJsonData() (ConfigJsonData, error) {
 	var data ConfigJsonData
 	jsonFile, err := os.Open("./configs/config.json")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_config_data",
 		}).Error("Could not open config file: " + err.Error())
-		return nil, err
+		return data, err
 	}
 	defer jsonFile.Close()
 
@@ -67,7 +67,7 @@ func GetConfigJsonData() (*ConfigJsonData, error) {
 		log.WithFields(log.Fields{
 			"event": "get_config_data",
 		}).Error("Could not read config file to byte slice: " + err.Error())
-		return nil, err
+		return data, err
 	}
 
 	err = json.Unmarshal(bs, &data)
@@ -75,10 +75,10 @@ func GetConfigJsonData() (*ConfigJsonData, error) {
 		log.WithFields(log.Fields{
 			"event": "get_config_data",
 		}).Error("Could not unmarshal config file: " + err.Error())
-		return nil, err
+		return data, err
 	}
 
-	return &data, nil
+	return data, nil
 }
 
 // Convert interface into JSON string
