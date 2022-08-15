@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/shamanec/GADS-devices-provider/provider"
 	"github.com/shamanec/GADS-devices-provider/util"
 
 	log "github.com/sirupsen/logrus"
@@ -37,14 +38,6 @@ type DeviceInformation struct {
 func AvailableDevicesInfo(runningContainers []string) ([]DeviceInformation, error) {
 	var combinedInfo []DeviceInformation
 
-	configData, err := util.GetConfigJsonData()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_available_devices_info",
-		}).Error("Could not get config data when getting devices info")
-		return nil, err
-	}
-
 	for _, containerName := range runningContainers {
 		// Extract the device UDID from the container name
 		re := regexp.MustCompile("[^_]*$")
@@ -52,7 +45,7 @@ func AvailableDevicesInfo(runningContainers []string) ([]DeviceInformation, erro
 
 		// Get the info for the respective device from config.json
 		var deviceInformation *DeviceInformation
-		deviceInformation, err := DeviceInfo(deviceUDID[0], configData)
+		deviceInformation, err := DeviceInfo(deviceUDID[0], provider.ConfigData)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"event": "get_available_devices_info",

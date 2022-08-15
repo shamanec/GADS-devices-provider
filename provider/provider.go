@@ -3,7 +3,6 @@ package provider
 import (
 	"os"
 
-	"github.com/shamanec/GADS-devices-provider/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -23,16 +22,7 @@ func CreateUdevRules() error {
 	}
 	defer rulesFile.Close()
 
-	// Get the config data
-	configData, err := util.GetConfigJsonData()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "create_udev_rules",
-		}).Error("Could not get config data when creating udev rules: " + err.Error())
-		return err
-	}
-
-	devicesList := configData.DeviceConfig
+	devicesList := ConfigData.DeviceConfig
 
 	// For each device generate the respective rule lines
 	for _, device := range devicesList {

@@ -19,8 +19,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var onGrid = util.GetEnvValue("connect_selenium_grid")
-
 // Create an iOS container for a specific device(by UDID) using data from config.json so if device is not registered there it will not attempt to create a container for it
 func CreateIOSContainer(device_udid string) {
 	log.WithFields(log.Fields{
@@ -29,18 +27,9 @@ func CreateIOSContainer(device_udid string) {
 
 	time.Sleep(2 * time.Second)
 
-	// Get the config data
-	configData, err := util.GetConfigJsonData()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_container_create",
-		}).Error("Could not unmarshal config.json file when trying to create a container for device with udid: " + device_udid)
-		return
-	}
-
 	// Check if device is registered in config data
 	var deviceConfig util.DeviceConfig
-	for _, v := range configData.DeviceConfig {
+	for _, v := range provider.ConfigData.DeviceConfig {
 		if v.DeviceUDID == device_udid {
 			deviceConfig = v
 		}
@@ -60,12 +49,12 @@ func CreateIOSContainer(device_udid string) {
 	deviceOSVersion := deviceConfig.DeviceOSVersion
 	wdaMjpegPort := deviceConfig.StreamPort
 	wdaPort := deviceConfig.WDAPort
-	wdaBundleID := configData.AppiumConfig.WDABundleID
-	seleniumHubPort := configData.AppiumConfig.SeleniumHubPort
-	seleniumHubHost := configData.AppiumConfig.SeleniumHubHost
-	devicesHost := configData.AppiumConfig.DevicesHost
-	hubProtocol := configData.AppiumConfig.SeleniumHubProtocolType
-	containerizedUsbmuxd := configData.EnvConfig.ContainerizedUsbmuxd
+	wdaBundleID := provider.ConfigData.AppiumConfig.WDABundleID
+	seleniumHubPort := provider.ConfigData.AppiumConfig.SeleniumHubPort
+	seleniumHubHost := provider.ConfigData.AppiumConfig.SeleniumHubHost
+	devicesHost := provider.ConfigData.AppiumConfig.DevicesHost
+	hubProtocol := provider.ConfigData.AppiumConfig.SeleniumHubProtocolType
+	containerizedUsbmuxd := provider.ConfigData.EnvConfig.ContainerizedUsbmuxd
 	screenSize := deviceConfig.ScreenSize
 	containerServerPort := deviceConfig.ContainerServerPort
 	deviceModel := deviceConfig.DeviceModel
@@ -89,7 +78,7 @@ func CreateIOSContainer(device_udid string) {
 			nat.Port(wdaMjpegPort):        struct{}{},
 			nat.Port(containerServerPort): struct{}{},
 		},
-		Env: []string{"ON_GRID=" + onGrid,
+		Env: []string{"ON_GRID=" + provider.ConfigData.EnvConfig.ConnectSeleniumGrid,
 			"APPIUM_PORT=" + appiumPort,
 			"DEVICE_UDID=" + device_udid,
 			"WDA_PORT=" + wdaPort,
@@ -97,7 +86,7 @@ func CreateIOSContainer(device_udid string) {
 			"DEVICE_OS_VERSION=" + deviceOSVersion,
 			"DEVICE_NAME=" + deviceName,
 			"WDA_BUNDLEID=" + wdaBundleID,
-			"SUPERVISION_PASSWORD=" + util.GetEnvValue("supervision_password"),
+			"SUPERVISION_PASSWORD=" + provider.ConfigData.EnvConfig.SupervisionPassword,
 			"SELENIUM_HUB_PORT=" + seleniumHubPort,
 			"SELENIUM_HUB_HOST=" + seleniumHubHost,
 			"DEVICES_HOST=" + devicesHost,
@@ -224,18 +213,9 @@ func CreateAndroidContainer(device_udid string) {
 		"event": "android_container_create",
 	}).Info("Attempting to create a container for Android device with udid: " + device_udid)
 
-	// Get the config data
-	configData, err := util.GetConfigJsonData()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "android_container_create",
-		}).Error("Could not unmarshal config.json file when trying to create a container for device with udid: " + device_udid)
-		return
-	}
-
 	// Check if device is registered in config data
 	var deviceConfig util.DeviceConfig
-	for _, v := range configData.DeviceConfig {
+	for _, v := range provider.ConfigData.DeviceConfig {
 		if v.DeviceUDID == device_udid {
 			deviceConfig = v
 		}
@@ -253,13 +233,13 @@ func CreateAndroidContainer(device_udid string) {
 	appiumPort := deviceConfig.AppiumPort
 	deviceName := deviceConfig.DeviceName
 	deviceOSVersion := deviceConfig.DeviceOSVersion
-	seleniumHubPort := configData.AppiumConfig.SeleniumHubPort
-	seleniumHubHost := configData.AppiumConfig.SeleniumHubHost
-	devicesHost := configData.AppiumConfig.DevicesHost
-	hubProtocol := configData.AppiumConfig.SeleniumHubProtocolType
+	seleniumHubPort := provider.ConfigData.AppiumConfig.SeleniumHubPort
+	seleniumHubHost := provider.ConfigData.AppiumConfig.SeleniumHubHost
+	devicesHost := provider.ConfigData.AppiumConfig.DevicesHost
+	hubProtocol := provider.ConfigData.AppiumConfig.SeleniumHubProtocolType
 	containerServerPort := deviceConfig.ContainerServerPort
 	deviceModel := deviceConfig.DeviceModel
-	remoteControl := configData.EnvConfig.RemoteControl
+	remoteControl := provider.ConfigData.EnvConfig.RemoteControl
 	minicapFPS := deviceConfig.MinicapFPS
 	minicapHalfResolution := deviceConfig.MinicapHalfResolution
 	screenSize := deviceConfig.ScreenSize
@@ -282,7 +262,7 @@ func CreateAndroidContainer(device_udid string) {
 			nat.Port("4723"):              struct{}{},
 			nat.Port(containerServerPort): struct{}{},
 		},
-		Env: []string{"ON_GRID=" + onGrid,
+		Env: []string{"ON_GRID=" + provider.ConfigData.EnvConfig.ConnectSeleniumGrid,
 			"APPIUM_PORT=" + appiumPort,
 			"DEVICE_UDID=" + device_udid,
 			"DEVICE_OS_VERSION=" + deviceOSVersion,

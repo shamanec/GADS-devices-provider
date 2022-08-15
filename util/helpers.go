@@ -113,19 +113,3 @@ func UnmarshalReader(body io.ReadCloser, v interface{}) error {
 
 	return nil
 }
-
-// Get an env value from config.json
-func GetEnvValue(key string) string {
-	configData, err := GetConfigJsonData()
-	if err != nil {
-		return ""
-	}
-
-	if key == "supervision_password" {
-		return configData.EnvConfig.SupervisionPassword
-	} else if key == "connect_selenium_grid" {
-		return configData.EnvConfig.ConnectSeleniumGrid
-	} else {
-		return ""
-	}
-}
