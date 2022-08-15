@@ -40,7 +40,7 @@ type DeviceConfig struct {
 	ScreenSize            string `json:"screen_size"`
 	ContainerServerPort   string `json:"container_server_port"`
 	DeviceModel           string `json:"device_model"`
-	DeviceImage           string `json:"device_image"`
+	DeviceImage           string `json:"device_image,omitempty"`
 	DeviceHost            string `json:"device_host"`
 	MinicapFPS            string `json:"minicap_fps,omitempty"`
 	MinicapHalfResolution string `json:"minicap_half_resolution,omitempty"`
