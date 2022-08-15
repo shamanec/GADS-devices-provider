@@ -48,20 +48,20 @@ func AvailableDevicesInfo(runningContainers []string) ([]DeviceInformation, erro
 	for _, containerName := range runningContainers {
 		// Extract the device UDID from the container name
 		re := regexp.MustCompile("[^_]*$")
-		device_udid := re.FindStringSubmatch(containerName)
+		deviceUDID := re.FindStringSubmatch(containerName)
 
 		// Get the info for the respective device from config.json
-		var device_config *DeviceInformation
-		device_config, err := DeviceInfo(device_udid[0], configData)
+		var deviceInformation *DeviceInformation
+		deviceInformation, err := DeviceInfo(deviceUDID[0], configData)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"event": "get_available_devices_info",
-			}).Error("Could not get info for device " + device_udid[0] + " from config data")
+			}).Error("Could not get info for device " + deviceUDID[0] + " from config data")
 			return nil, err
 		}
 
 		// Append the respective device info to the combined info
-		combinedInfo = append(combinedInfo, *device_config)
+		combinedInfo = append(combinedInfo, *deviceInformation)
 	}
 
 	return combinedInfo, nil

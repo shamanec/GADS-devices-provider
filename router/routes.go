@@ -30,15 +30,6 @@ type JsonResponse struct {
 	Message string `json:"message"`
 }
 
-type CreateDeviceContainerRequest struct {
-	DeviceType string `json:"device_type"`
-	Udid       string `json:"udid"`
-}
-
-type RemoveDeviceContainerData struct {
-	Udid string `json:"udid"`
-}
-
 // Write to a ResponseWriter an event and message with a response code
 func JSONError(w http.ResponseWriter, event string, error_string string, code int) {
 	var errorMessage = JsonErrorResponse{
@@ -51,9 +42,9 @@ func JSONError(w http.ResponseWriter, event string, error_string string, code in
 }
 
 // Write to a ResponseWriter an event and message with a response code
-func SimpleJSONResponse(w http.ResponseWriter, response_message string, code int) {
+func SimpleJSONResponse(w http.ResponseWriter, responseMessage string, code int) {
 	var message = JsonResponse{
-		Message: response_message,
+		Message: responseMessage,
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -97,49 +88,42 @@ func GetAvailableDevicesInfo(w http.ResponseWriter, r *http.Request) {
 func RestartContainer(w http.ResponseWriter, r *http.Request) {
 	// Get the request path vars
 	vars := mux.Vars(r)
-	container_id := vars["container_id"]
+	containerID := vars["container_id"]
 
 	log.WithFields(log.Fields{
 		"event": "docker_container_restart",
-	}).Info("Attempting to restart container with ID: " + container_id)
+	}).Info("Attempting to restart container with ID: " + containerID)
 
 	// Call the internal function to restart the container
-	err := docker.RestartContainer(container_id)
+	err := docker.RestartContainer(containerID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "docker_container_restart",
-		}).Error("Restarting container with ID: " + container_id + " failed.")
-		JSONError(w, "docker_container_restart", "Could not restart container with ID: "+container_id, 500)
+		}).Error("Restarting container with ID: " + containerID + " failed.")
+		JSONError(w, "docker_container_restart", "Could not restart container with ID: "+containerID, 500)
 		return
 	}
 
-	SimpleJSONResponse(w, "Successfully attempted to restart container with ID: "+container_id, 200)
+	SimpleJSONResponse(w, "Successfully attempted to restart container with ID: "+containerID, 200)
 }
 
 // @Summary      Remove container for device
 // @Description  Removes a running container for a disconnected registered device by device UDID
 // @Tags         device-containers
-// @Param        config body RemoveDeviceContainerData true "Remove container for device"
+// @Param        udid path string true "Device UDID"
 // @Success      202
-// @Router       /device-containers/remove [post]
+// @Failure		 202
+// @Router       /device-containers/remove/{udid} [post]
 func RemoveDeviceContainer(w http.ResponseWriter, r *http.Request) {
-	var data RemoveDeviceContainerData
-
-	// Read the request data
-	err := util.UnmarshalReader(r.Body, &data)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "device_container_remove",
-		}).Error("Could not unmarshal request body when removing container: " + err.Error())
-		return
-	}
+	vars := mux.Vars(r)
+	deviceUdid := vars["udid"]
 
 	// Check if container exists and get the container ID
-	container_exists, container_id, _ := docker.CheckContainerExistsByName(data.Udid)
+	containerExists, containerID, _ := docker.CheckContainerExistsByName(deviceUdid)
 
-	if container_exists {
+	if containerExists {
 		// Start removing the container in a goroutine and immediately reply with Accepted
-		go docker.RemoveContainerByID(container_id)
+		go docker.RemoveContainerByID(containerID)
 	}
 	w.WriteHeader(http.StatusAccepted)
 }
@@ -155,7 +139,7 @@ func RemoveDeviceContainer(w http.ResponseWriter, r *http.Request) {
 func GetContainerLogs(w http.ResponseWriter, r *http.Request) {
 	// Get the request path vars
 	vars := mux.Vars(r)
-	container_id := vars["container_id"]
+	containerID := vars["container_id"]
 
 	// Create the context and Docker client
 	ctx := context.Background()
@@ -163,8 +147,8 @@ func GetContainerLogs(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_container_logs",
-		}).Error("Could not create docker client while attempting to get logs for container with ID: " + container_id + ". Error: " + err.Error())
-		JSONError(w, "get_container_logs", "Could not get logs for container with ID: "+container_id, 500)
+		}).Error("Could not create docker client while attempting to get logs for container with ID: " + containerID + ". Error: " + err.Error())
+		JSONError(w, "get_container_logs", "Could not get logs for container with ID: "+containerID, 500)
 		return
 	}
 
@@ -172,12 +156,12 @@ func GetContainerLogs(w http.ResponseWriter, r *http.Request) {
 	options := types.ContainerLogsOptions{ShowStdout: true}
 
 	// Get the container logs
-	out, err := cli.ContainerLogs(ctx, container_id, options)
+	out, err := cli.ContainerLogs(ctx, containerID, options)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_container_logs",
-		}).Error("Could not get logs for container with ID: " + container_id + ". Error: " + err.Error())
-		JSONError(w, "get_container_logs", "Could not get logs for container with ID: "+container_id, 500)
+		}).Error("Could not get logs for container with ID: " + containerID + ". Error: " + err.Error())
+		JSONError(w, "get_container_logs", "Could not get logs for container with ID: "+containerID, 500)
 		return
 	}
 
@@ -199,41 +183,32 @@ func GetContainerLogs(w http.ResponseWriter, r *http.Request) {
 // @Summary      Create container for device
 // @Description  Creates a container for a connected registered device
 // @Tags         device-containers
-// @Param        config body CreateDeviceContainerRequest true "Create container for device"
+// @Param        udid path string true "Device UDID"
+// @Param        os path string true "Device OS: `android` or `ios`"
 // @Success      202
 // @Router       /device-containers/create [post]
 func CreateDeviceContainer(w http.ResponseWriter, r *http.Request) {
-	var data CreateDeviceContainerRequest
-
-	// Read the request data
-	err := util.UnmarshalReader(r.Body, &data)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "device_container_create",
-		}).Error("Could not unmarshal request body when creating container: " + err.Error())
-		return
-	}
-
-	os_type := data.DeviceType
-	device_udid := data.Udid
+	vars := mux.Vars(r)
+	deviceUdid := vars["udid"]
+	osType := vars["os"]
 
 	// Start creating a device container in a goroutine and immediately reply with Accepted
 	go func() {
 		// Check if container exists and get the container ID and current status
-		container_exists, container_id, status := docker.CheckContainerExistsByName(device_udid)
+		containerExists, containerID, containerStatus := docker.CheckContainerExistsByName(deviceUdid)
 
 		// Create a container if no container exists for this device
 		// or restart a non-running container that already exists for this device
 		// this is useful after restart and reconnecting devices
-		if !container_exists {
-			if os_type == "android" {
-				go docker.CreateAndroidContainer(device_udid)
-			} else if os_type == "ios" {
-				go docker.CreateIOSContainer(device_udid)
+		if !containerExists {
+			if osType == "android" {
+				go docker.CreateAndroidContainer(deviceUdid)
+			} else if osType == "ios" {
+				go docker.CreateIOSContainer(deviceUdid)
 			}
 			return
-		} else if !strings.Contains(status, "Up") {
-			go docker.RestartContainer(container_id)
+		} else if !strings.Contains(containerStatus, "Up") {
+			go docker.RestartContainer(containerID)
 			return
 		}
 	}()
@@ -252,11 +227,11 @@ func CreateDeviceContainer(w http.ResponseWriter, r *http.Request) {
 func RemoveContainer(w http.ResponseWriter, r *http.Request) {
 	// Get the request path vars
 	vars := mux.Vars(r)
-	key := vars["container_id"]
+	containerID := vars["container_id"]
 
 	log.WithFields(log.Fields{
 		"event": "docker_container_remove",
-	}).Info("Attempting to remove container with ID: " + key)
+	}).Info("Attempting to remove container with ID: " + containerID)
 
 	// Create a new context and Docker client
 	ctx := context.Background()
@@ -264,33 +239,33 @@ func RemoveContainer(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
-		}).Error("Could not create docker client while attempting to remove container with ID: " + key + ". Error: " + err.Error())
-		JSONError(w, "docker_container_remove", "Could not remove container with ID: "+key, 500)
+		}).Error("Could not create docker client while attempting to remove container with ID: " + containerID + ". Error: " + err.Error())
+		JSONError(w, "docker_container_remove", "Could not remove container with ID: "+containerID, 500)
 		return
 	}
 
 	// Try to stop the container
-	if err := cli.ContainerStop(ctx, key, nil); err != nil {
+	if err := cli.ContainerStop(ctx, containerID, nil); err != nil {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
-		}).Error("Could not stop container with ID: " + key + ". Error: " + err.Error())
-		JSONError(w, "docker_container_remove", "Could not remove container with ID: "+key, 500)
+		}).Error("Could not stop container with ID: " + containerID + ". Error: " + err.Error())
+		JSONError(w, "docker_container_remove", "Could not remove container with ID: "+containerID, 500)
 		return
 	}
 
 	// Try to remove the stopped container
-	if err := cli.ContainerRemove(ctx, key, types.ContainerRemoveOptions{}); err != nil {
+	if err := cli.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{}); err != nil {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
-		}).Error("Could not remove container with ID: " + key + ". Error: " + err.Error())
-		JSONError(w, "docker_container_remove", "Could not remove container with ID: "+key, 500)
+		}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
+		JSONError(w, "docker_container_remove", "Could not remove container with ID: "+containerID, 500)
 		return
 	}
 
 	log.WithFields(log.Fields{
 		"event": "docker_container_remove",
-	}).Info("Successfully removed container with ID: " + key)
-	SimpleJSONResponse(w, "Successfully removed container with ID: "+key, 200)
+	}).Info("Successfully removed container with ID: " + containerID)
+	SimpleJSONResponse(w, "Successfully removed container with ID: "+containerID, 200)
 }
 
 // @Summary      Refresh the device-containers data
