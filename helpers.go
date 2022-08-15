@@ -35,18 +35,20 @@ type EnvConfig struct {
 }
 
 type DeviceConfig struct {
-	OS                  string `json:"os"`
-	AppiumPort          string `json:"appium_port"`
-	DeviceName          string `json:"device_name"`
-	DeviceOSVersion     string `json:"device_os_version"`
-	DeviceUDID          string `json:"device_udid"`
-	StreamPort          string `json:"stream_port"`
-	WDAPort             string `json:"wda_port"`
-	ScreenSize          string `json:"screen_size"`
-	ContainerServerPort string `json:"container_server_port"`
-	DeviceModel         string `json:"device_model"`
-	DeviceImage         string `json:"device_image"`
-	DeviceHost          string `json:"device_host"`
+	OS                    string `json:"os"`
+	AppiumPort            string `json:"appium_port"`
+	DeviceName            string `json:"device_name"`
+	DeviceOSVersion       string `json:"device_os_version"`
+	DeviceUDID            string `json:"device_udid"`
+	StreamPort            string `json:"stream_port"`
+	WDAPort               string `json:"wda_port"`
+	ScreenSize            string `json:"screen_size"`
+	ContainerServerPort   string `json:"container_server_port"`
+	DeviceModel           string `json:"device_model"`
+	DeviceImage           string `json:"device_image"`
+	DeviceHost            string `json:"device_host"`
+	MinicapFPS            string `json:"minicap_fps"`
+	MinicapHalfResolution string `json:"minicap_half_resolution"`
 }
 
 type JsonErrorResponse struct {

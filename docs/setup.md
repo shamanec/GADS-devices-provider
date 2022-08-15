@@ -53,7 +53,7 @@ If you have followed all the steps, set up and registered the devices and config
 ### Register devices in config.json
 1. Open the `config.json` file.  
 2. For each Android device add a new object inside the `devices-list` array in the json.  
-3. For each device provide:  
+3. For each device provide (all values as strings):  
   * `os` - should be `android`  
   * `appium_port` - unique Appium port  
   * `screen_size` - Go to `https://whatismyandroidversion.com` and fill in the displayed `Screen size`, not `Viewport size`  
@@ -63,6 +63,8 @@ If you have followed all the steps, set up and registered the devices and config
   * `device_udid` - UDID of the Android device, can get it with `adb devices`   
   * `container_server_port` - unique port for the Go server running inside the device containers  
   * `device_model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
+  * `minicap_fps` - non-mandatory field, if not provided `minicap` will run with uncapped FPS  
+  * `minicap_half_resolution` - non-mandatory field, add with `true` if you want to achieve maximum FPS, will lower stream quality though  
 
 ### Kill adb-server
 1. You need to make sure that adb-server is not running on the host before you start devices containers.  
@@ -127,7 +129,7 @@ You need an Apple Developer account to sign and build `WebDriverAgent`
 ### Register your devices for the project
 1. Open the `config.json` file.  
 2. For each iOS device add a new object inside the `devices-config` array in the json.  
-3. For each device provide:  
+3. For each device provide (all values as strings):  
   * `os` - should be "ios"  
   * `appium_port` - unique appium port  
   * `stream_port` - unique port for the WDA Mjpeg stream  

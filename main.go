@@ -15,6 +15,8 @@ import (
 
 var project_log_file *os.File
 var ProviderPort string
+var HomeDir string
+var ProjectDir string
 
 func setLogging() {
 	log.SetFormatter(&log.JSONFormatter{})
@@ -58,9 +60,12 @@ func handleRequests() {
 }
 
 func main() {
-	port_flag := flag.String("port", "10001", "The port to run the server on")
+	HomeDir, _ = os.UserHomeDir()
+	ProjectDir, _ = os.Getwd()
 
+	port_flag := flag.String("port", "10001", "The port to run the server on")
 	flag.Parse()
+
 	ProviderPort = *port_flag
 
 	fmt.Printf("Starting provider on port:%v\n", ProviderPort)

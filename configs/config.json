@@ -73,12 +73,14 @@
       "device_os_version": "10",
       "container_server_port": "20205",
       "device_model": "Huawei P20 Pro",
-      "device_image": "huawei-p20-pro.png"
+      "device_image": "huawei-p20-pro.png",
+      "minicap_half_resolution": "true",
+      "minicap_fps": "30"
     },
     {
       "os": "android",
       "appium_port": "4882",
-      "screen_size": "1080x2241",
+      "screen_size": "1080x2240",
       "device_udid": "MUN0218928000401",
       "device_name": "Huawei_Bejbe",
       "stream_port": "20202",
@@ -89,7 +91,7 @@
     {
       "os": "android",
       "appium_port": "4883",
-      "screen_size": "1080x2241",
+      "screen_size": "720x1280",
       "device_udid": "RQ30041UV0",
       "device_name": "Sony_Xperia",
       "stream_port": "20203",
