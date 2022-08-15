@@ -26,7 +26,7 @@ type DeviceInfo struct {
 	DeviceUDID                string `json:"device_udid"`
 	DeviceImage               string `json:"device_image"`
 	DeviceHost                string `json:"device_host"`
-	WdaPort                   string `json:"wda_port"`
+	WdaPort                   string `json:"wda_port,omitempty"`
 	StreamPort                string `json:"stream_port"`
 	ScreenSize                string `json:"screen_size"`
 	AppiumPort                string `json:"appium_port"`
