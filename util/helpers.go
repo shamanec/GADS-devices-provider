@@ -36,14 +36,14 @@ type DeviceConfig struct {
 	DeviceOSVersion       string `json:"device_os_version"`
 	DeviceUDID            string `json:"device_udid"`
 	StreamPort            string `json:"stream_port"`
-	WDAPort               string `json:"wda_port"`
+	WDAPort               string `json:"wda_port,omitempty"`
 	ScreenSize            string `json:"screen_size"`
 	ContainerServerPort   string `json:"container_server_port"`
 	DeviceModel           string `json:"device_model"`
 	DeviceImage           string `json:"device_image"`
 	DeviceHost            string `json:"device_host"`
-	MinicapFPS            string `json:"minicap_fps"`
-	MinicapHalfResolution string `json:"minicap_half_resolution"`
+	MinicapFPS            string `json:"minicap_fps,omitempty"`
+	MinicapHalfResolution string `json:"minicap_half_resolution,omitempty"`
 }
 
 //=======================//

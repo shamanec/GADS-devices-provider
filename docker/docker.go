@@ -65,7 +65,7 @@ func CreateIOSContainer(deviceUDID string) {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_container_create",
-		}).Error("Could not create docker client when attempting to create a container for device with udid: " + device_udid)
+		}).Error("Could not create docker client when attempting to create a container for device with udid: " + deviceUDID)
 		return
 	}
 

@@ -15,28 +15,14 @@ import (
 )
 
 type DevicesInfo struct {
-	DevicesInfo []DeviceInformation `json:"devices-info"`
-}
-
-type DeviceInformation struct {
-	DeviceModel               string `json:"device_model"`
-	DeviceOSVersion           string `json:"device_os_version"`
-	DeviceOS                  string `json:"device_os"`
-	DeviceContainerServerPort string `json:"container_server_port"`
-	DeviceUDID                string `json:"device_udid"`
-	DeviceImage               string `json:"device_image"`
-	DeviceHost                string `json:"device_host"`
-	WdaPort                   string `json:"wda_port,omitempty"`
-	StreamPort                string `json:"stream_port"`
-	ScreenSize                string `json:"screen_size"`
-	AppiumPort                string `json:"appium_port"`
+	DevicesInfo []util.DeviceConfig `json:"devices-info"`
 }
 
 //=======================//
 //=======FUNCTIONS=======//
 
-func AvailableDevicesInfo(runningContainers []string) ([]DeviceInformation, error) {
-	var combinedInfo []DeviceInformation
+func AvailableDevicesInfo(runningContainers []string) ([]util.DeviceConfig, error) {
+	var combinedInfo []util.DeviceConfig
 
 	for _, containerName := range runningContainers {
 		// Extract the device UDID from the container name
@@ -44,7 +30,7 @@ func AvailableDevicesInfo(runningContainers []string) ([]DeviceInformation, erro
 		deviceUDID := re.FindStringSubmatch(containerName)
 
 		// Get the info for the respective device from config.json
-		var deviceInformation *DeviceInformation
+		var deviceInformation *util.DeviceConfig
 		deviceInformation, err := DeviceInfo(deviceUDID[0], provider.ConfigData)
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -97,7 +83,7 @@ func RunningDeviceContainerNames() ([]string, error) {
 	return containerNames, nil
 }
 
-func DeviceInfo(device_udid string, configData util.ConfigJsonData) (*DeviceInformation, error) {
+func DeviceInfo(device_udid string, configData util.ConfigJsonData) (*util.DeviceConfig, error) {
 	// Loop through the device configs and find the one that corresponds to the provided device UDID
 	var deviceConfig util.DeviceConfig
 	for _, v := range configData.DeviceConfig {
@@ -114,17 +100,20 @@ func DeviceInfo(device_udid string, configData util.ConfigJsonData) (*DeviceInfo
 	}
 
 	// Return the info for the device
-	return &DeviceInformation{
-		DeviceModel:               deviceConfig.DeviceModel,
-		DeviceOSVersion:           deviceConfig.DeviceOSVersion,
-		DeviceOS:                  deviceConfig.OS,
-		DeviceContainerServerPort: deviceConfig.ContainerServerPort,
-		DeviceUDID:                deviceConfig.DeviceUDID,
-		DeviceImage:               deviceConfig.DeviceImage,
-		DeviceHost:                configData.AppiumConfig.DevicesHost,
-		WdaPort:                   deviceConfig.WDAPort,
-		StreamPort:                deviceConfig.StreamPort,
-		AppiumPort:                deviceConfig.AppiumPort,
-		ScreenSize:                deviceConfig.ScreenSize,
+	return &util.DeviceConfig{
+		OS:                    deviceConfig.OS,
+		AppiumPort:            deviceConfig.AppiumPort,
+		DeviceName:            deviceConfig.DeviceName,
+		DeviceOSVersion:       deviceConfig.DeviceOSVersion,
+		DeviceUDID:            deviceConfig.DeviceUDID,
+		StreamPort:            deviceConfig.StreamPort,
+		WDAPort:               deviceConfig.WDAPort,
+		ScreenSize:            deviceConfig.ScreenSize,
+		ContainerServerPort:   deviceConfig.ContainerServerPort,
+		DeviceModel:           deviceConfig.DeviceModel,
+		DeviceImage:           deviceConfig.DeviceImage,
+		DeviceHost:            configData.AppiumConfig.DevicesHost,
+		MinicapFPS:            deviceConfig.MinicapFPS,
+		MinicapHalfResolution: deviceConfig.MinicapHalfResolution,
 	}, nil
 }
