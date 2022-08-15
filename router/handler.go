@@ -7,6 +7,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
+// Make all browser requests to any provider host accessible
 func originHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")

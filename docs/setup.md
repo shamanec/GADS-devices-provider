@@ -26,8 +26,8 @@ You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.h
 ### Setup udev rules
 **NB** Before this step you need to register your devices in `config.json` according to [Devices setup](#devices-setup)  
 1. Execute `curl -X POST http://localhost:{ProviderPort}/configuration/create-udev-rules`  
-2. Copy the newly created `90-device.rules` file to `/etc/udev/rules.d/`  
-3. Execute `sudo udevadm control --reload-rules`  
+2. Copy the newly created `90-device.rules` file to `/etc/udev/rules.d/` - `sudo cp 90-device.rules /etc/udev/rules/`  
+3. Execute `sudo udevadm control --reload-rules` or restart the machine    
 
 ### Update the Appium config  
 1. Open `config.json` 
@@ -37,7 +37,7 @@ You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.h
 1. Open `/lib/systemd/system/systemd-udevd.service` (`sudo systemctl status udev.service` to find out if its a different file)  
 2. Add `IPAddressAllow=127.0.0.1` at the bottom  
 3. Restart the machine  
-4. This is to allow curl calls from the udev rules to the provider server   
+4. This is to allow curl calls from the udev rules to the provider server  
 
 ### Spin up containers  
 If you have followed all the steps, set up and registered the devices and configured the provider just connect all your devices. Container should be automatically created for each of them.  

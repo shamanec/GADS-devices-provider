@@ -7,9 +7,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//=======================//
-//=====FUNCTIONS=====//
-
 // Generate the udev rules file
 func CreateUdevRules() error {
 	log.WithFields(log.Fields{

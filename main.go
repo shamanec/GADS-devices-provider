@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 
@@ -28,5 +29,7 @@ func main() {
 	setLogging()
 
 	handler := router.HandleRequests()
+
+	fmt.Printf("Starting provider on port:%v\n", provider.ProviderPort)
 	log.Fatal(http.ListenAndServe(":"+provider.ProviderPort, handler))
 }
