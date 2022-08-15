@@ -1,24 +1,23 @@
-package main
+package device
 
 import (
 	"context"
 	"errors"
-	"fmt"
-	"net/http"
 	"regexp"
 	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/shamanec/GADS-devices-provider/util"
 
 	log "github.com/sirupsen/logrus"
 )
 
-type AvailableDevicesInfo struct {
-	DevicesInfo []DeviceInfo `json:"devices-info"`
+type DevicesInfo struct {
+	DevicesInfo []DeviceInformation `json:"devices-info"`
 }
 
-type DeviceInfo struct {
+type DeviceInformation struct {
 	DeviceModel               string `json:"device_model"`
 	DeviceOSVersion           string `json:"device_os_version"`
 	DeviceOS                  string `json:"device_os"`
@@ -33,40 +32,12 @@ type DeviceInfo struct {
 }
 
 //=======================//
-//=====API FUNCTIONS=====//
-
-func GetAvailableDevicesInfo(w http.ResponseWriter, r *http.Request) {
-	runningContainerNames, err := getRunningDeviceContainerNames()
-	if err != nil {
-		JSONError(w, "get_available_devices", "Could not get available devices", 500)
-		return
-	}
-
-	devicesInfo, err := getAvailableDevicesInfo(runningContainerNames)
-	if err != nil {
-		JSONError(w, "get_available_devices", "Could not get available devices", 500)
-		return
-	}
-
-	var info = AvailableDevicesInfo{
-		DevicesInfo: devicesInfo,
-	}
-
-	responseData, err := ConvertToJSONString(info)
-	if err != nil {
-		JSONError(w, "get_available_devices", "Could not get available devices", 500)
-		return
-	}
-	fmt.Fprintf(w, responseData)
-}
-
-//=======================//
 //=======FUNCTIONS=======//
 
-func getAvailableDevicesInfo(runningContainers []string) ([]DeviceInfo, error) {
-	var combinedInfo []DeviceInfo
+func AvailableDevicesInfo(runningContainers []string) ([]DeviceInformation, error) {
+	var combinedInfo []DeviceInformation
 
-	configData, err := GetConfigJsonData()
+	configData, err := util.GetConfigJsonData()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_available_devices_info",
@@ -80,8 +51,8 @@ func getAvailableDevicesInfo(runningContainers []string) ([]DeviceInfo, error) {
 		device_udid := re.FindStringSubmatch(containerName)
 
 		// Get the info for the respective device from config.json
-		var device_config *DeviceInfo
-		device_config, err := getDeviceInfo(device_udid[0], configData)
+		var device_config *DeviceInformation
+		device_config, err := DeviceInfo(device_udid[0], configData)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"event": "get_available_devices_info",
@@ -97,7 +68,7 @@ func getAvailableDevicesInfo(runningContainers []string) ([]DeviceInfo, error) {
 }
 
 // Get all running containers on host and filter them out for iOS and Android containers
-func getRunningDeviceContainerNames() ([]string, error) {
+func RunningDeviceContainerNames() ([]string, error) {
 	var containerNames []string
 
 	// Create a new docker client
@@ -133,16 +104,16 @@ func getRunningDeviceContainerNames() ([]string, error) {
 	return containerNames, nil
 }
 
-func getDeviceInfo(device_udid string, configData *ConfigJsonData) (*DeviceInfo, error) {
+func DeviceInfo(device_udid string, configData *util.ConfigJsonData) (*DeviceInformation, error) {
 	// Loop through the device configs and find the one that corresponds to the provided device UDID
-	var deviceConfig DeviceConfig
+	var deviceConfig util.DeviceConfig
 	for _, v := range configData.DeviceConfig {
 		if v.DeviceUDID == device_udid {
 			deviceConfig = v
 		}
 	}
 
-	if deviceConfig == (DeviceConfig{}) {
+	if deviceConfig == (util.DeviceConfig{}) {
 		log.WithFields(log.Fields{
 			"event": "get_device_info_from_config",
 		}).Error("Device with udid " + device_udid + " was not found in config data.")
@@ -150,7 +121,7 @@ func getDeviceInfo(device_udid string, configData *ConfigJsonData) (*DeviceInfo,
 	}
 
 	// Return the info for the device
-	return &DeviceInfo{
+	return &DeviceInformation{
 		DeviceModel:               deviceConfig.DeviceModel,
 		DeviceOSVersion:           deviceConfig.DeviceOSVersion,
 		DeviceOS:                  deviceConfig.OS,

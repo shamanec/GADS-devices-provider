@@ -1,40 +1,17 @@
-package main
+package provider
 
 import (
-	"net/http"
 	"os"
 
+	"github.com/shamanec/GADS-devices-provider/util"
 	log "github.com/sirupsen/logrus"
 )
-
-//=======================//
-//=====API FUNCTIONS=====//
-
-// @Summary      Creates the udev rules for device symlink and container creation
-// @Description  Creates 90-device.rules file to be used by udev
-// @Tags         configuration
-// @Produce      json
-// @Success      200 {object} JsonResponse
-// @Failure      500 {object} JsonErrorResponse
-// @Router       /configuration/create-udev-rules [post]
-func CreateUdevRules(w http.ResponseWriter, r *http.Request) {
-	// Open /lib/systemd/system/systemd-udevd.service
-	// Add IPAddressAllow=127.0.0.1 at the bottom
-	// This is to allow curl calls from the udev rules to the GADS server
-	err := CreateUdevRulesInternal()
-	if err != nil {
-		JSONError(w, "create_udev_rules", "Could not create udev rules file", 500)
-		return
-	}
-
-	SimpleJSONResponse(w, "Successfully created 90-device.rules file in project dir", 200)
-}
 
 //=======================//
 //=====FUNCTIONS=====//
 
 // Generate the udev rules file
-func CreateUdevRulesInternal() error {
+func CreateUdevRules() error {
 	log.WithFields(log.Fields{
 		"event": "create_udev_rules",
 	}).Info("Creating udev rules")
@@ -50,7 +27,7 @@ func CreateUdevRulesInternal() error {
 	defer create_container_rules.Close()
 
 	// Get the config data
-	configData, err := GetConfigJsonData()
+	configData, err := util.GetConfigJsonData()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "create_udev_rules",

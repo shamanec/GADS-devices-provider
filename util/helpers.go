@@ -1,14 +1,10 @@
-package main
+package util
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
-	"os/exec"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -49,76 +45,6 @@ type DeviceConfig struct {
 	DeviceHost            string `json:"device_host"`
 	MinicapFPS            string `json:"minicap_fps"`
 	MinicapHalfResolution string `json:"minicap_half_resolution"`
-}
-
-type JsonErrorResponse struct {
-	EventName    string `json:"event"`
-	ErrorMessage string `json:"error_message"`
-}
-
-type JsonResponse struct {
-	Message string `json:"message"`
-}
-
-//=======================//
-//=====API FUNCTIONS=====//
-
-// Write to a ResponseWriter an event and message with a response code
-func JSONError(w http.ResponseWriter, event string, error_string string, code int) {
-	var errorMessage = JsonErrorResponse{
-		EventName:    event,
-		ErrorMessage: error_string}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(errorMessage)
-}
-
-// Write to a ResponseWriter an event and message with a response code
-func SimpleJSONResponse(w http.ResponseWriter, response_message string, code int) {
-	var message = JsonResponse{
-		Message: response_message,
-	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(message)
-}
-
-// @Summary      Get provider logs
-// @Description  Gets provider logs as plain text response
-// @Tags         provider-logs
-// @Produces	 text
-// @Success      200
-// @Failure      200
-// @Router       /provider-logs [get]
-func GetLogs(w http.ResponseWriter, r *http.Request) {
-	// Create the command string to read the last 1000 lines of provider.log
-	commandString := "tail -n 1000 ./logs/provider.log"
-
-	// Create the command
-	cmd := exec.Command("bash", "-c", commandString)
-
-	// Create a buffer for the output
-	var out bytes.Buffer
-
-	// Pipe the Stdout of the command to the buffer pointer
-	cmd.Stdout = &out
-
-	// Execute the command
-	err := cmd.Run()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_project_logs",
-		}).Warning("Attempted to get project logs but no logs available.")
-
-		// Reply with generic message on error
-		fmt.Fprintf(w, "No logs available.")
-		return
-	}
-
-	// Reply with the read logs lines
-	fmt.Fprintf(w, out.String())
 }
 
 //=======================//
