@@ -2,7 +2,6 @@ package util
 
 import (
 	"encoding/json"
-	"io"
 	"io/ioutil"
 	"os"
 
@@ -91,25 +90,4 @@ func ConvertToJSONString(data interface{}) (string, error) {
 		return "", err
 	}
 	return string(b), nil
-}
-
-// Unmarshal request body into a struct
-func UnmarshalReader(body io.ReadCloser, v interface{}) error {
-	reqBody, err := ioutil.ReadAll(body)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "unmarshal_reader",
-		}).Error("Could not read reader into byte slice: " + err.Error())
-		return err
-	}
-
-	err = json.Unmarshal(reqBody, v)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "unmarshal_reader",
-		}).Error("Could not unmarshal reader: " + err.Error())
-		return err
-	}
-
-	return nil
 }
