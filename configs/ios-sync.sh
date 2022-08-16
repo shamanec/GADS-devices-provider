@@ -72,12 +72,16 @@ start-appium() {
   if [ ${ON_GRID} == "true" ]; then
     appium -p 4723 --udid "$DEVICE_UDID" \
       --log-timestamp \
+      --allow-cors \
+      --session-override \
       --default-capabilities \
       '{"mjpegServerPort": "9100", "clearSystemFiles": "false", "webDriverAgentUrl":"http://localhost:8100", "preventWDAAttachments": "true", "simpleIsVisibleCheck": "false", "wdaLocalPort": "8100", "platformVersion": "'${DEVICE_OS_VERSION}'", "automationName":"XCUITest", "platformName": "iOS", "deviceName": "'${DEVICE_NAME}'", "wdaLaunchTimeout": "120000", "wdaConnectionTimeout": "240000"}' \
       --nodeconfig /opt/nodeconfig.json >>"/opt/logs/appium-logs.log" 2>&1 &
   else
     appium -p 4723 --udid "$DEVICE_UDID" \
       --log-timestamp \
+      --allow-cors \
+      --session-override \
       --default-capabilities \
       '{"mjpegServerPort": "9100", "clearSystemFiles": "false", "webDriverAgentUrl":"http://localhost:8100",  "preventWDAAttachments": "true", "simpleIsVisibleCheck": "false", "wdaLocalPort": "8100", "platformVersion": "'${DEVICE_OS_VERSION}'", "automationName":"XCUITest", "platformName": "iOS", "deviceName": "'${DEVICE_NAME}'", "wdaLaunchTimeout": "120000", "wdaConnectionTimeout": "240000"}' >>"/opt/logs/appium-logs.log" 2>&1 &
   fi
@@ -97,7 +101,7 @@ mount-disk-images() {
 # Pair device using the supervision identity
 pair-device() {
   echo "[$(date +'%d/%m/%Y %H:%M:%S')] Pairing supervised device.."
-  ios pair --p12file="/opt/supervision.p12" --password="${SUPERVISION_PASSWORD}" --udid="${DEVICE_UDID}" >> "/opt/logs/wda-sync.log"
+  ios pair --p12file="/opt/supervision.p12" --password="${SUPERVISION_PASSWORD}" --udid="${DEVICE_UDID}"
 }
 
 # Forward the WebDriverAgent port and the WebDriverAgent mjpeg stream port to the container
@@ -106,6 +110,8 @@ forward-wda() {
   ios forward 8100 8100 --udid=$DEVICE_UDID 2>&1 &
   ios forward 9100 9100 --udid=$DEVICE_UDID 2>&1 &
 }
+
+# MAIN SCRIPT
 
 # Activate nvm
 # TODO: Revise if needed
@@ -116,24 +122,20 @@ if [ ${ON_GRID} == "true" ]; then
   ./opt/nodeconfiggen.sh > /opt/nodeconfig.json
 fi
 
-touch /opt/logs/wda-sync.log
-
 if [ ${CONTAINERIZED_USBMUXD} == "true" ]; then
-  touch /opt/logs/usbmuxd.log
-
   # Start usbmuxd inside the container
-  usbmuxd -f >> "/opt/logs/usbmuxd.log" 2>&1 &
-  echo "[$(date +'%d/%m/%Y %H:%M:%S')] Waiting 5 seconds after starting usbmuxd before attempting to pair device.." >> "/opt/logs/wda-sync.log"
+  usbmuxd -U usbmux -f 2>&1 &
+  echo "[$(date +'%d/%m/%Y %H:%M:%S')] Waiting 5 seconds after starting usbmuxd before attempting to pair device.."
   sleep 5
 
   # Pairing using supervision identity should be required only when usbmuxd is containerized
-  pair-device >> "/opt/logs/wda-sync.log"
+  pair-device
 
 else
   sleep 2
 fi
 
-mount-disk-images >> "/opt/logs/wda-sync.log"
+mount-disk-images
 sleep 2
 
 forward-wda
@@ -142,6 +144,6 @@ sleep 1
 container-server 2>&1 &
 
 while true; do
-  check-wda-status >> "/opt/logs/wda-sync.log"
-  check-appium-status >> "/opt/logs/wda-sync.log"
+  check-wda-status
+  check-appium-status
 done
