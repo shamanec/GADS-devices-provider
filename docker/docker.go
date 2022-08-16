@@ -74,15 +74,13 @@ func CreateIOSContainer(deviceUDID string) {
 		Image: "ios-appium",
 		ExposedPorts: nat.PortSet{
 			nat.Port("4723"):              struct{}{},
-			nat.Port(wdaPort):             struct{}{},
-			nat.Port(wdaMjpegPort):        struct{}{},
+			nat.Port("8100"):              struct{}{},
+			nat.Port("9100"):              struct{}{},
 			nat.Port(containerServerPort): struct{}{},
 		},
 		Env: []string{"ON_GRID=" + provider.ConfigData.EnvConfig.ConnectSeleniumGrid,
 			"APPIUM_PORT=" + appiumPort,
 			"DEVICE_UDID=" + deviceUDID,
-			"WDA_PORT=" + wdaPort,
-			"MJPEG_PORT=" + wdaMjpegPort,
 			"DEVICE_OS_VERSION=" + deviceOSVersion,
 			"DEVICE_NAME=" + deviceName,
 			"WDA_BUNDLEID=" + wdaBundleID,
@@ -151,13 +149,13 @@ func CreateIOSContainer(deviceUDID string) {
 					HostPort: appiumPort,
 				},
 			},
-			nat.Port(wdaPort): []nat.PortBinding{
+			nat.Port("8100"): []nat.PortBinding{
 				{
 					HostIP:   "0.0.0.0",
 					HostPort: wdaPort,
 				},
 			},
-			nat.Port(wdaMjpegPort): []nat.PortBinding{
+			nat.Port("9100"): []nat.PortBinding{
 				{
 					HostIP:   "0.0.0.0",
 					HostPort: wdaMjpegPort,
