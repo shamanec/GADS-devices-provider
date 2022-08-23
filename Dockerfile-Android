@@ -36,8 +36,8 @@ ENV PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools
 # Setup nvm and install latest appium
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
 RUN export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \
-     . "$NVM_DIR/nvm.sh" && nvm install 14.17.6 && \
-    nvm alias default 14.17.6 && \
+     . "$NVM_DIR/nvm.sh" && nvm install 16.16.0 && \
+    nvm alias default 16.16.0 && \
     npm config set user 0 && npm config set unsafe-perm true && npm install -g appium
 
 #Grab GADS-docker-server from github and extract it in /usr/local/bin

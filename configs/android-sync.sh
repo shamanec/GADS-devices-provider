@@ -65,11 +65,9 @@ fi
 sleep 2
 check-device-available
 
-touch /opt/logs/minicap.log
-touch /opt/logs/appium-logs.log
-
 # Don't attempt to run minicap if there will be no remote control
 if [ ${REMOTE_CONTROL} == "true" ]; then
+  touch /opt/logs/minicap.log
   STREAM_WIDTH=""
   STREAM_HEIGHT=""
   # If you want higher fps and have provided MINICAP_HALF_RESOLUTION true, minicap will run at half the original device resolution
@@ -92,6 +90,8 @@ if [ ${REMOTE_CONTROL} == "true" ]; then
 fi
 
 container-server 2>&1 &
+
+touch /opt/logs/appium-logs.log
 
 while true; do
   check-appium-status
