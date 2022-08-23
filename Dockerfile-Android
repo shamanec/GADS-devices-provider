@@ -1,5 +1,6 @@
 FROM ubuntu:18.04
 
+ENV NODE_VERSION="16.17.0"
 ENV SDK_VERSION=sdk-tools-linux-3859397
 WORKDIR /root
 
@@ -36,9 +37,8 @@ ENV PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools
 # Setup nvm and install latest appium
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
 RUN export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \
-     . "$NVM_DIR/nvm.sh" && nvm install 16.16.0 && \
-    nvm alias default 16.16.0 && \
-    npm config set user 0 && npm config set unsafe-perm true && npm install -g appium
+     . "$NVM_DIR/nvm.sh" && nvm install $NODE_VERSION && \
+    nvm alias default $NODE_VERSION && chown -R root: "/root/.nvm/versions/node/v$NODE_VERSION/lib/node_modules/" && npm install -g appium@next && appium driver install uiautomator2
 
 #Grab GADS-docker-server from github and extract it in /usr/local/bin
 RUN wget https://github.com/shamanec/GADS-docker-server/releases/latest/download/container-server.zip

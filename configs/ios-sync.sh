@@ -60,7 +60,7 @@ update-wda-stream-settings() {
 
 # Hit the Appium status URL to see if it is available and start it if not
 check-appium-status() {
-  if ! curl -Is "http://localhost:4723/wd/hub/status" | head -1 | grep -q '200 OK'; then
+  if ! curl -Is "http://localhost:4723/status" | head -1 | grep -q '200 OK'; then
     echo "[$(date +'%d/%m/%Y %H:%M:%S')] Appium server is not running, starting.."
     start-appium
   fi
@@ -70,20 +70,20 @@ check-appium-status() {
 # If the device is on Selenium Grid use created nodeconfig.json, if not - skip applying it in the command
 start-appium() {
   if [ ${ON_GRID} == "true" ]; then
-    appium -p 4723 --udid "$DEVICE_UDID" \
+    appium -p 4723 \
       --log-timestamp \
       --allow-cors \
       --session-override \
       --default-capabilities \
-      '{"mjpegServerPort": "9100", "clearSystemFiles": "false", "webDriverAgentUrl":"http://localhost:8100", "preventWDAAttachments": "true", "simpleIsVisibleCheck": "false", "wdaLocalPort": "8100", "platformVersion": "'${DEVICE_OS_VERSION}'", "automationName":"XCUITest", "platformName": "iOS", "deviceName": "'${DEVICE_NAME}'", "wdaLaunchTimeout": "120000", "wdaConnectionTimeout": "240000"}' \
+      '{"appium:udid": "'$DEVICE_UDID'", "appium:mjpegServerPort": "9100", "appium:clearSystemFiles": "false", "appium:webDriverAgentUrl":"http://localhost:8100", "appium:preventWDAAttachments": "true", "appium:simpleIsVisibleCheck": "false", "appium:wdaLocalPort": "8100", "appium:platformVersion": "'${DEVICE_OS_VERSION}'", "appium:automationName":"XCUITest", "platformName": "iOS", "appium:deviceName": "'${DEVICE_NAME}'", "appium:wdaLaunchTimeout": "120000", "appium:wdaConnectionTimeout": "240000"}' \
       --nodeconfig /opt/nodeconfig.json >>"/opt/logs/appium-logs.log" 2>&1 &
   else
-    appium -p 4723 --udid "$DEVICE_UDID" \
+    appium -p 4723 \
       --log-timestamp \
       --allow-cors \
       --session-override \
       --default-capabilities \
-      '{"mjpegServerPort": "9100", "clearSystemFiles": "false", "webDriverAgentUrl":"http://localhost:8100",  "preventWDAAttachments": "true", "simpleIsVisibleCheck": "false", "wdaLocalPort": "8100", "platformVersion": "'${DEVICE_OS_VERSION}'", "automationName":"XCUITest", "platformName": "iOS", "deviceName": "'${DEVICE_NAME}'", "wdaLaunchTimeout": "120000", "wdaConnectionTimeout": "240000"}' >>"/opt/logs/appium-logs.log" 2>&1 &
+      '{"appium:udid": "'$DEVICE_UDID'", "appium:mjpegServerPort": "9100", "appium:clearSystemFiles": "false", "appium:webDriverAgentUrl":"http://localhost:8100",  "appium:preventWDAAttachments": "true", "appium:simpleIsVisibleCheck": "false", "appium:wdaLocalPort": "8100", "appium:platformVersion": "'${DEVICE_OS_VERSION}'", "appium:automationName":"XCUITest", "platformName": "iOS", "appium:deviceName": "'${DEVICE_NAME}'", "appium:wdaLaunchTimeout": "120000", "appium:wdaConnectionTimeout": "240000"}' >>"/opt/logs/appium-logs.log" 2>&1 &
   fi
 }
 
