@@ -75,7 +75,7 @@ start-appium() {
       --allow-cors \
       --session-override \
       --default-capabilities \
-      '{"mjpegServerPort": "9100", "clearSystemFiles": "false", "webDriverAgentUrl":"http://localhost:8100", "preventWDAAttachments": "true", "simpleIsVisibleCheck": "false", "wdaLocalPort": "8100", "platformVersion": "'${DEVICE_OS_VERSION}'", "automationName":"XCUITest", "platformName": "iOS", "deviceName": "'${DEVICE_NAME}'", "wdaLaunchTimeout": "120000", "wdaConnectionTimeout": "240000"}' \
+      '{"appium:mjpegServerPort": "9100", "appium:clearSystemFiles": "false", "appium:webDriverAgentUrl":"http://localhost:8100", "appium:preventWDAAttachments": "true", "appium:simpleIsVisibleCheck": "false", "appium:wdaLocalPort": "8100", "appium:platformVersion": "'${DEVICE_OS_VERSION}'", "appium:automationName":"XCUITest", "platformName": "iOS", "appium:deviceName": "'${DEVICE_NAME}'", "appium:wdaLaunchTimeout": "120000", "appium:wdaConnectionTimeout": "240000"}' \
       --nodeconfig /opt/nodeconfig.json >>"/opt/logs/appium-logs.log" 2>&1 &
   else
     appium -p 4723 --udid "$DEVICE_UDID" \
@@ -83,7 +83,7 @@ start-appium() {
       --allow-cors \
       --session-override \
       --default-capabilities \
-      '{"mjpegServerPort": "9100", "clearSystemFiles": "false", "webDriverAgentUrl":"http://localhost:8100",  "preventWDAAttachments": "true", "simpleIsVisibleCheck": "false", "wdaLocalPort": "8100", "platformVersion": "'${DEVICE_OS_VERSION}'", "automationName":"XCUITest", "platformName": "iOS", "deviceName": "'${DEVICE_NAME}'", "wdaLaunchTimeout": "120000", "wdaConnectionTimeout": "240000"}' >>"/opt/logs/appium-logs.log" 2>&1 &
+      '{"appium:mjpegServerPort": "9100", "appium:clearSystemFiles": "false", "appium:webDriverAgentUrl":"http://localhost:8100",  "appium:preventWDAAttachments": "true", "appium:simpleIsVisibleCheck": "false", "appium:wdaLocalPort": "8100", "appium:platformVersion": "'${DEVICE_OS_VERSION}'", "appium:automationName":"XCUITest", "platformName": "iOS", "appium:deviceName": "'${DEVICE_NAME}'", "appium:wdaLaunchTimeout": "120000", "appium:wdaConnectionTimeout": "240000"}' >>"/opt/logs/appium-logs.log" 2>&1 &
   fi
 }
 
