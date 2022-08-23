@@ -2,7 +2,6 @@
 
 * GADS-devices-provider is a server providing option to spin up/down Docker containers for iOS/Android Appium testing. Can be used autonomously or in conjunction with [GADS](https://github.com/shamanec/GADS) and have your own device farm with basic providers orchestration and devices remote control.   
 **NB** I've been doing this having only small number of devices available. It looks like everything is pretty much working but I do not know how it would behave on a bigger scale.  
-* Currently being adopted and sponsored by <a href="https://1crew.com"><img src="https://1crew.com/StaticResources/1Crew_3D.png" alt="1crew" width="50"/><a/>  
 
 ## Features
 * Straighforward setup   
