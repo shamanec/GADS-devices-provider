@@ -60,7 +60,7 @@ update-wda-stream-settings() {
 
 # Hit the Appium status URL to see if it is available and start it if not
 check-appium-status() {
-  if ! curl -Is "http://localhost:4723/wd/hub/status" | head -1 | grep -q '200 OK'; then
+  if ! curl -Is "http://localhost:4723/status" | head -1 | grep -q '200 OK'; then
     echo "[$(date +'%d/%m/%Y %H:%M:%S')] Appium server is not running, starting.."
     start-appium
   fi

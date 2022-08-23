@@ -12,7 +12,7 @@ ENV NODE_VERSION="16.17.0"
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
 RUN export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \
      . "$NVM_DIR/nvm.sh" && nvm install $NODE_VERSION && \
-    nvm alias default $NODE_VERSION && chown -R root: "/root/.nvm/versions/node/v$NODE_VERSION/lib/node_modules/" && npm install -g appium@next
+    nvm alias default $NODE_VERSION && chown -R root: "/root/.nvm/versions/node/v$NODE_VERSION/lib/node_modules/" && npm install -g appium@next && appium driver install xcuitest
 
 # Grab GADS-docker-server from github and extract it in /usr/local/bin
 RUN wget https://github.com/shamanec/GADS-docker-server/releases/latest/download/container-server.zip
