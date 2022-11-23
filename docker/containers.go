@@ -56,7 +56,6 @@ func DevicesWatcher() {
 						// If we have a container and it is not `Up`
 						// we restart it
 						if containerExists && !strings.Contains(containerStatus, "Up") {
-							fmt.Println("restarting container")
 							go RestartContainer(containerID)
 							continue
 						}
