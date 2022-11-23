@@ -45,7 +45,7 @@ func DevicesWatcher() {
 					fileName := event.Name
 
 					// Check if the created file was a symlink for a device
-					if strings.HasPrefix(fileName, "device_") {
+					if strings.HasPrefix(fileName, "/dev/device_") {
 						// Get the device OS and UDID from the symlink name
 						deviceOS := strings.Split(fileName, "_")[1]
 						deviceUDID := strings.Split(fileName, "_")[2]
@@ -83,7 +83,7 @@ func DevicesWatcher() {
 					fileName := event.Name
 
 					// Check if the removed file was a symlink for a device
-					if strings.HasPrefix(fileName, "device_") {
+					if strings.HasPrefix(fileName, "/dev/device_") {
 						// Get the device UDID from the symlink name
 						deviceUDID := strings.Split(fileName, "_")[2]
 
