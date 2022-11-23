@@ -107,27 +107,6 @@ func RestartContainer(w http.ResponseWriter, r *http.Request) {
 	SimpleJSONResponse(w, "Successfully attempted to restart container with ID: "+containerID, 200)
 }
 
-// @Summary      Remove container for device
-// @Description  Removes a running container for a disconnected registered device by device UDID
-// @Tags         device-containers
-// @Param        udid path string true "Device UDID"
-// @Success      202
-// @Failure		 202
-// @Router       /device-containers/remove/{udid} [post]
-func RemoveDeviceContainer(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	deviceUdid := vars["udid"]
-
-	// Check if container exists and get the container ID
-	containerExists, containerID, _ := docker.CheckContainerExistsByName(deviceUdid)
-
-	if containerExists {
-		// Start removing the container in a goroutine and immediately reply with Accepted
-		go docker.RemoveContainerByID(containerID)
-	}
-	w.WriteHeader(http.StatusAccepted)
-}
-
 // @Summary      Get container logs
 // @Description  Get logs of container by provided container ID
 // @Tags         containers
@@ -178,42 +157,6 @@ func GetContainerLogs(w http.ResponseWriter, r *http.Request) {
 	} else {
 		SimpleJSONResponse(w, "There are no existing logs for this container.", 200)
 	}
-}
-
-// @Summary      Create container for device
-// @Description  Creates a container for a connected registered device
-// @Tags         device-containers
-// @Param        udid path string true "Device UDID"
-// @Param        os path string true "Device OS: `android` or `ios`"
-// @Success      202
-// @Router       /device-containers/create [post]
-func CreateDeviceContainer(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	deviceUdid := vars["udid"]
-	osType := vars["os"]
-
-	// Start creating a device container in a goroutine and immediately reply with Accepted
-	go func() {
-		// Check if container exists and get the container ID and current status
-		containerExists, containerID, containerStatus := docker.CheckContainerExistsByName(deviceUdid)
-
-		// Create a container if no container exists for this device
-		// or restart a non-running container that already exists for this device
-		// this is useful after restart and reconnecting devices
-		if !containerExists {
-			if osType == "android" {
-				go docker.CreateAndroidContainer(deviceUdid)
-			} else if osType == "ios" {
-				go docker.CreateIOSContainer(deviceUdid)
-			}
-			return
-		} else if !strings.Contains(containerStatus, "Up") {
-			go docker.RestartContainer(containerID)
-			return
-		}
-	}()
-
-	w.WriteHeader(http.StatusAccepted)
 }
 
 // @Summary      Remove container

@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -11,10 +12,105 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/fsnotify/fsnotify"
 	"github.com/shamanec/GADS-devices-provider/provider"
 	"github.com/shamanec/GADS-devices-provider/util"
 	log "github.com/sirupsen/logrus"
 )
+
+func DevicesWatcher() {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		panic("Could not create watcher when preparing to watch /dev folder, err:" + err.Error())
+	}
+	defer watcher.Close()
+
+	err = watcher.Add("/dev")
+	if err != nil {
+		panic("Could not add /dev folder to watcher when preparing to watch it, err:" + err.Error())
+	}
+
+	fmt.Println("Started listening for events in /dev folder")
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+
+				// If we have a Create event in /dev (device was connected)
+				if event.Has(fsnotify.Create) {
+					// Get the name of the created file
+					fileName := event.Name
+
+					// Check if the created file was a symlink for a device
+					if strings.HasPrefix(fileName, "/dev/device_") {
+						// Get the device OS and UDID from the symlink name
+						deviceOS := strings.Split(fileName, "_")[1]
+						deviceUDID := strings.Split(fileName, "_")[2]
+
+						// Check if we have a container for the connected device
+						containerExists, containerID, containerStatus := CheckContainerExistsByName(deviceUDID)
+
+						// If we have a container and it is not `Up`
+						// we restart it
+						if containerExists && !strings.Contains(containerStatus, "Up") {
+							go RestartContainer(containerID)
+							continue
+						}
+
+						// If we don't have a container for the device and it is iOS
+						// Create a new iOS device container for it
+						if deviceOS == "ios" {
+							go CreateIOSContainer(deviceUDID)
+							continue
+						}
+
+						// If we don't have a container for the device and it is Android
+						// Create a new Android device container for it
+						if deviceOS == "android" {
+							go CreateAndroidContainer(deviceUDID)
+							continue
+						}
+					}
+				}
+
+				// If we have a Remove event in /dev (device was disconnected)
+				if event.Has(fsnotify.Remove) {
+					// Get the name of the removed file
+					fileName := event.Name
+
+					// Check if the removed file was a symlink for a device
+					if strings.HasPrefix(fileName, "/dev/device_") {
+						// Get the device UDID from the symlink name
+						deviceUDID := strings.Split(fileName, "_")[2]
+
+						// Check if container exists for the disconnected device
+						containerExists, containerID, _ := CheckContainerExistsByName(deviceUDID)
+
+						// If there is a container for the disconnected device
+						// we remove it
+						if containerExists {
+							go RemoveContainerByID(containerID)
+							continue
+						}
+					}
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.WithFields(log.Fields{
+					"event": "dev_watcher",
+				}).Info("There was an error with the /dev watcher: " + err.Error())
+			}
+		}
+	}()
+
+	// Block the DeviceWatcher() goroutine forever
+	<-make(chan struct{})
+}
 
 // Create an iOS container for a specific device(by UDID) using data from config.json so if device is not registered there it will not attempt to create a container for it
 func CreateIOSContainer(deviceUDID string) {
@@ -115,7 +211,7 @@ func CreateIOSContainer(deviceUDID string) {
 		resources = container.Resources{
 			Devices: []container.DeviceMapping{
 				{
-					PathOnHost:        "/dev/device_" + deviceUDID,
+					PathOnHost:        "/dev/device_ios_" + deviceUDID,
 					PathInContainer:   "/dev/bus/usb/003/011",
 					CgroupPermissions: "rwm",
 				},
@@ -295,8 +391,8 @@ func CreateAndroidContainer(deviceUDID string) {
 		},
 		{
 			Type:        mount.TypeBind,
-			Source:      "/dev/device_" + deviceUDID,
-			Target:      "/dev/device_" + deviceUDID,
+			Source:      "/dev/device_android_" + deviceUDID,
+			Target:      "/dev/device_android_" + deviceUDID,
 			BindOptions: &mount.BindOptions{Propagation: "shared"},
 		},
 	}
@@ -312,7 +408,7 @@ func CreateAndroidContainer(deviceUDID string) {
 	resources := container.Resources{
 		Devices: []container.DeviceMapping{
 			{
-				PathOnHost:        "/dev/device_" + deviceUDID,
+				PathOnHost:        "/dev/device_android_" + deviceUDID,
 				PathInContainer:   "/dev/bus/usb/003/011",
 				CgroupPermissions: "rwm",
 			},

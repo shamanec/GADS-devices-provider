@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/shamanec/GADS-devices-provider/docker"
 	_ "github.com/shamanec/GADS-devices-provider/docs"
 	"github.com/shamanec/GADS-devices-provider/provider"
 	"github.com/shamanec/GADS-devices-provider/router"
@@ -28,6 +29,7 @@ func main() {
 
 	setLogging()
 
+	go docker.DevicesWatcher()
 	handler := router.HandleRequests()
 
 	fmt.Printf("Starting provider on port:%v\n", provider.ProviderPort)
