@@ -15,7 +15,7 @@ import (
 // Check if container exists by name and also return container_id
 func CheckContainerExistsByName(deviceUDID string) (bool, string, string) {
 	// Get all the containers
-	containers, _ := getContainersList()
+	containers, _ := getDeviceContainersList()
 	containerExists := false
 	containerID := ""
 	containerStatus := ""
@@ -54,6 +54,23 @@ func getContainersList() ([]types.Container, error) {
 		return nil, errors.New("Could not get container list")
 	}
 	return containers, nil
+}
+
+func getDeviceContainersList() ([]types.Container, error) {
+	allContainers, err := getContainersList()
+	if err != nil {
+		return nil, err
+	}
+
+	var deviceContainers []types.Container
+	for _, container := range allContainers {
+		containerName := strings.Replace(container.Names[0], "/", "", -1)
+		if strings.Contains(containerName, "iosDevice") || strings.Contains(containerName, "androidDevice") {
+			deviceContainers = append(deviceContainers, container)
+		}
+	}
+
+	return deviceContainers, nil
 }
 
 type DeviceContainerInfo struct {
