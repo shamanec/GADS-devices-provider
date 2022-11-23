@@ -3,10 +3,8 @@ package docker
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -14,172 +12,109 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/fsnotify/fsnotify"
 	"github.com/shamanec/GADS-devices-provider/provider"
 	"github.com/shamanec/GADS-devices-provider/util"
 	log "github.com/sirupsen/logrus"
 )
 
-var createContainerUDIDs = make(map[string]struct{})
-var removeContainerIDs = make(map[string]struct{})
-var restartContainerIDs = make(map[string]struct{})
-var containerMutex sync.Mutex
-
-func CheckDevices() {
-	for {
-		// Get all files in /dev (we create symlinks for devices through udev rules)
-		filesInDev, err := ioutil.ReadDir("/dev")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Get all connected devices UDIDs (from /dev symlinks) into a slice
-		containerMutex.Lock()
-		var deviceUDIDs []string
-		for _, fileInDev := range filesInDev {
-			if strings.HasPrefix(fileInDev.Name(), "device") {
-				deviceUDIDs = append(deviceUDIDs, strings.Split(fileInDev.Name(), "_")[1])
-			}
-		}
-		containerMutex.Unlock()
-
-		// Get a slice of running containers
-		containers, _ := getDeviceContainersList()
-
-		// If we have less connected devices than running containers
-		if len(deviceUDIDs) < len(containers) {
-			handleDisconnectedDeviceContainers(containers, deviceUDIDs)
-		}
-
-		if len(deviceUDIDs) >= len(containers) {
-			var deviceContainerID string
-			var deviceContainerStatus string
-
-			for _, udid := range deviceUDIDs {
-				device_has_container := false
-				for _, container := range containers {
-					containerName := container.Names[0]
-					if strings.Contains(containerName, udid) {
-						deviceContainerID = container.ID
-						deviceContainerStatus = container.Status
-						device_has_container = true
-					}
-
-				}
-
-				if device_has_container && !strings.Contains(deviceContainerStatus, "Up") {
-					containerMutex.Lock()
-					if _, ok := restartContainerIDs[deviceContainerID]; ok {
-						log.WithFields(log.Fields{
-							"event": "restart_container",
-						}).Info("Container for device with UDID:" + udid + " already being restarted.")
-						containerMutex.Unlock()
-						continue
-					}
-					containerMutex.Unlock()
-
-					handleConnectedDeviceExistingContainer(deviceContainerID)
-				}
-
-				if !device_has_container {
-					handleConnectedDeviceNewContainer(udid)
-				}
-			}
-		}
-
-		time.Sleep(15 * time.Second)
+func DevicesWatcher() {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		panic("Could not create watcher when preparing to watch /dev folder, err:" + err.Error())
 	}
-}
+	defer watcher.Close()
 
-func handleConnectedDeviceExistingContainer(deviceContainerID string) {
-	// Check if container for this device is already being restarted (its in the map)
-	containerMutex.Lock()
-	defer containerMutex.Unlock()
+	err = watcher.Add("/dev")
+	if err != nil {
+		panic("Could not add /dev folder to watcher when preparing to watch it, err:" + err.Error())
+	}
 
-	// If the container was not in the map
-	// we add it to the map and initiate a restart
-	// container will be removed from the map regardless of the restart result
-	restartContainerIDs[deviceContainerID] = struct{}{}
+	fmt.Println("Started listening for events in /dev folder")
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
 
-	go RestartContainer(deviceContainerID)
-}
+				// If we have a Create event in /dev (device was connected)
+				if event.Has(fsnotify.Create) {
+					// Get the name of the created file
+					fileName := event.Name
 
-func handleConnectedDeviceNewContainer(udid string) {
-	for _, value := range provider.ConfigData.DeviceConfig {
-		if value.DeviceUDID == udid {
-			osType := value.OS
+					// Check if the created file was a symlink for a device
+					if strings.HasPrefix(fileName, "device_") {
+						// Get the device OS and UDID from the symlink name
+						deviceOS := strings.Split(fileName, "_")[1]
+						deviceUDID := strings.Split(fileName, "_")[2]
 
-			// Check if a container for the device is already being created (its in the map)
-			// and continue to next iteration if it is
-			containerMutex.Lock()
-			if _, ok := createContainerUDIDs[udid]; ok {
+						// Check if we have a container for the connected device
+						containerExists, containerID, containerStatus := CheckContainerExistsByName(deviceUDID)
+
+						// If we have a container and it is not `Up`
+						// we restart it
+						if containerExists && !strings.Contains(containerStatus, "Up") {
+							fmt.Println("restarting container")
+							go RestartContainer(containerID)
+							continue
+						}
+
+						// If we don't have a container for the device and it is iOS
+						// Create a new iOS device container for it
+						if deviceOS == "ios" {
+							go CreateIOSContainer(deviceUDID)
+							continue
+						}
+
+						// If we don't have a container for the device and it is Android
+						// Create a new Android device container for it
+						if deviceOS == "android" {
+							go CreateAndroidContainer(deviceUDID)
+							continue
+						}
+					}
+				}
+
+				// If we have a Remove event in /dev (device was disconnected)
+				if event.Has(fsnotify.Remove) {
+					// Get the name of the removed file
+					fileName := event.Name
+
+					// Check if the removed file was a symlink for a device
+					if strings.HasPrefix(fileName, "device_") {
+						// Get the device UDID from the symlink name
+						deviceUDID := strings.Split(fileName, "_")[2]
+
+						// Check if container exists for the disconnected device
+						containerExists, containerID, _ := CheckContainerExistsByName(deviceUDID)
+
+						// If there is a container for the disconnected device
+						// we remove it
+						if containerExists {
+							go RemoveContainerByID(containerID)
+							continue
+						}
+					}
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
 				log.WithFields(log.Fields{
-					"event": "restart_container",
-				}).Info("Container for device with UDID:" + udid + " already being created.")
-				containerMutex.Unlock()
-				continue
-			}
-
-			createContainerUDIDs[udid] = struct{}{}
-			containerMutex.Unlock()
-
-			if osType == "ios" {
-				fmt.Println("Creating container: " + udid)
-				go CreateIOSContainer(udid)
-			} else if osType == "android" {
-				fmt.Println("Creating container: " + udid)
-				go CreateAndroidContainer(udid)
+					"event": "dev_watcher",
+				}).Info("There was an error with the /dev watcher: " + err.Error())
 			}
 		}
-	}
-}
+	}()
 
-func handleDisconnectedDeviceContainers(containers []types.Container, deviceUDIDs []string) {
-	// Loop through the available device containers
-	for _, container := range containers {
-		device_for_container := false
-		// Get the current container name
-		containerName := container.Names[0]
-
-		// Loop through the connected devices UDIDs
-		// if we have a device connected for the current container
-		// we set device_for_container to `true``
-		for _, udid := range deviceUDIDs {
-			if strings.Contains(containerName, udid) {
-				device_for_container = true
-			}
-		}
-
-		// If we don't have a connected device for a specific container
-		if !device_for_container {
-			// Check if container for this device is already being removed (its in the map)
-			containerMutex.Lock()
-			if _, ok := removeContainerIDs[container.ID]; ok {
-				// if it was in the map
-				// then we just continue the containers loop
-				containerMutex.Unlock()
-				continue
-			}
-
-			// If the container is not already being removed
-			// We add it to the map
-			// And we start the goroutine to remove the container
-			removeContainerIDs[container.ID] = struct{}{}
-			containerMutex.Unlock()
-
-			go RemoveContainerByID(container.ID)
-		}
-	}
+	// Block the DeviceWatcher() goroutine forever
+	<-make(chan struct{})
 }
 
 // Create an iOS container for a specific device(by UDID) using data from config.json so if device is not registered there it will not attempt to create a container for it
 func CreateIOSContainer(deviceUDID string) {
-	defer func() {
-		containerMutex.Lock()
-		defer containerMutex.Unlock()
-
-		delete(createContainerUDIDs, deviceUDID)
-	}()
-
 	log.WithFields(log.Fields{
 		"event": "ios_container_create",
 	}).Info("Attempting to create a container for iOS device with udid: " + deviceUDID)
@@ -277,7 +212,7 @@ func CreateIOSContainer(deviceUDID string) {
 		resources = container.Resources{
 			Devices: []container.DeviceMapping{
 				{
-					PathOnHost:        "/dev/device_" + deviceUDID,
+					PathOnHost:        "/dev/device_ios_" + deviceUDID,
 					PathInContainer:   "/dev/bus/usb/003/011",
 					CgroupPermissions: "rwm",
 				},
@@ -366,13 +301,6 @@ func CreateIOSContainer(deviceUDID string) {
 // Create an Android container for a specific device(by UDID) using data from config.json so if device is not registered there it will not attempt to create a container for it
 // If container already exists for this device it will do nothing
 func CreateAndroidContainer(deviceUDID string) {
-	defer func() {
-		containerMutex.Lock()
-		defer containerMutex.Unlock()
-
-		delete(createContainerUDIDs, deviceUDID)
-	}()
-
 	log.WithFields(log.Fields{
 		"event": "android_container_create",
 	}).Info("Attempting to create a container for Android device with udid: " + deviceUDID)
@@ -464,8 +392,8 @@ func CreateAndroidContainer(deviceUDID string) {
 		},
 		{
 			Type:        mount.TypeBind,
-			Source:      "/dev/device_" + deviceUDID,
-			Target:      "/dev/device_" + deviceUDID,
+			Source:      "/dev/device_android_" + deviceUDID,
+			Target:      "/dev/device_android_" + deviceUDID,
 			BindOptions: &mount.BindOptions{Propagation: "shared"},
 		},
 	}
@@ -481,7 +409,7 @@ func CreateAndroidContainer(deviceUDID string) {
 	resources := container.Resources{
 		Devices: []container.DeviceMapping{
 			{
-				PathOnHost:        "/dev/device_" + deviceUDID,
+				PathOnHost:        "/dev/device_android_" + deviceUDID,
 				PathInContainer:   "/dev/bus/usb/003/011",
 				CgroupPermissions: "rwm",
 			},
@@ -544,14 +472,6 @@ func CreateAndroidContainer(deviceUDID string) {
 
 // Restart a docker container by provided container ID
 func RestartContainer(container_id string) error {
-	fmt.Println("restarting")
-	defer func() {
-		containerMutex.Lock()
-		defer containerMutex.Unlock()
-
-		delete(restartContainerIDs, container_id)
-	}()
-
 	// Create a new context and Docker client
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv)
@@ -579,13 +499,6 @@ func RestartContainer(container_id string) error {
 
 // Remove any docker container by container ID
 func RemoveContainerByID(containerID string) {
-	defer func() {
-		containerMutex.Lock()
-		defer containerMutex.Unlock()
-
-		delete(removeContainerIDs, containerID)
-	}()
-
 	log.WithFields(log.Fields{
 		"event": "docker_container_remove",
 	}).Info("Attempting to remove container with ID: " + containerID)

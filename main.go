@@ -28,8 +28,8 @@ func main() {
 	provider.SetupConfig()
 
 	setLogging()
-	go docker.CheckDevices()
 
+	go docker.DevicesWatcher()
 	handler := router.HandleRequests()
 
 	fmt.Printf("Starting provider on port:%v\n", provider.ProviderPort)
