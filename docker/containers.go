@@ -2,8 +2,11 @@ package docker
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -15,6 +18,95 @@ import (
 	"github.com/shamanec/GADS-devices-provider/util"
 	log "github.com/sirupsen/logrus"
 )
+
+var createContainerUDIDs map[string]struct{}
+var containerMutex sync.Mutex
+
+func CheckDevices() {
+	for {
+		fmt.Println("Looping")
+		// Get all files in /dev (we create symlinks for devices through udev rules)
+		files, err := ioutil.ReadDir("/dev")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var deviceUDIDs []string
+
+		for _, file := range files {
+			if strings.HasPrefix(file.Name(), "device") {
+				deviceUDIDs = append(deviceUDIDs, strings.Split(file.Name(), "_")[1])
+			}
+		}
+
+		containers, _ := getContainersList()
+
+		if len(deviceUDIDs) < len(containers) {
+			for _, container := range containers {
+				device_for_container := false
+				var deviceUDID string
+
+				containerName := container.Names[0]
+				for _, udid := range deviceUDIDs {
+					if strings.Contains(containerName, udid) {
+						deviceUDID = udid
+						device_for_container = true
+					}
+				}
+				if !device_for_container {
+					fmt.Println("Removing container: " + deviceUDID)
+					go RemoveContainerByID(container.ID)
+				}
+			}
+		}
+
+		if len(deviceUDIDs) >= len(containers) {
+			var deviceContainer types.Container
+
+			for _, udid := range deviceUDIDs {
+				device_has_container := false
+				for _, container := range containers {
+					containerName := container.Names[0]
+					if strings.Contains(containerName, udid) {
+						deviceContainer = container
+						device_has_container = true
+					}
+
+				}
+
+				if device_has_container && !strings.Contains(deviceContainer.Status, "Up") {
+					fmt.Println("Restarting container: " + udid)
+					go RestartContainer(deviceContainer.ID)
+				}
+
+				if !device_has_container {
+					for _, value := range provider.ConfigData.DeviceConfig {
+						if value.DeviceUDID == udid {
+							osType := value.OS
+
+							if osType == "ios" {
+								// containerMutex.Lock()
+								// if _, ok := createContainerUDIDs["foo"]; ok {
+								// 	continue
+								// }
+								// createContainerUDIDs[udid] = struct{}{}
+
+								fmt.Println("Creating container: " + udid)
+								go CreateIOSContainer(udid)
+							} else if osType == "android" {
+								fmt.Println("Creating container: " + udid)
+								go CreateAndroidContainer(udid)
+							}
+						}
+					}
+
+				}
+			}
+		}
+
+		time.Sleep(10 * time.Second)
+	}
+}
 
 // Create an iOS container for a specific device(by UDID) using data from config.json so if device is not registered there it will not attempt to create a container for it
 func CreateIOSContainer(deviceUDID string) {
