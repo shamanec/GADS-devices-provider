@@ -97,7 +97,8 @@
       "stream_port": "20203",
       "device_os_version": "7",
       "container_server_port": "20207",
-      "device_model": "Sony Xperia"
+      "device_model": "Sony Xperia",
+      "minicap_half_resolution": "false"
     }
   ]
 }

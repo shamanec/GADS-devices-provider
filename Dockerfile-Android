@@ -41,9 +41,9 @@ RUN export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \
     nvm alias default $NODE_VERSION && chown -R root: "/root/.nvm/versions/node/v$NODE_VERSION/lib/node_modules/" && npm install -g appium@next && appium driver install uiautomator2
 
 #Grab GADS-docker-server from github and extract it in /usr/local/bin
-RUN wget https://github.com/shamanec/GADS-docker-server/releases/latest/download/container-server.zip
-RUN unzip container-server.zip -d /usr/local/bin
+# RUN wget https://github.com/shamanec/GADS-docker-server/releases/latest/download/container-server.zip
+# RUN unzip container-server.zip -d /usr/local/bin
 
-COPY configs/android-sync.sh /
-COPY configs/nodeconfiggen-android.sh /opt/nodeconfiggen.sh
-ENTRYPOINT ["/bin/bash","-c","/android-sync.sh"]
+COPY configs/device-sync.sh /
+COPY container-server /usr/local/bin/container-server
+ENTRYPOINT ["/bin/bash","-c","/device-sync.sh"]
