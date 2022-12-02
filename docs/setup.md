@@ -6,7 +6,7 @@ The provider itself has minimum dependencies:
 2. Install Go 1.17 or higher (that is what I'm using, lower might also work)    
 
 ## Update the environment in ./configs/config.json  
-``1. Set Selenium Grid connection - `true` or `false`. `true` attempts to connect each Appium server to the Selenium Grid instance defined in the same file  `` At the moment Selenium Grid connection does not work!  
+~~1. Set Selenium Grid connection - `true` or `false`. `true` attempts to connect each Appium server to the Selenium Grid instance defined in the same file  ~~ At the moment Selenium Grid connection does not work!  
 
 ## Run the provider server   
 1. Execute `go build .` and `./GADS-devices-provider` 
@@ -116,7 +116,7 @@ You need an Apple Developer account to build and sign `WebDriverAgent`
 6. Save your new supervision identity file in the project `./configs` (or other) folder as `supervision.p12`.  
 7. Open `config.json` and set your `supervision_password` in `env-config`  
 
-``**Note** You can also Trust manually when container is created but this is not optimal  `` This is not applicable at the moment because `GADS-docker-server` is set up to work with supervised devices  
+~~**Note** You can also Trust manually when container is created but this is not optimal~~ This is not applicable at the moment because `GADS-docker-server` is set up to work with supervised devices  
 
 ### Register your devices for the project
 1. Open the `config.json` file.  
