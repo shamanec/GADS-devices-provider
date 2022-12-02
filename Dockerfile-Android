@@ -44,6 +44,5 @@ RUN export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \
 RUN wget https://github.com/shamanec/GADS-docker-server/releases/latest/download/container-server.zip
 RUN unzip container-server.zip -d /usr/local/bin
 
-COPY configs/android-sync.sh /
-COPY configs/nodeconfiggen-android.sh /opt/nodeconfiggen.sh
-ENTRYPOINT ["/bin/bash","-c","/android-sync.sh"]
+COPY configs/device-sync.sh /
+ENTRYPOINT ["/bin/bash","-c","/device-sync.sh"]

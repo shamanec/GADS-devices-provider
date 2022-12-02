@@ -6,7 +6,7 @@ The provider itself has minimum dependencies:
 2. Install Go 1.17 or higher (that is what I'm using, lower might also work)    
 
 ## Update the environment in ./configs/config.json  
-1. Set Selenium Grid connection - `true` or `false`. `true` attempts to connect each Appium server to the Selenium Grid instance defined in the same file  
+``1. Set Selenium Grid connection - `true` or `false`. `true` attempts to connect each Appium server to the Selenium Grid instance defined in the same file  `` At the moment Selenium Grid connection does not work!  
 
 ## Run the provider server   
 1. Execute `go build .` and `./GADS-devices-provider` 
@@ -33,19 +33,11 @@ You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.h
 1. Open `config.json` 
 3. Update your Selenium Grid values and the bundle ID of the used WebDriverAgent in `appium-config`  
 
-### Update host udev rules service
-1. Open `/lib/systemd/system/systemd-udevd.service` (`sudo systemctl status udev.service` to find out if its a different file)  
-2. Add `IPAddressAllow=127.0.0.1` at the bottom  
-3. Restart the machine  
-4. This is to allow curl calls from the udev rules to the provider server  
-
 ### Spin up containers  
 If you have followed all the steps, set up and registered the devices and configured the provider just connect all your devices. Container should be automatically created for each of them.  
 
 # Devices setup  
-
 ## Android setup
-
 ### Dependencies  
 
 1. Install `adb`  with `sudo apt install adb`  
@@ -94,11 +86,11 @@ or
 
 ### Known limitations
 1. It is not possible to execute **driver.executeScript("mobile: startPerfRecord")** with Appium to record application performance since Xcode tools are not available.  
-2. Anything else that might need Instruments and any other Xcode/OSX exclusive tools  
+2. Anything else that might need Instruments and/or any other Xcode/OSX exclusive tools  
 
 ### Prepare WebDriverAgent file
 
-You need an Apple Developer account to sign and build `WebDriverAgent`
+You need an Apple Developer account to build and sign `WebDriverAgent`
 
 1. Download and install [iOS App Signer](https://dantheman827.github.io/ios-app-signer/)  
 2. Open `WebDriverAgent.xcodeproj` in Xcode.  
@@ -124,7 +116,7 @@ You need an Apple Developer account to sign and build `WebDriverAgent`
 6. Save your new supervision identity file in the project `./configs` (or other) folder as `supervision.p12`.  
 7. Open `config.json` and set your `supervision_password` in `env-config`  
 
-**Note** You can also Trust manually when container is created but this is not optimal  
+``**Note** You can also Trust manually when container is created but this is not optimal  `` This is not applicable at the moment because `GADS-docker-server` is set up to work with supervised devices  
 
 ### Register your devices for the project
 1. Open the `config.json` file.  
@@ -203,7 +195,9 @@ This can be used for remote development of iOS apps or execution of native XCUIT
       "stream_port": "20201",
       "device_os_version": "10",
       "container_server_port": "20205",
-      "device_model": "Huawei P20 Pro"
+      "device_model": "Huawei P20 Pro",
+      "minicap_fps" : "30",
+      "minicap_half_resolution": "true"
     }
   ]
 }
