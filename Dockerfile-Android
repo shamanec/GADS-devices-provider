@@ -1,17 +1,31 @@
+# First we build the container-server using a golang image
+FROM golang:1.19 as build-server
+
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get -y install libjpeg-dev build-essential && \
+    git clone https://github.com/shamanec/GADS-docker-server.git && \
+    cd GADS-docker-server && \
+    go build -o container-server .
+
+# Then we build the device image
 FROM ubuntu:18.04
 
+# Set env vars for node and android SDK versions
 ENV NODE_VERSION="16.17.0"
 ENV SDK_VERSION=sdk-tools-linux-3859397
 WORKDIR /root
 
-# Setup some deps
-RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get -y install nano unzip  wget curl libimobiledevice-utils libimobiledevice6 usbmuxd cmake git build-essential python openjdk-8-jdk
+# Get the container-server built in the previous stage
+COPY --from=build-server /go/GADS-docker-server/container-server /usr/local/bin
+
+# Setup some needed dependencies and also make the container-server executable
+RUN export DEBIAN_FRONTEND=noninteractive && \
+apt-get update && apt-get -y install unzip wget curl build-essential openjdk-8-jdk libjpeg-dev libjpeg62 && \
+apt update && apt install -y ffmpeg && \
+chmod +x /usr/local/bin/container-server
 
 # Set JAVA_HOME
 ENV JAVA_HOME="/usr/lib/jvm/java-8-openjdk-amd64/jre" \
     PATH=$PATH:$JAVA_HOME/bin
-
-RUN apt update && apt install -y ffmpeg
 
 # Install Android SDK
 #=====================
@@ -19,13 +33,16 @@ ENV ANDROID_HOME=/root
 ENV ANDROID_PLATFORM_VERSION="android-25"
 ENV ANDROID_BUILD_TOOLS_VERSION=31.0.0
 
+# Download the android SDK, setup the access and owner and remove wget since we no longer need it
 RUN wget -O tools.zip https://dl.google.com/android/repository/${SDK_VERSION}.zip && \
     unzip tools.zip && rm tools.zip && \
     chmod a+x -R $ANDROID_HOME && \
-    chown -R root:root $ANDROID_HOME
+    chown -R root:root $ANDROID_HOME && \
+    apt-get remove -y wget
 
 ENV PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin
 
+# Setup the android tools
 RUN mkdir -p ~/.android && \
     touch ~/.android/repositories.cfg && \
     echo y | sdkmanager "platform-tools" && \
@@ -34,15 +51,12 @@ RUN mkdir -p ~/.android && \
 
 ENV PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools
 
-# Setup nvm and install latest appium
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
-RUN export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \
+# Setup nvm and install latest appium, then remove curl since we no longer need it
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash && export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \
      . "$NVM_DIR/nvm.sh" && nvm install $NODE_VERSION && \
-    nvm alias default $NODE_VERSION && chown -R root: "/root/.nvm/versions/node/v$NODE_VERSION/lib/node_modules/" && npm install -g appium@next && appium driver install uiautomator2
+    nvm alias default $NODE_VERSION && chown -R root: "/root/.nvm/versions/node/v$NODE_VERSION/lib/node_modules/" && npm install -g appium@next && appium driver install uiautomator2 && \
+    apt-get remove -y curl
 
-#Grab GADS-docker-server from github and extract it in /usr/local/bin
-RUN wget https://github.com/shamanec/GADS-docker-server/releases/latest/download/container-server.zip
-RUN unzip container-server.zip -d /usr/local/bin
-
+# Copy the device synchronization script to the image
 COPY configs/device-sync.sh /
 ENTRYPOINT ["/bin/bash","-c","/device-sync.sh"]

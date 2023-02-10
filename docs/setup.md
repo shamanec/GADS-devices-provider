@@ -41,6 +41,8 @@ If you have followed all the steps, set up and registered the devices and config
 ### Dependencies  
 
 1. Install `adb`  with `sudo apt install adb`  
+2. Enable `USB Debugging` for each Android device through the developer tools.  
+3. Connect the devices to the host and authorize the USB debugging - this will create pairing keys that are used by the containers so you don't have to authorize the debugging each time a container is created.  
 
 ### Register devices in config.json
 1. Open the `config.json` file.  
