@@ -1,26 +1,37 @@
+# First we build the container-server using a golang image
+FROM golang:1.17 as build-server
+
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get -y install libjpeg-dev build-essential && \
+    git clone https://github.com/shamanec/GADS-docker-server.git && \
+    cd GADS-docker-server && \
+    go build -o container-server .
+
+# Then we build the device image
 FROM ubuntu:18.04
 
-# Setup usbmuxd and other deps
-RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get -y install unzip  wget curl libimobiledevice-utils libimobiledevice6 usbmuxd cmake git build-essential python jq
+# Get the container-server built in the previous stage
+COPY --from=build-server /go/GADS-docker-server/container-server /usr/local/bin
 
-# Install ffmpeg
-RUN apt update && apt install -y ffmpeg
+# Setup usbmuxd and other dependencies, also make the container-server executable
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get -y install unzip wget curl libimobiledevice-utils libimobiledevice6 usbmuxd cmake build-essential libjpeg-dev libjpeg62 && \
+    apt update && apt install -y ffmpeg && \
+    chmod +x /usr/local/bin/container-server
 
 ENV NODE_VERSION="16.17.0"
 
 # Setup nvm and install latest appium
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
-RUN export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash && \
+    export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \
      . "$NVM_DIR/nvm.sh" && nvm install $NODE_VERSION && \
-    nvm alias default $NODE_VERSION && chown -R root: "/root/.nvm/versions/node/v$NODE_VERSION/lib/node_modules/" && npm install -g appium@next && appium driver install xcuitest
-
-# Grab GADS-docker-server from github and extract it in /usr/local/bin
-RUN wget https://github.com/shamanec/GADS-docker-server/releases/latest/download/container-server.zip
-RUN unzip container-server.zip -d /usr/local/bin
+    nvm alias default $NODE_VERSION && chown -R root: "/root/.nvm/versions/node/v$NODE_VERSION/lib/node_modules/" && \
+    npm install -g appium@next && \
+    appium driver install xcuitest && \
+    apt-get remove -y curl
 
 # Grab go-ios from github and extract it in /usr/local/bin
-RUN wget https://github.com/danielpaulus/go-ios/releases/latest/download/go-ios-linux.zip
-RUN unzip go-ios-linux.zip -d /usr/local/bin
+RUN wget https://github.com/danielpaulus/go-ios/releases/latest/download/go-ios-linux.zip && \
+    unzip go-ios-linux.zip -d /usr/local/bin && \
+    apt-get remove -y unzip wget
 
 # Copy scripts and WDA ipa to the image
 COPY configs/device-sync.sh /

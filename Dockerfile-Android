@@ -19,7 +19,9 @@ COPY --from=build-server /go/GADS-docker-server/container-server /usr/local/bin
 
 # Setup some needed dependencies and also make the container-server executable
 RUN export DEBIAN_FRONTEND=noninteractive && \
-apt-get update && apt-get -y install unzip wget curl build-essential openjdk-8-jdk libjpeg-dev libjpeg62 && chmod +x /usr/local/bin/container-server
+apt-get update && apt-get -y install unzip wget curl build-essential openjdk-8-jdk libjpeg-dev libjpeg62 && \
+apt update && apt install -y ffmpeg && \
+chmod +x /usr/local/bin/container-server
 
 # Set JAVA_HOME
 ENV JAVA_HOME="/usr/lib/jvm/java-8-openjdk-amd64/jre" \
