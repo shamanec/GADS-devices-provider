@@ -1,5 +1,5 @@
 # First we build the container-server using a golang image
-FROM golang:1.17 as build-server
+FROM golang:1.19 as build-server
 
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get -y install libjpeg-dev build-essential && \
     git clone https://github.com/shamanec/GADS-docker-server.git && \
