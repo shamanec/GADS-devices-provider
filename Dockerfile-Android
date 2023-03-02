@@ -59,4 +59,5 @@ RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | b
 
 # Copy the device synchronization script to the image
 COPY configs/device-sync.sh /
+COPY apps/gads-stream.apk /opt
 ENTRYPOINT ["/bin/bash","-c","/device-sync.sh"]
