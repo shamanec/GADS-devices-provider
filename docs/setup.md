@@ -64,9 +64,9 @@ If you have followed all the steps, set up and registered the devices and config
 1. You need to make sure that adb-server is not running on the host before you start devices containers.  
 2. Run `adb kill-server`.  
 
-### Minicap setup
+### Minicap setup - CURRENTLY GADS DOES NOT USE MINICAP, MAYBE I'LL CREATE A FALLBACK
 
-**NB** You can skip this step if you are not going to use remote control with [GADS](https://github.com/shamanec/GADS). In `config.json` change `remote_control` to `false` in `env-config`  
+~**NB** You can skip this step if you are not going to use remote control with [GADS](https://github.com/shamanec/GADS). In `config.json` change `remote_control` to `false` in `env-config`  
 
 1. Unzip the `minicap.zip` file directly into the main project folder. You should see a single `minicap` folder.   
 *Note that this might or might not work for you*  
@@ -80,7 +80,7 @@ or
 5. Execute `git submodule init` and `git submodule update`.  
 6. Execute `ndk-build`.  
 7. Execute `experimental/gradlew -p experimental assembleDebug`  
-8. Execute `ndk-build NDK_DEBUG=1 1>&2`  
+8. Execute `ndk-build NDK_DEBUG=1 1>&2`  ~
 
 ## iOS setup
 ### Dependencies

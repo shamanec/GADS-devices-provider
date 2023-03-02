@@ -7,9 +7,8 @@
 * Straighforward setup   
 * Endpoints to control the provider, get information, manage containers etc  
 * iOS Appium servers in Docker containers  
-  - Most of the available functionality of the iOS devices is essentially a wrapper of the amazing [go-ios](https://github.com/danielpaulus/go-ios) project without which none of this would be possible  
+  - Most of the available functionality of the iOS devices is essentially available because of the amazing [go-ios](https://github.com/danielpaulus/go-ios) project without which none of this would be possible  
   - Automatically spin up when registered device is connected/disconnected  
-  - Self-healing checks to reinstall/restart WebDriverAgent if it fails  
   - ~Selenium Grid 3 connection~ Currently not working  
   - Run iOS Appium tests on cheap hardware on much bigger scale with only one host machine and in isolation  
   - There are some limitations, you can check [Devices setup](./docs/devices-setup.md)  
