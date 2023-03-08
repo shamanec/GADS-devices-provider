@@ -335,6 +335,7 @@ func CreateAndroidContainer(deviceUDID string) {
 	minicapHalfResolution := deviceConfig.MinicapHalfResolution
 	screenSize := deviceConfig.ScreenSize
 	screenSizeValues := strings.Split(screenSize, "x")
+	useMinicap := deviceConfig.UseMinicap
 
 	// Create the docker client
 	ctx := context.Background()
@@ -346,6 +347,29 @@ func CreateAndroidContainer(deviceUDID string) {
 		return
 	}
 
+	environmentVars := []string{"ON_GRID=" + provider.ConfigData.EnvConfig.ConnectSeleniumGrid,
+		"APPIUM_PORT=" + appiumPort,
+		"DEVICE_UDID=" + deviceUDID,
+		"DEVICE_OS_VERSION=" + deviceOSVersion,
+		"DEVICE_NAME=" + deviceName,
+		"SELENIUM_HUB_PORT=" + seleniumHubPort,
+		"SELENIUM_HUB_HOST=" + seleniumHubHost,
+		"DEVICES_HOST=" + devicesHost,
+		"HUB_PROTOCOL=" + hubProtocol,
+		"CONTAINER_SERVER_PORT=" + containerServerPort,
+		"DEVICE_MODEL=" + deviceModel,
+		"REMOTE_CONTROL=" + remoteControl,
+		"MINICAP_FPS=" + minicapFPS,
+		"MINICAP_HALF_RESOLUTION=" + minicapHalfResolution,
+		"SCREEN_WIDTH=" + screenSizeValues[0],
+		"SCREEN_HEIGHT=" + screenSizeValues[1],
+		"SCREEN_SIZE=" + screenSize,
+		"DEVICE_OS=android"}
+
+	if useMinicap != "" {
+		environmentVars = append(environmentVars, "USE_MINICAP="+useMinicap)
+	}
+
 	// Create the container config
 	config := &container.Config{
 		Image: "android-appium",
@@ -353,24 +377,7 @@ func CreateAndroidContainer(deviceUDID string) {
 			nat.Port("4723"):              struct{}{},
 			nat.Port(containerServerPort): struct{}{},
 		},
-		Env: []string{"ON_GRID=" + provider.ConfigData.EnvConfig.ConnectSeleniumGrid,
-			"APPIUM_PORT=" + appiumPort,
-			"DEVICE_UDID=" + deviceUDID,
-			"DEVICE_OS_VERSION=" + deviceOSVersion,
-			"DEVICE_NAME=" + deviceName,
-			"SELENIUM_HUB_PORT=" + seleniumHubPort,
-			"SELENIUM_HUB_HOST=" + seleniumHubHost,
-			"DEVICES_HOST=" + devicesHost,
-			"HUB_PROTOCOL=" + hubProtocol,
-			"CONTAINER_SERVER_PORT=" + containerServerPort,
-			"DEVICE_MODEL=" + deviceModel,
-			"REMOTE_CONTROL=" + remoteControl,
-			"MINICAP_FPS=" + minicapFPS,
-			"MINICAP_HALF_RESOLUTION=" + minicapHalfResolution,
-			"SCREEN_WIDTH=" + screenSizeValues[0],
-			"SCREEN_HEIGHT=" + screenSizeValues[1],
-			"SCREEN_SIZE=" + screenSize,
-			"DEVICE_OS=android"},
+		Env: environmentVars,
 	}
 
 	mounts := []mount.Mount{
