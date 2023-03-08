@@ -98,7 +98,8 @@
       "device_os_version": "7",
       "container_server_port": "20207",
       "device_model": "Sony Xperia",
-      "minicap_half_resolution": "false"
+      "minicap_half_resolution": "false",
+      "use_minicap": "false"
     }
   ]
 }

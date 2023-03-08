@@ -44,6 +44,7 @@ type DeviceConfig struct {
 	DeviceHost            string `json:"device_host"`
 	MinicapFPS            string `json:"minicap_fps,omitempty"`
 	MinicapHalfResolution string `json:"minicap_half_resolution,omitempty"`
+	UseMinicap            string `json:"use_minicap,omitempty"`
 }
 
 //=======================//
