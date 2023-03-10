@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -12,104 +14,114 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	"github.com/fsnotify/fsnotify"
 	"github.com/shamanec/GADS-devices-provider/provider"
 	"github.com/shamanec/GADS-devices-provider/util"
 	log "github.com/sirupsen/logrus"
 )
 
-func DevicesWatcher() {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		panic("Could not create watcher when preparing to watch /dev folder, err:" + err.Error())
-	}
-	defer watcher.Close()
+var devicesList []string
+var deviceContainers []types.Container
+var mutex sync.Mutex
 
-	err = watcher.Add("/dev")
-	if err != nil {
-		panic("Could not add /dev folder to watcher when preparing to watch it, err:" + err.Error())
-	}
+func StartDevicesListener() {
+	go GetDeviceAndContainers()
+	go UpdateContainers()
+}
 
-	fmt.Println("Started listening for events in /dev folder")
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
+func UpdateContainers() {
+	for {
+		mutex.Lock()
+		defer mutex.Unlock()
+		if len(devicesList) >= len(deviceContainers) {
+			for _, device := range devicesList {
+				os := strings.Split(device, "_")[1]
+				udid := strings.Split(device, "_")[2]
+				hasContainer := false
 
-				// If we have a Create event in /dev (device was connected)
-				if event.Has(fsnotify.Create) {
-					// Get the name of the created file
-					fileName := event.Name
-
-					// Check if the created file was a symlink for a device
-					if strings.HasPrefix(fileName, "/dev/device_") {
-						// Get the device OS and UDID from the symlink name
-						deviceOS := strings.Split(fileName, "_")[1]
-						deviceUDID := strings.Split(fileName, "_")[2]
-
-						// Check if we have a container for the connected device
-						containerExists, containerID, containerStatus := CheckContainerExistsByName(deviceUDID)
-
-						// If we have a container and it is not `Up`
-						// we restart it
-						if containerExists && !strings.Contains(containerStatus, "Up") {
+			containersLoop:
+				for _, container := range deviceContainers {
+					containerName := strings.Replace(container.Names[0], "/", "", -1)
+					if strings.Contains(containerName, udid) {
+						hasContainer = true
+						containerStatus := container.Status
+						if !strings.Contains(containerStatus, "Up") {
+							containerID := container.ID
 							go RestartContainer(containerID)
-							continue
-						}
-
-						// If we don't have a container for the device and it is iOS
-						// Create a new iOS device container for it
-						if deviceOS == "ios" {
-							go CreateIOSContainer(deviceUDID)
-							continue
-						}
-
-						// If we don't have a container for the device and it is Android
-						// Create a new Android device container for it
-						if deviceOS == "android" {
-							go CreateAndroidContainer(deviceUDID)
-							continue
+							break containersLoop
 						}
 					}
 				}
 
-				// If we have a Remove event in /dev (device was disconnected)
-				if event.Has(fsnotify.Remove) {
-					// Get the name of the removed file
-					fileName := event.Name
+				if !hasContainer {
+					if os == "ios" {
+						go CreateIOSContainer(udid)
+						continue
+					}
 
-					// Check if the removed file was a symlink for a device
-					if strings.HasPrefix(fileName, "/dev/device_") {
-						// Get the device UDID from the symlink name
-						deviceUDID := strings.Split(fileName, "_")[2]
-
-						// Check if container exists for the disconnected device
-						containerExists, containerID, _ := CheckContainerExistsByName(deviceUDID)
-
-						// If there is a container for the disconnected device
-						// we remove it
-						if containerExists {
-							go RemoveContainerByID(containerID)
-							continue
-						}
+					if os == "android" {
+						go CreateAndroidContainer(udid)
+						continue
 					}
 				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				log.WithFields(log.Fields{
-					"event": "dev_watcher",
-				}).Info("There was an error with the /dev watcher: " + err.Error())
 			}
 		}
-	}()
 
-	// Block the DeviceWatcher() goroutine forever
-	<-make(chan struct{})
+		if len(devicesList) < len(deviceContainers) {
+			for _, container := range deviceContainers {
+				containerName := strings.Replace(container.Names[0], "/", "", -1)
+				hasDevice := false
+				for _, device := range devicesList {
+					udid := strings.Split(device, "_")[1]
+					if strings.Contains(containerName, udid) {
+						hasDevice = true
+					}
+				}
+
+				if !hasDevice {
+					containerID := container.ID
+					go RemoveContainerByID(containerID)
+				}
+			}
+		}
+		mutex.Unlock()
+
+		time.Sleep(5 * time.Second)
+	}
+}
+
+func GetDeviceAndContainers() {
+	for {
+		mutex.Lock()
+		defer mutex.Unlock()
+		// Empty the deviceList var
+		devicesList = []string{}
+
+		// Get the files in /dev folder
+		files, err := filepath.Glob("/dev/*")
+		if err != nil {
+			fmt.Println("Error listing files in /dev:", err)
+			return
+		}
+
+		// Loop through the found files
+		for _, file := range files {
+			// Split the file to get only the file name
+			_, fileName := filepath.Split(file)
+			// If the filename is a device symlink
+			// Add it to the devices list
+			if strings.Contains(fileName, "device") {
+				devicesList = append(devicesList, fileName)
+			}
+		}
+
+		deviceContainers, err = getDeviceContainersList()
+		if err != nil {
+			fmt.Println("Could not get device containers list, err: " + err.Error())
+		}
+
+		mutex.Unlock()
+		time.Sleep(2 * time.Second)
+	}
 }
 
 // Create an iOS container for a specific device(by UDID) using data from config.json so if device is not registered there it will not attempt to create a container for it
