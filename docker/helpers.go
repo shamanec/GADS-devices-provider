@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/shamanec/GADS-devices-provider/provider"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -71,6 +72,21 @@ func getDeviceContainersList() ([]types.Container, error) {
 	}
 
 	return deviceContainers, nil
+}
+
+func GenerateDevicePorts(udid string) (string, string, string, string) {
+	for index, deviceConfig := range provider.ConfigData.DeviceConfig {
+		configUDID := deviceConfig.DeviceUDID
+		if configUDID == udid {
+			appiumPort := strconv.Itoa(4841 + index)
+			streamPort := strconv.Itoa(20101 + index)
+			containerServerPort := strconv.Itoa(20201 + index)
+			wdaPort := strconv.Itoa(20001 + index)
+			return appiumPort, streamPort, containerServerPort, wdaPort
+		}
+	}
+
+	return "", "", "", ""
 }
 
 type DeviceContainerInfo struct {

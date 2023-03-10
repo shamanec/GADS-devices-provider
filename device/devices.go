@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/shamanec/GADS-devices-provider/docker"
 	"github.com/shamanec/GADS-devices-provider/provider"
 	"github.com/shamanec/GADS-devices-provider/util"
 
@@ -83,11 +84,11 @@ func RunningDeviceContainerNames() ([]string, error) {
 	return containerNames, nil
 }
 
-func DeviceInfo(device_udid string, configData util.ConfigJsonData) (*util.DeviceConfig, error) {
+func DeviceInfo(udid string, configData util.ConfigJsonData) (*util.DeviceConfig, error) {
 	// Loop through the device configs and find the one that corresponds to the provided device UDID
 	var deviceConfig util.DeviceConfig
 	for _, v := range configData.DeviceConfig {
-		if v.DeviceUDID == device_udid {
+		if v.DeviceUDID == udid {
 			deviceConfig = v
 		}
 	}
@@ -95,21 +96,23 @@ func DeviceInfo(device_udid string, configData util.ConfigJsonData) (*util.Devic
 	if deviceConfig == (util.DeviceConfig{}) {
 		log.WithFields(log.Fields{
 			"event": "get_device_info_from_config",
-		}).Error("Device with udid " + device_udid + " was not found in config data.")
+		}).Error("Device with udid " + udid + " was not found in config data.")
 		return nil, errors.New("")
 	}
+
+	appiumPort, streamPort, containerServerPort, wdaPort := docker.GenerateDevicePorts(udid)
 
 	// Return the info for the device
 	return &util.DeviceConfig{
 		OS:                    deviceConfig.OS,
-		AppiumPort:            deviceConfig.AppiumPort,
+		AppiumPort:            appiumPort,
 		DeviceName:            deviceConfig.DeviceName,
 		DeviceOSVersion:       deviceConfig.DeviceOSVersion,
 		DeviceUDID:            deviceConfig.DeviceUDID,
-		StreamPort:            deviceConfig.StreamPort,
-		WDAPort:               deviceConfig.WDAPort,
+		StreamPort:            streamPort,
+		WDAPort:               wdaPort,
 		ScreenSize:            deviceConfig.ScreenSize,
-		ContainerServerPort:   deviceConfig.ContainerServerPort,
+		ContainerServerPort:   containerServerPort,
 		DeviceModel:           deviceConfig.DeviceModel,
 		DeviceImage:           deviceConfig.DeviceImage,
 		DeviceHost:            configData.AppiumConfig.DevicesHost,
