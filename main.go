@@ -29,7 +29,6 @@ func main() {
 
 	setLogging()
 
-	//go docker.DevicesWatcher()
 	go docker.StartDevicesListener()
 	handler := router.HandleRequests()
 

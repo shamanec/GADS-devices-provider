@@ -13,28 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Check if container exists by name and also return container_id
-// func CheckContainerExistsByName(deviceUDID string) (bool, string, string) {
-// 	// Get all the containers
-// 	containers, _ := getDeviceContainersList()
-// 	containerExists := false
-// 	containerID := ""
-// 	containerStatus := ""
-
-// 	// Loop through the available containers
-// 	// If a container which name contains the device udid exists
-// 	// return true and also return the container ID and status
-// 	for _, container := range containers {
-// 		containerName := strings.Replace(container.Names[0], "/", "", -1)
-// 		if strings.Contains(containerName, deviceUDID) {
-// 			containerExists = true
-// 			containerID = container.ID
-// 			containerStatus = container.Status
-// 		}
-// 	}
-// 	return containerExists, containerID, containerStatus
-// }
-
 // Get list of containers on host
 func getContainersList() ([]types.Container, error) {
 	// Create a new Docker client
@@ -45,6 +23,7 @@ func getContainersList() ([]types.Container, error) {
 		}).Error(". Error: " + err.Error())
 		return nil, errors.New("Could not create docker client")
 	}
+	defer cli.Close()
 
 	// Get the list of containers
 	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
@@ -104,6 +83,7 @@ func DeviceContainerRows() ([]DeviceContainerInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer cli.Close()
 
 	// Get the current containers list
 	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})

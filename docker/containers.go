@@ -22,6 +22,7 @@ import (
 var devicesList []string
 var deviceContainers []types.Container
 var mutex sync.Mutex
+var dockerClient *client.Client
 
 func StartDevicesListener() {
 	go GetDeviceAndContainers()
@@ -170,6 +171,7 @@ func CreateIOSContainer(udid string, appiumPort string, streamPort string, conta
 		}).Error("Could not create docker client when attempting to create a container for device with udid: " + udid)
 		return
 	}
+	defer cli.Close()
 
 	// Create the container config
 	config := &container.Config{
@@ -353,6 +355,7 @@ func CreateAndroidContainer(udid string, appiumPort string, containerServerPort 
 		}).Error("Could not create docker client when attempting to create a container for device with udid: " + udid)
 		return
 	}
+	defer cli.Close()
 
 	environmentVars := []string{"ON_GRID=" + provider.ConfigData.EnvConfig.ConnectSeleniumGrid,
 		"APPIUM_PORT=" + appiumPort,
@@ -525,6 +528,7 @@ func RemoveContainerByID(containerID string) {
 		}).Error("Could not create docker client while attempting to remove container with ID: " + containerID + ". Error: " + err.Error())
 		return
 	}
+	defer cli.Close()
 
 	// Stop the container by the provided container ID
 	if err := cli.ContainerStop(ctx, containerID, nil); err != nil {
