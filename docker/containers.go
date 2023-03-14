@@ -497,6 +497,7 @@ func RestartContainer(container_id string) error {
 		}).Error("Could not create docker client while attempting to restart container with ID: " + container_id + ". Error: " + err.Error())
 		return err
 	}
+	defer cli.Close()
 
 	// Try to restart the container
 	if err := cli.ContainerRestart(ctx, container_id, nil); err != nil {
