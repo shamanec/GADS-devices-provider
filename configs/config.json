@@ -56,7 +56,8 @@
       "device_model": "Huawei P20 Pro",
       "device_image": "huawei-p20-pro.png",
       "minicap_half_resolution": "true",
-      "minicap_fps": "30"
+      "minicap_fps": "30",
+      "use_minicap": "false"
     },
     {
       "os": "android",
@@ -74,7 +75,8 @@
       "device_name": "Sony_Xperia",
       "device_os_version": "7",
       "device_model": "Sony Xperia",
-      "minicap_half_resolution": "false"
+      "minicap_half_resolution": "false",
+      "use_minicap": "false"
     }
   ]
 }
