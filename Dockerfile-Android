@@ -37,8 +37,7 @@ ENV ANDROID_BUILD_TOOLS_VERSION=31.0.0
 RUN wget -O tools.zip https://dl.google.com/android/repository/${SDK_VERSION}.zip && \
     unzip tools.zip && rm tools.zip && \
     chmod a+x -R $ANDROID_HOME && \
-    chown -R root:root $ANDROID_HOME && \
-    apt-get remove -y wget
+    chown -R root:root $ANDROID_HOME
 
 ENV PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin
 
@@ -57,7 +56,10 @@ RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | b
     nvm alias default $NODE_VERSION && chown -R root: "/root/.nvm/versions/node/v$NODE_VERSION/lib/node_modules/" && npm install -g appium@next && appium driver install uiautomator2 && \
     apt-get remove -y curl
 
+RUN wget https://github.com/shamanec/GADS-Android-stream/releases/latest/download/gads-stream.zip && \
+    unzip gads-stream.zip -d /opt && \
+    apt-get remove -y unzip wget
+
 # Copy the device synchronization script to the image
 COPY configs/device-sync.sh /
-COPY apps/gads-stream.apk /opt
 ENTRYPOINT ["/bin/bash","-c","/device-sync.sh"]
