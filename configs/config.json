@@ -55,8 +55,6 @@
       "device_os_version": "10",
       "device_model": "Huawei P20 Pro",
       "device_image": "huawei-p20-pro.png",
-      "minicap_half_resolution": "true",
-      "minicap_fps": "30",
       "use_minicap": "false"
     },
     {

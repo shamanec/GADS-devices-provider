@@ -22,35 +22,40 @@ var connectedDevices map[string]Device
 var mutex sync.Mutex
 
 type DeviceContainer struct {
-	ContainerID     string
-	ContainerPorts  []types.Port
-	ContainerStatus string
-	ImageName       string
-	ContainerName   string
+	ContainerID     string `json:"id"`
+	ContainerStatus string `json:"status"`
+	ImageName       string `json:"image_name"`
+	ContainerName   string `json:"container_name"`
 }
 
 type Device struct {
-	Container             DeviceContainer `json:"container"`
-	State                 string          `json:"state"`
-	UDID                  string          `json:"udid"`
-	OS                    string          `json:"os"`
-	AppiumPort            string          `json:"appium_port"`
-	StreamPort            string          `json:"stream_port"`
-	ContainerServerPort   string          `json:"container_server_port"`
-	WDAPort               string          `json:"wda_port,omitempty"`
-	Name                  string          `json:"name"`
-	OSVersion             string          `json:"os_version"`
-	ScreenSize            string          `json:"screen_size"`
-	Model                 string          `json:"model"`
-	Image                 string          `json:"image,omitempty"`
-	Host                  string          `json:"host"`
-	MinicapFPS            string          `json:"minicap_fps,omitempty"`
-	MinicapHalfResolution string          `json:"minicap_half_resolution,omitempty"`
-	UseMinicap            string          `json:"use_minicap,omitempty"`
+	Container             *DeviceContainer `json:"container,omitempty"`
+	State                 string           `json:"state"`
+	UDID                  string           `json:"udid"`
+	OS                    string           `json:"os"`
+	AppiumPort            string           `json:"appium_port"`
+	StreamPort            string           `json:"stream_port"`
+	ContainerServerPort   string           `json:"container_server_port"`
+	WDAPort               string           `json:"wda_port,omitempty"`
+	Name                  string           `json:"name"`
+	OSVersion             string           `json:"os_version"`
+	ScreenSize            string           `json:"screen_size"`
+	Model                 string           `json:"model"`
+	Image                 string           `json:"image,omitempty"`
+	Host                  string           `json:"host"`
+	MinicapFPS            string           `json:"minicap_fps,omitempty"`
+	MinicapHalfResolution string           `json:"minicap_half_resolution,omitempty"`
+	UseMinicap            string           `json:"use_minicap,omitempty"`
+}
+
+var configDevices []*Device
+
+func GetConfigDevices() []*Device {
+	return configDevices
 }
 
 func UpdateDevices() {
-	configDevices := createDevicesFromConfig()
+	configDevices = createDevicesFromConfig()
 	if configDevices == nil {
 		log.WithFields(log.Fields{
 			"event": "device_listener",
@@ -163,14 +168,20 @@ OUTER:
 func createDevicesFromConfig() []*Device {
 	var devices []*Device
 	for index, configDevice := range provider.ConfigData.DeviceConfig {
+		wdaPort := ""
+		if configDevice.OS == "ios" {
+			wdaPort = strconv.Itoa(20001 + index)
+		}
+
 		device := &Device{
+			Container:             nil,
 			State:                 "Disconnected",
 			UDID:                  configDevice.DeviceUDID,
 			OS:                    configDevice.OS,
 			AppiumPort:            strconv.Itoa(4841 + index),
 			StreamPort:            strconv.Itoa(20101 + index),
 			ContainerServerPort:   strconv.Itoa(20201 + index),
-			WDAPort:               strconv.Itoa(20001 + index),
+			WDAPort:               wdaPort,
 			Name:                  configDevice.DeviceName,
 			OSVersion:             configDevice.DeviceOSVersion,
 			ScreenSize:            configDevice.ScreenSize,
@@ -205,12 +216,11 @@ func (device *Device) hasContainer(allContainers []types.Container) (bool, error
 		if strings.Contains(containerName, device.UDID) {
 			deviceContainer := DeviceContainer{
 				ContainerID:     container.ID,
-				ContainerPorts:  container.Ports,
 				ContainerStatus: container.Status,
 				ImageName:       container.Image,
 				ContainerName:   containerName,
 			}
-			device.Container = deviceContainer
+			device.Container = &deviceContainer
 			return true, nil
 		}
 	}
@@ -254,9 +264,18 @@ func (device *Device) restartContainer() {
 }
 
 func (device *Device) removeContainer() {
+	// Remove the container info from the device
+	// Regardless of the removal outcome
+	defer func() {
+		device.Container = nil
+	}()
+
+	// Get the ID of the device container
 	containerID := device.Container.ContainerID
 
+	// Check if the container is not already being removed by checking the state
 	if device.State != "Removing" {
+		// If device is not already being removed - set state to Removing
 		device.State = "Removing"
 	}
 	log.WithFields(log.Fields{
@@ -280,7 +299,7 @@ func (device *Device) removeContainer() {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
 		}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
-		device.State = "Failed removing"
+		device.State = "Failed stopping"
 		return
 	}
 

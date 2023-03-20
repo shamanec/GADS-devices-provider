@@ -52,6 +52,15 @@ func SimpleJSONResponse(w http.ResponseWriter, responseMessage string, code int)
 	json.NewEncoder(w).Encode(message)
 }
 
+func GetAvailableDevicesInfo2(w http.ResponseWriter, r *http.Request) {
+	responseData, err := util.ConvertToJSONString(docker.GetConfigDevices())
+	if err != nil {
+		JSONError(w, "get_available_devices", "Could not get available devices", 500)
+		return
+	}
+	fmt.Fprintf(w, responseData)
+}
+
 func GetAvailableDevicesInfo(w http.ResponseWriter, r *http.Request) {
 	runningContainerNames, err := device.RunningDeviceContainerNames()
 	if err != nil {
