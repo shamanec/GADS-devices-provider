@@ -3,6 +3,8 @@ package docker
 import (
 	"context"
 	"errors"
+	"fmt"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -13,8 +15,30 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func getConnectedDevices() ([]string, error) {
+	// Get all files/symlinks/folders in /dev
+	var connectedDevices []string = []string{}
+	devFiles, err := filepath.Glob("/dev/*")
+	if err != nil {
+		fmt.Println("Error listing files in /dev:", err)
+		return nil, err
+	}
+
+	for _, devFile := range devFiles {
+		// Split the devFile to get only the file name
+		_, fileName := filepath.Split(devFile)
+		// If the filename is a device symlink
+		// Add it to the connected devices list
+		if strings.Contains(fileName, "device") {
+			connectedDevices = append(connectedDevices, fileName)
+		}
+	}
+
+	return connectedDevices, nil
+}
+
 // Get list of containers on host
-func getContainersList() ([]types.Container, error) {
+func getHostContainers() ([]types.Container, error) {
 	// Create a new Docker client
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
@@ -36,8 +60,8 @@ func getContainersList() ([]types.Container, error) {
 	return containers, nil
 }
 
-func getDeviceContainersList() ([]types.Container, error) {
-	allContainers, err := getContainersList()
+func getDeviceContainers() ([]types.Container, error) {
+	allContainers, err := getHostContainers()
 	if err != nil {
 		return nil, err
 	}

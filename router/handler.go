@@ -28,7 +28,6 @@ func HandleRequests() http.Handler {
 	))
 
 	router.HandleFunc("/available-devices", GetAvailableDevicesInfo).Methods("GET")
-	router.HandleFunc("/containers/{container_id}/restart", RestartContainer).Methods("POST")
 	router.HandleFunc("/containers/{container_id}/remove", RemoveContainer).Methods("POST")
 	router.HandleFunc("/containers/{container_id}/logs", GetContainerLogs).Methods("GET")
 	router.HandleFunc("/configuration/create-udev-rules", CreateUdevRules).Methods("POST")

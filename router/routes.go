@@ -77,36 +77,6 @@ func GetAvailableDevicesInfo(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, responseData)
 }
 
-// @Summary      Restart container
-// @Description  Restarts container by provided container ID
-// @Tags         containers
-// @Produce      json
-// @Param        container_id path string true "Container ID"
-// @Success      200 {object} JsonResponse
-// @Failure      500 {object} JsonErrorResponse
-// @Router       /containers/{container_id}/restart [post]
-func RestartContainer(w http.ResponseWriter, r *http.Request) {
-	// Get the request path vars
-	vars := mux.Vars(r)
-	containerID := vars["container_id"]
-
-	log.WithFields(log.Fields{
-		"event": "docker_container_restart",
-	}).Info("Attempting to restart container with ID: " + containerID)
-
-	// Call the internal function to restart the container
-	err := docker.RestartContainer(containerID)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "docker_container_restart",
-		}).Error("Restarting container with ID: " + containerID + " failed.")
-		JSONError(w, "docker_container_restart", "Could not restart container with ID: "+containerID, 500)
-		return
-	}
-
-	SimpleJSONResponse(w, "Successfully attempted to restart container with ID: "+containerID, 200)
-}
-
 // @Summary      Get container logs
 // @Description  Get logs of container by provided container ID
 // @Tags         containers
