@@ -62,15 +62,6 @@ func UpdateDevices() {
 		}).Warn("There are no devices registered in config.json. Please add devices and restart the provider!")
 	}
 
-	go func() {
-		for {
-			for _, device := range configDevices {
-				fmt.Printf("Device: %v %v\n", device.UDID, device.State)
-			}
-			time.Sleep(2 * time.Second)
-		}
-	}()
-
 OUTER:
 	for {
 		// Get a list of the connected device symlinks from /dev
