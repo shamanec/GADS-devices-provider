@@ -48,14 +48,11 @@ If you have followed all the steps, set up and registered the devices and config
 1. Open the `config.json` file.  
 2. For each Android device add a new object inside the `devices-list` array in the json.  
 3. For each device provide (all values as strings):  
-  * `os` - should be `android`  
-  * `appium_port` - unique Appium port  
+  * `os` - should be `android`   
   * `screen_size` - Go to `https://whatismyandroidversion.com` and fill in the displayed `Screen size`, not `Viewport size`  
-  * `stream_port` - unique port for the Minicap video stream  
   * `device_os_version` - "11" for example  
   * `device_name` - avoid using special characters and spaces except '_'. Example: "Huawei_P20_Pro"  
   * `device_udid` - UDID of the Android device, can get it with `adb devices`   
-  * `container_server_port` - unique port for the Go server running inside the device containers  
   * `device_model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
   * `minicap_fps` - non-mandatory field, if not provided `minicap` will run with uncapped FPS  
   * `minicap_half_resolution` - non-mandatory field, add with `true` if you want to achieve maximum FPS, will lower stream quality though  
@@ -127,14 +124,10 @@ You need an Apple Developer account to build and sign `WebDriverAgent`
 2. For each iOS device add a new object inside the `devices-config` array in the json.  
 3. For each device provide (all values as strings):  
   * `os` - should be "ios"  
-  * `appium_port` - unique appium port  
-  * `stream_port` - unique port for the WDA Mjpeg stream  
-  * `wda_port` - unique WDA instance port  
   * `device_udid` - UDID of the iOS device, can get it with `go-ios` for example  
   * `device_os_version` - "15.2" for example  
   * `device_name` - avoid using special characters and spaces except '_'. Example: "Huawei_P20_Pro"  
   * `screen_size` - this is needed to easily work with the stream and remote control. Example: "375x667". You can get it on https://whatismyviewport.com (ScreenSize: at the bottom)   
-  * `container_server_port` - unique port for the Go server running inside the device containers  
   * `device_model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
 
 ### Containerized usbmuxd connections - RECOMMENDED
@@ -180,25 +173,18 @@ This can be used for remote development of iOS apps or execution of native XCUIT
   "devices-config": [
     {
       "os": "ios",
-      "appium_port": "4841",
       "device_name": "iPhone_11",
       "device_os_version": "13.5.1",
       "device_udid": "00008030000418C136FB8022",
-      "stream_port": "20101",
-      "wda_port": "20001",
       "screen_size": "375x667",
-      "container_server_port": "20201",
       "device_model": "iPhone 11"
     },
     {
       "os": "android",
-      "appium_port": "4881",
       "screen_size": "1080x2241",
       "device_udid": "WCR7N18B14002300",
       "device_name": "Huawei_P20_Pro",
-      "stream_port": "20201",
       "device_os_version": "10",
-      "container_server_port": "20205",
       "device_model": "Huawei P20 Pro",
       "minicap_fps" : "30",
       "minicap_half_resolution": "true",

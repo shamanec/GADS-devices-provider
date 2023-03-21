@@ -29,7 +29,7 @@ func main() {
 
 	setLogging()
 
-	go docker.DevicesWatcher()
+	go docker.UpdateDevices()
 	handler := router.HandleRequests()
 
 	fmt.Printf("Starting provider on port:%v\n", provider.ProviderPort)
