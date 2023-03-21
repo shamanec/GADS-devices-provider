@@ -1,7 +1,7 @@
 {
   "appium-config": {
-    "devices_host": "192.168.1.5",
-    "selenium_hub_host": "192.168.1.8",
+    "devices_host": "192.168.1.2",
+    "selenium_hub_host": "192.168.1.2",
     "selenium_hub_port": "4444",
     "selenium_hub_protocol_type": "http",
     "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner"

@@ -2,7 +2,6 @@ package docker
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -113,7 +112,6 @@ OUTER:
 					// If the container is not Up
 					if !strings.Contains(configDevice.Container.ContainerStatus, "Up") {
 						// Restart the container
-						fmt.Printf("Restarting container for %v \n", configDevice)
 						go configDevice.restartContainer()
 						continue INNER
 					}
