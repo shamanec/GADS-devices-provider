@@ -15,6 +15,49 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type DeviceContainerInfo struct {
+	ContainerID     string
+	ImageName       string
+	ContainerStatus string
+	ContainerPorts  string
+	ContainerName   string
+	DeviceUDID      string
+}
+
+// Create initial devices from the json config
+func createDevicesFromConfig() []*Device {
+	var devices []*Device
+	for index, configDevice := range provider.ConfigData.DeviceConfig {
+		wdaPort := ""
+		if configDevice.OS == "ios" {
+			wdaPort = strconv.Itoa(20001 + index)
+		}
+
+		device := &Device{
+			Container:             nil,
+			State:                 "Disconnected",
+			UDID:                  configDevice.DeviceUDID,
+			OS:                    configDevice.OS,
+			AppiumPort:            strconv.Itoa(4841 + index),
+			StreamPort:            strconv.Itoa(20101 + index),
+			ContainerServerPort:   strconv.Itoa(20201 + index),
+			WDAPort:               wdaPort,
+			Name:                  configDevice.DeviceName,
+			OSVersion:             configDevice.DeviceOSVersion,
+			ScreenSize:            configDevice.ScreenSize,
+			Model:                 configDevice.DeviceModel,
+			Image:                 configDevice.DeviceImage,
+			Host:                  provider.ConfigData.AppiumConfig.DevicesHost,
+			MinicapFPS:            configDevice.MinicapFPS,
+			MinicapHalfResolution: configDevice.MinicapHalfResolution,
+			UseMinicap:            configDevice.UseMinicap,
+		}
+		devices = append(devices, device)
+	}
+
+	return devices
+}
+
 func getConnectedDevices() ([]string, error) {
 	// Get all files/symlinks/folders in /dev
 	var connectedDevices []string = []string{}
@@ -60,23 +103,6 @@ func getHostContainers() ([]types.Container, error) {
 	return containers, nil
 }
 
-func getDeviceContainers() ([]types.Container, error) {
-	allContainers, err := getHostContainers()
-	if err != nil {
-		return nil, err
-	}
-
-	var deviceContainers []types.Container
-	for _, container := range allContainers {
-		containerName := strings.Replace(container.Names[0], "/", "", -1)
-		if strings.Contains(containerName, "iosDevice") || strings.Contains(containerName, "androidDevice") {
-			deviceContainers = append(deviceContainers, container)
-		}
-	}
-
-	return deviceContainers, nil
-}
-
 func GenerateDevicePorts(udid string) (string, string, string, string) {
 	for index, deviceConfig := range provider.ConfigData.DeviceConfig {
 		configUDID := deviceConfig.DeviceUDID
@@ -90,15 +116,6 @@ func GenerateDevicePorts(udid string) (string, string, string, string) {
 	}
 
 	return "", "", "", ""
-}
-
-type DeviceContainerInfo struct {
-	ContainerID     string
-	ImageName       string
-	ContainerStatus string
-	ContainerPorts  string
-	ContainerName   string
-	DeviceUDID      string
 }
 
 // Generate the data for device containers table in the UI
