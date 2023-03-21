@@ -11,7 +11,7 @@
   - Automatically spin up when registered device is connected/disconnected  
   - ~Selenium Grid 3 connection~ Currently not working  
   - Run iOS Appium tests on cheap hardware on much bigger scale with only one host machine and in isolation  
-  - There are some limitations, you can check [Devices setup](./docs/devices-setup.md)  
+  - There are some limitations, you can check [Devices setup](./docs/setup.md)  
 * Android Appium servers in Docker containers  
   - Automatically spin up when registered device is connected/disconnected  
   - ~Selenium Grid 3 connection~ Currently not working  
