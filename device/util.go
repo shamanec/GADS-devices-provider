@@ -2,11 +2,8 @@ package device
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -18,45 +15,7 @@ import (
 
 var mutex sync.Mutex
 
-func getDeviceJsonData() ([]*Device, error) {
-	var devices []*Device
-	bs, err := getDeviceJsonBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(bs, &devices)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_config_data",
-		}).Error("Could not unmarshal config file: " + err.Error())
-		return nil, err
-	}
-
-	return devices, err
-}
-
-func getDeviceJsonBytes() ([]byte, error) {
-	jsonFile, err := os.Open("./configs/devices.json")
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_config_data",
-		}).Error("Could not open config file: " + err.Error())
-		return nil, err
-	}
-	defer jsonFile.Close()
-
-	bs, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_config_data",
-		}).Error("Could not read config file to byte slice: " + err.Error())
-		return nil, err
-	}
-
-	return bs, nil
-}
-
+// Get all the connected devices to the host by reading the symlinks in /dev
 func getConnectedDevices() ([]string, error) {
 	// Get all files/symlinks/folders in /dev
 	var connectedDevices []string = []string{}
@@ -79,13 +38,13 @@ func getConnectedDevices() ([]string, error) {
 	return connectedDevices, nil
 }
 
-// Get list of containers on host
+// Get list of all containers on host
 func getHostContainers() ([]types.Container, error) {
 	// Create a new Docker client
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"event": "get_container_list",
+			"event": "get_host_containers",
 		}).Error(". Error: " + err.Error())
 		return nil, errors.New("Could not create docker client")
 	}
@@ -95,7 +54,7 @@ func getHostContainers() ([]types.Container, error) {
 	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
 	if err != nil {
 		log.WithFields(log.Fields{
-			"event": "get_container_list",
+			"event": "get_host_containers",
 		}).Error(". Error: " + err.Error())
 		return nil, errors.New("Could not get container list")
 	}
@@ -112,6 +71,7 @@ func (device *Device) isDeviceConnected(connectedDevices []string) (bool, error)
 	return false, nil
 }
 
+// Check if device has an existing container
 func (device *Device) hasContainer(allContainers []types.Container) (bool, error) {
 	for _, container := range allContainers {
 		// Parse plain container name
@@ -131,6 +91,7 @@ func (device *Device) hasContainer(allContainers []types.Container) (bool, error
 	return false, nil
 }
 
+// Set the current device state
 func (device *Device) setState(state string) {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -138,6 +99,7 @@ func (device *Device) setState(state string) {
 	device.State = state
 }
 
+// Get the device state
 func (device *Device) getState() string {
 	mutex.Lock()
 	defer mutex.Unlock()

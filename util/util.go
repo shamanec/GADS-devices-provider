@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Convert an interface{}(struct) into an indented JSON string
 func ConvertToJSONString(data interface{}) (string, error) {
 	b, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {

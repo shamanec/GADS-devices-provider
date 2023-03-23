@@ -60,6 +60,7 @@ type DeviceContainer struct {
 var projectDir string
 var Config ConfigJsonData
 
+// Set up the configuration data for the provider
 func SetupConfig() {
 	var err error
 
@@ -76,6 +77,7 @@ func SetupConfig() {
 	updateDevicesFromConfig()
 }
 
+// Loop through the devices from config.json and initialize the empty values
 func updateDevicesFromConfig() {
 	for index, configDevice := range Config.Devices {
 		wdaPort := ""
@@ -93,6 +95,7 @@ func updateDevicesFromConfig() {
 	}
 }
 
+// Read the config.json file and initialize the configuration struct
 func getConfigJsonData() error {
 	bs, err := getConfigJsonBytes()
 	if err != nil {
@@ -110,6 +113,7 @@ func getConfigJsonData() error {
 	return nil
 }
 
+// Read the config.json file into a byte slice
 func getConfigJsonBytes() ([]byte, error) {
 	jsonFile, err := os.Open("./configs/config.json")
 	if err != nil {
