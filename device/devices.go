@@ -2,13 +2,10 @@ package device
 
 import (
 	"strings"
-	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 )
-
-var mutex sync.Mutex
 
 func UpdateDevices() {
 OUTER:

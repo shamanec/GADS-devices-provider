@@ -9,11 +9,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 )
+
+var mutex sync.Mutex
 
 func getDeviceJsonData() ([]*Device, error) {
 	var devices []*Device
@@ -126,4 +129,18 @@ func (device *Device) hasContainer(allContainers []types.Container) (bool, error
 		}
 	}
 	return false, nil
+}
+
+func (device *Device) setState(state string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	device.State = state
+}
+
+func (device *Device) getState() string {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	return device.State
 }
