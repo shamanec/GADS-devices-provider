@@ -27,11 +27,11 @@ func HandleRequests() http.Handler {
 		httpSwagger.DomID("#swagger-ui"),
 	))
 
-	router.HandleFunc("/available-devices", GetAvailableDevices).Methods("GET")
+	router.HandleFunc("/device/list", GetProviderDevices).Methods("GET")
 	router.HandleFunc("/containers/{container_id}/remove", RemoveContainer).Methods("POST")
 	router.HandleFunc("/containers/{container_id}/logs", GetContainerLogs).Methods("GET")
 	router.HandleFunc("/configuration/create-udev-rules", CreateUdevRules).Methods("POST")
-	router.HandleFunc("/provider-logs", GetLogs)
+	router.HandleFunc("/logs", GetLogs)
 
 	return originHandler(router)
 }

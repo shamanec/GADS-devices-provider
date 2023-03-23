@@ -48,7 +48,7 @@ func SimpleJSONResponse(w http.ResponseWriter, responseMessage string, code int)
 	json.NewEncoder(w).Encode(message)
 }
 
-func GetAvailableDevices(w http.ResponseWriter, r *http.Request) {
+func GetProviderDevices(w http.ResponseWriter, r *http.Request) {
 	responseData, err := util.ConvertToJSONString(device.GetConfigDevices())
 	if err != nil {
 		JSONError(w, "get_available_devices", "Could not get available devices", 500)
