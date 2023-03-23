@@ -9,7 +9,7 @@ The provider itself has minimum dependencies:
 ~1. Set Selenium Grid connection - `true` or `false`. `true` attempts to connect each Appium server to the Selenium Grid instance defined in the same file~ At the moment Selenium Grid connection does not work!  
 
 ## Run the provider server   
-1. Execute `go build .` and `./GADS-devices-provider` 
+1. Execute `go build .` and `./GADS-devices-provider` or `go run  main.go` 
 2. You can also use `./GADS-devices-provider -port={PORT}` to run the provider on a selected port, the default port without the flag is 10001.     
 
 You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.html`  
@@ -25,7 +25,7 @@ You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.h
 
 ### Setup udev rules
 **NB** Before this step you need to register your devices in `config.json` according to [Devices setup](#devices-setup)  
-1. Execute `curl -X POST http://localhost:{ProviderPort}/configuration/create-udev-rules`  
+1. Execute `curl -X POST http://localhost:{ProviderPort}/device/create-udev-rules`  
 2. Copy the newly created `90-device.rules` file to `/etc/udev/rules.d/` - `sudo cp 90-device.rules /etc/udev/rules/`  
 3. Execute `sudo udevadm control --reload-rules` or restart the machine    
 
@@ -50,10 +50,10 @@ If you have followed all the steps, set up and registered the devices and config
 3. For each device provide (all values as strings):  
   * `os` - should be `android`   
   * `screen_size` - Go to `https://whatismyandroidversion.com` and fill in the displayed `Screen size`, not `Viewport size`  
-  * `device_os_version` - "11" for example  
-  * `device_name` - avoid using special characters and spaces except '_'. Example: "Huawei_P20_Pro"  
-  * `device_udid` - UDID of the Android device, can get it with `adb devices`   
-  * `device_model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
+  * `os_version` - "11" for example  
+  * `name` - avoid using special characters and spaces except '_'. Example: "Huawei_P20_Pro"  
+  * `udid` - UDID of the Android device, can get it with `adb devices`   
+  * `model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
   * `minicap_fps` - non-mandatory field, if not provided `minicap` will run with uncapped FPS  
   * `minicap_half_resolution` - non-mandatory field, add with `true` if you want to achieve maximum FPS, will lower stream quality though  
   * `use_minicap` - non-mandatory field, add with `false` if you want to use `GADS-Android-stream` in case `minicap` does not work for the device
@@ -124,11 +124,11 @@ You need an Apple Developer account to build and sign `WebDriverAgent`
 2. For each iOS device add a new object inside the `devices-config` array in the json.  
 3. For each device provide (all values as strings):  
   * `os` - should be "ios"  
-  * `device_udid` - UDID of the iOS device, can get it with `go-ios` for example  
-  * `device_os_version` - "15.2" for example  
-  * `device_name` - avoid using special characters and spaces except '_'. Example: "Huawei_P20_Pro"  
+  * `udid` - UDID of the iOS device, can get it with `go-ios` for example  
+  * `os_version` - "15.2" for example  
+  * `name` - avoid using special characters and spaces except '_'. Example: "Huawei_P20_Pro"  
   * `screen_size` - this is needed to easily work with the stream and remote control. Example: "375x667". You can get it on https://whatismyviewport.com (ScreenSize: at the bottom)   
-  * `device_model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
+  * `model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
 
 ### Containerized usbmuxd connections - RECOMMENDED
 The usual approach would be to mount `/var/run/usbmuxd` to each container. This in practice shares the socket for all iOS devices connected to the host with all the containers. This way we cannot share a specific device over the network and also a single `usbmuxd` host failure will reflect on all containers. There is a way that we can have `usbmuxd` running inside each container without running on the host at all.  
@@ -173,19 +173,19 @@ This can be used for remote development of iOS apps or execution of native XCUIT
   "devices-config": [
     {
       "os": "ios",
-      "device_name": "iPhone_11",
-      "device_os_version": "13.5.1",
-      "device_udid": "00008030000418C136FB8022",
+      "name": "iPhone_11",
+      "os_version": "13.5.1",
+      "udid": "00008030000418C136FB8022",
       "screen_size": "375x667",
-      "device_model": "iPhone 11"
+      "model": "iPhone 11"
     },
     {
       "os": "android",
       "screen_size": "1080x2241",
-      "device_udid": "WCR7N18B14002300",
-      "device_name": "Huawei_P20_Pro",
-      "device_os_version": "10",
-      "device_model": "Huawei P20 Pro",
+      "udid": "WCR7N18B14002300",
+      "name": "Huawei_P20_Pro",
+      "os_version": "10",
+      "model": "Huawei P20 Pro",
       "minicap_fps" : "30",
       "minicap_half_resolution": "true",
       "use_minicap": "false"
