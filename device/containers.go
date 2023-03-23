@@ -3,6 +3,7 @@ package device
 import (
 	"context"
 	"os"
+	"os/user"
 	"strings"
 	"time"
 
@@ -332,8 +333,15 @@ func (device *Device) createAndroidContainer() {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "android_container_create",
-		}).Error("Could not get OS home dir, will try to fallback to $HOME, err: " + err.Error())
-		homeDir = "$HOME"
+		}).Warn("Could not get home dir using os.UserHomeDir, err: " + err.Error())
+		user, err := user.Current()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"event": "android_container_create",
+			}).Error("Could not get home dir through current user, err: " + err.Error())
+			return
+		}
+		homeDir = user.HomeDir
 	}
 
 	mounts := []mount.Mount{
