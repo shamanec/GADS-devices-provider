@@ -5,17 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/http"
 	"os/exec"
-	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/gorilla/mux"
 	"github.com/shamanec/GADS-devices-provider/device"
-	"github.com/shamanec/GADS-devices-provider/docker"
-	"github.com/shamanec/GADS-devices-provider/provider"
 	"github.com/shamanec/GADS-devices-provider/util"
 
 	log "github.com/sirupsen/logrus"
@@ -53,32 +49,7 @@ func SimpleJSONResponse(w http.ResponseWriter, responseMessage string, code int)
 }
 
 func GetAvailableDevicesInfo2(w http.ResponseWriter, r *http.Request) {
-	responseData, err := util.ConvertToJSONString(docker.GetConfigDevices())
-	if err != nil {
-		JSONError(w, "get_available_devices", "Could not get available devices", 500)
-		return
-	}
-	fmt.Fprintf(w, responseData)
-}
-
-func GetAvailableDevicesInfo(w http.ResponseWriter, r *http.Request) {
-	runningContainerNames, err := device.RunningDeviceContainerNames()
-	if err != nil {
-		JSONError(w, "get_available_devices", "Could not get available devices", 500)
-		return
-	}
-
-	devicesInfo, err := device.AvailableDevicesInfo(runningContainerNames)
-	if err != nil {
-		JSONError(w, "get_available_devices", "Could not get available devices", 500)
-		return
-	}
-
-	var info = device.DevicesInfo{
-		DevicesInfo: devicesInfo,
-	}
-
-	responseData, err := util.ConvertToJSONString(info)
+	responseData, err := util.ConvertToJSONString(device.GetConfigDevices())
 	if err != nil {
 		JSONError(w, "get_available_devices", "Could not get available devices", 500)
 		return
@@ -190,35 +161,6 @@ func RemoveContainer(w http.ResponseWriter, r *http.Request) {
 	SimpleJSONResponse(w, "Successfully removed container with ID: "+containerID, 200)
 }
 
-// @Summary      Refresh the device-containers data
-// @Description  Refreshes the device-containers data by returning an updated HTML table
-// @Produce      html
-// @Success      200
-// @Failure      500
-// @Router       /refresh-device-containers [post]
-func RefreshDeviceContainers(w http.ResponseWriter, r *http.Request) {
-	// Generate the data for each device container row in a slice of ContainerRow
-	rows, err := docker.DeviceContainerRows()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	// Make functions available in html template
-	funcMap := template.FuncMap{
-		// The name "title" is what the function will be called in the template text.
-		"contains": strings.Contains,
-	}
-
-	// Parse the template and return response with the container table rows
-	// This will generate only the device table, not the whole page
-	var tmpl = template.Must(template.New("device_containers_table").Funcs(funcMap).ParseFiles("static/device_containers_table.html"))
-
-	// Reply with the new table
-	if err := tmpl.ExecuteTemplate(w, "device_containers_table", rows); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
 // @Summary      Creates the udev rules for device symlink and container creation
 // @Description  Creates 90-device.rules file to be used by udev
 // @Tags         configuration
@@ -230,31 +172,13 @@ func CreateUdevRules(w http.ResponseWriter, r *http.Request) {
 	// Open /lib/systemd/system/systemd-udevd.service
 	// Add IPAddressAllow=127.0.0.1 at the bottom
 	// This is to allow curl calls from the udev rules to the GADS server
-	err := provider.CreateUdevRules()
+	err := device.CreateUdevRules()
 	if err != nil {
 		JSONError(w, "create_udev_rules", "Could not create udev rules file", 500)
 		return
 	}
 
 	SimpleJSONResponse(w, "Successfully created 90-device.rules file in project dir", 200)
-}
-
-// @Summary      Refresh the device-containers data
-// @Description  Refreshes the device-containers data by returning an updated HTML table
-// @Produce      html
-// @Success      200
-// @Failure      500
-// @Router       /device-containers [post]
-func GetDeviceContainers(w http.ResponseWriter, r *http.Request) {
-	deviceContainers, err := docker.DeviceContainerRows()
-	if err != nil {
-		fmt.Fprintf(w, "Could not get device containers")
-		return
-	}
-
-	json, err := util.ConvertToJSONString(deviceContainers)
-
-	fmt.Fprintf(w, json)
 }
 
 // @Summary      Get provider logs

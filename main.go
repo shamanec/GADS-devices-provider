@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/shamanec/GADS-devices-provider/docker"
+	"github.com/shamanec/GADS-devices-provider/config"
+	"github.com/shamanec/GADS-devices-provider/device"
 	_ "github.com/shamanec/GADS-devices-provider/docs"
-	"github.com/shamanec/GADS-devices-provider/provider"
 	"github.com/shamanec/GADS-devices-provider/router"
 
 	log "github.com/sirupsen/logrus"
@@ -25,13 +25,13 @@ func setLogging() {
 }
 
 func main() {
-	provider.SetupConfig()
+	config.SetupConfig()
 
 	setLogging()
 
-	go docker.UpdateDevices()
+	go device.UpdateDevices()
 	handler := router.HandleRequests()
 
-	fmt.Printf("Starting provider on port:%v\n", provider.ProviderPort)
-	log.Fatal(http.ListenAndServe(":"+provider.ProviderPort, handler))
+	fmt.Printf("Starting provider on port:%v\n", config.ProviderPort)
+	log.Fatal(http.ListenAndServe(":"+config.ProviderPort, handler))
 }
