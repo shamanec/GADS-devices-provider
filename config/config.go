@@ -32,10 +32,11 @@ type EnvConfig struct {
 var ProviderPort string
 var HomeDir string
 var ProjectDir string
-var err error
 var ConfigData ConfigJsonData
 
 func SetupConfig() {
+	var err error
+
 	HomeDir, err = os.UserHomeDir()
 	if err != nil {
 		panic("Could not get home dir: " + err.Error())
@@ -49,7 +50,7 @@ func SetupConfig() {
 	port_flag := flag.String("port", "10001", "The port to run the server on")
 	flag.Parse()
 
-	ConfigData, err = getConfigJsonData()
+	err = getConfigJsonData()
 	if err != nil {
 		panic("Could not get config data from config.json: " + err.Error())
 	}
@@ -57,14 +58,15 @@ func SetupConfig() {
 	ProviderPort = *port_flag
 }
 
-func getConfigJsonData() (ConfigJsonData, error) {
-	var data ConfigJsonData
+func getConfigJsonData() error {
+	var err error
+
 	jsonFile, err := os.Open("./configs/config.json")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_config_data",
 		}).Error("Could not open config file: " + err.Error())
-		return data, err
+		return err
 	}
 	defer jsonFile.Close()
 
@@ -73,16 +75,16 @@ func getConfigJsonData() (ConfigJsonData, error) {
 		log.WithFields(log.Fields{
 			"event": "get_config_data",
 		}).Error("Could not read config file to byte slice: " + err.Error())
-		return data, err
+		return err
 	}
 
-	err = json.Unmarshal(bs, &data)
+	err = json.Unmarshal(bs, &ConfigData)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_config_data",
 		}).Error("Could not unmarshal config file: " + err.Error())
-		return data, err
+		return err
 	}
 
-	return data, nil
+	return nil
 }
