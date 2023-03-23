@@ -25,9 +25,9 @@ func setLogging() {
 }
 
 func main() {
-	device.SetupConfig()
-
 	setLogging()
+
+	device.SetupConfig()
 
 	go device.UpdateDevices()
 	handler := router.HandleRequests()
