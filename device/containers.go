@@ -185,13 +185,13 @@ func (device *Device) createIOSContainer() {
 
 	mounts = append(mounts, mount.Mount{
 		Type:   mount.TypeBind,
-		Source: ProjectDir + "/logs/container_" + device.Name + "-" + device.UDID,
+		Source: projectDir + "/logs/container_" + device.Name + "-" + device.UDID,
 		Target: "/opt/logs",
 	})
 
 	mounts = append(mounts, mount.Mount{
 		Type:   mount.TypeBind,
-		Source: ProjectDir + "/apps",
+		Source: projectDir + "/apps",
 		Target: "/opt/ipa",
 	})
 
@@ -328,20 +328,28 @@ func (device *Device) createAndroidContainer() {
 		Env: environmentVars,
 	}
 
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "android_container_create",
+		}).Error("Could not get OS home dir, will try to fallback to $HOME, err: " + err.Error())
+		homeDir = "$HOME"
+	}
+
 	mounts := []mount.Mount{
 		{
 			Type:   mount.TypeBind,
-			Source: ProjectDir + "/logs/container_" + deviceName + "-" + device.UDID,
+			Source: projectDir + "/logs/container_" + deviceName + "-" + device.UDID,
 			Target: "/opt/logs",
 		},
 		{
 			Type:   mount.TypeBind,
-			Source: ProjectDir + "/apps",
+			Source: projectDir + "/apps",
 			Target: "/opt/apk",
 		},
 		{
 			Type:   mount.TypeBind,
-			Source: HomeDir + "/.android",
+			Source: homeDir + "/.android",
 			Target: "/root/.android",
 		},
 		{
@@ -355,7 +363,7 @@ func (device *Device) createAndroidContainer() {
 	if remoteControl == "true" {
 		mounts = append(mounts, mount.Mount{
 			Type:   mount.TypeBind,
-			Source: ProjectDir + "/minicap",
+			Source: projectDir + "/minicap",
 			Target: "/root/minicap",
 		})
 	}

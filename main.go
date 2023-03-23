@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -31,6 +32,9 @@ func main() {
 	go device.UpdateDevices()
 	handler := router.HandleRequests()
 
-	fmt.Printf("Starting provider on port:%v\n", device.ProviderPort)
-	log.Fatal(http.ListenAndServe(":"+device.ProviderPort, handler))
+	port_flag := flag.String("port", "10001", "The port to run the server on")
+	flag.Parse()
+
+	fmt.Printf("Starting provider on port:%v\n", *port_flag)
+	log.Fatal(http.ListenAndServe(":"+*port_flag, handler))
 }

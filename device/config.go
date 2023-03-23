@@ -2,7 +2,6 @@ package device
 
 import (
 	"encoding/json"
-	"flag"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -58,26 +57,16 @@ type DeviceContainer struct {
 	ContainerName   string `json:"container_name"`
 }
 
-var ProviderPort string
-var HomeDir string
-var ProjectDir string
+var projectDir string
 var Config ConfigJsonData
 
 func SetupConfig() {
 	var err error
 
-	HomeDir, err = os.UserHomeDir()
-	if err != nil {
-		panic("Could not get home dir: " + err.Error())
-	}
-
-	ProjectDir, err = os.Getwd()
+	projectDir, err = os.Getwd()
 	if err != nil {
 		panic("Could not get project dir: " + err.Error())
 	}
-
-	port_flag := flag.String("port", "10001", "The port to run the server on")
-	flag.Parse()
 
 	err = getConfigJsonData()
 	if err != nil {
@@ -85,8 +74,6 @@ func SetupConfig() {
 	}
 
 	updateDevicesFromConfig()
-
-	ProviderPort = *port_flag
 }
 
 func updateDevicesFromConfig() {
