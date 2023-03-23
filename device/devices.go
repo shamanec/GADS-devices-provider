@@ -1,122 +1,105 @@
 package device
 
 import (
-	"context"
-	"errors"
-	"regexp"
 	"strings"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
-	"github.com/shamanec/GADS-devices-provider/docker"
-	"github.com/shamanec/GADS-devices-provider/provider"
-	"github.com/shamanec/GADS-devices-provider/util"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
-type DevicesInfo struct {
-	DevicesInfo []util.DeviceConfig `json:"devices-info"`
-}
-
-//=======================//
-//=======FUNCTIONS=======//
-
-func AvailableDevicesInfo(runningContainers []string) ([]util.DeviceConfig, error) {
-	var combinedInfo []util.DeviceConfig
-
-	for _, containerName := range runningContainers {
-		// Extract the device UDID from the container name
-		re := regexp.MustCompile("[^_]*$")
-		deviceUDID := re.FindStringSubmatch(containerName)
-
-		// Get the info for the respective device from config.json
-		var deviceInformation *util.DeviceConfig
-		deviceInformation, err := DeviceInfo(deviceUDID[0], provider.ConfigData)
+func UpdateDevices() {
+OUTER:
+	for {
+		// Get a list of the connected device symlinks from /dev
+		connectedDevices, err := getConnectedDevices()
 		if err != nil {
 			log.WithFields(log.Fields{
-				"event": "get_available_devices_info",
-			}).Error("Could not get info for device " + deviceUDID[0] + " from config data")
-			return nil, err
+				"event": "device_listener",
+			}).Error("Could not get the devices from /dev, err: " + err.Error())
+			break OUTER
 		}
 
-		// Append the respective device info to the combined info
-		combinedInfo = append(combinedInfo, *deviceInformation)
-	}
+		// Get the containers running on the host
+		allContainers, err := getHostContainers()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"event": "device_listener",
+			}).Error("Could not get host containers, err: " + err.Error())
+			break OUTER
+		}
 
-	return combinedInfo, nil
+		// Loop through the devices registered from the config
+	INNER:
+		for _, configDevice := range Config.Devices {
+			// Check if the current device is connected to the host
+			connected, err := configDevice.isDeviceConnected(connectedDevices)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"event": "device_listener",
+				}).Error("Could not check if device " + configDevice.UDID + " is connected to the host, err: " + err.Error())
+				continue INNER
+			}
+
+			if connected {
+				// Set the initial state to Connected
+				configDevice.State = "Connected"
+
+				// Check if the device has an already created container
+				// Also append the container data to the device struct if it does
+				hasContainer, err := configDevice.hasContainer(allContainers)
+				if err != nil {
+					log.WithFields(log.Fields{
+						"event": "device_listener",
+					}).Error("Could not check if device " + configDevice.UDID + " has a container, err: " + err.Error())
+					continue INNER
+				}
+
+				// If the device has container
+				if hasContainer {
+					// If the container is not Up
+					if !strings.Contains(configDevice.Container.ContainerStatus, "Up") {
+						// Restart the container
+						go configDevice.restartContainer()
+						continue INNER
+					}
+					// If the container is Up set the state to Available
+					configDevice.State = "Available"
+					continue INNER
+				}
+
+				if configDevice.OS == "ios" {
+					go configDevice.createIOSContainer()
+					continue INNER
+				}
+
+				if configDevice.OS == "android" {
+					go configDevice.createAndroidContainer()
+					continue INNER
+				}
+				continue INNER
+			}
+
+			// If the device is not connected
+			if !connected {
+				// Check if it has an existing container
+				hasContainer, err := configDevice.hasContainer(allContainers)
+				if err != nil {
+					log.WithFields(log.Fields{
+						"event": "device_listener",
+					}).Error("Could not check if device " + configDevice.UDID + " has a container, err: " + err.Error())
+					continue INNER
+				}
+				// If it has a container - remove it
+				if hasContainer {
+					configDevice.removeContainer()
+				}
+			}
+		}
+
+		time.Sleep(5 * time.Second)
+	}
 }
 
-// Get all running containers on host and filter them out for iOS and Android containers
-func RunningDeviceContainerNames() ([]string, error) {
-	var containerNames []string
-
-	// Create a new docker client
-	cli, err := client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_running_container_names",
-		}).Error("Could not create new docker client: " + err.Error())
-		return nil, err
-	}
-
-	defer cli.Close()
-
-	// Get the current containers list
-	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_running_container_names",
-		}).Error("Could not get docker containers list: " + err.Error())
-		return nil, err
-	}
-
-	// Loop through the containers list
-	for _, container := range containers {
-		// Parse plain container name
-		containerName := strings.Replace(container.Names[0], "/", "", -1)
-
-		// Check if container is for ios or android device and its status is 'Up'
-		if (strings.Contains(containerName, "iosDevice") || strings.Contains(containerName, "androidDevice")) && strings.Contains(container.Status, "Up") {
-			containerNames = append(containerNames, containerName)
-		}
-	}
-	return containerNames, nil
-}
-
-func DeviceInfo(udid string, configData util.ConfigJsonData) (*util.DeviceConfig, error) {
-	// Loop through the device configs and find the one that corresponds to the provided device UDID
-	var deviceConfig util.DeviceConfig
-	for _, v := range configData.DeviceConfig {
-		if v.DeviceUDID == udid {
-			deviceConfig = v
-		}
-	}
-
-	if deviceConfig == (util.DeviceConfig{}) {
-		log.WithFields(log.Fields{
-			"event": "get_device_info_from_config",
-		}).Error("Device with udid " + udid + " was not found in config data.")
-		return nil, errors.New("")
-	}
-
-	appiumPort, streamPort, containerServerPort, wdaPort := docker.GenerateDevicePorts(udid)
-
-	// Return the info for the device
-	return &util.DeviceConfig{
-		OS:                    deviceConfig.OS,
-		AppiumPort:            appiumPort,
-		DeviceName:            deviceConfig.DeviceName,
-		DeviceOSVersion:       deviceConfig.DeviceOSVersion,
-		DeviceUDID:            deviceConfig.DeviceUDID,
-		StreamPort:            streamPort,
-		WDAPort:               wdaPort,
-		ScreenSize:            deviceConfig.ScreenSize,
-		ContainerServerPort:   containerServerPort,
-		DeviceModel:           deviceConfig.DeviceModel,
-		DeviceImage:           deviceConfig.DeviceImage,
-		DeviceHost:            configData.AppiumConfig.DevicesHost,
-		MinicapFPS:            deviceConfig.MinicapFPS,
-		MinicapHalfResolution: deviceConfig.MinicapHalfResolution,
-	}, nil
+func GetConfigDevices() []*Device {
+	return Config.Devices
 }

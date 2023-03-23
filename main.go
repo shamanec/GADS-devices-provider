@@ -1,13 +1,13 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
 
-	"github.com/shamanec/GADS-devices-provider/docker"
+	"github.com/shamanec/GADS-devices-provider/device"
 	_ "github.com/shamanec/GADS-devices-provider/docs"
-	"github.com/shamanec/GADS-devices-provider/provider"
 	"github.com/shamanec/GADS-devices-provider/router"
 
 	log "github.com/sirupsen/logrus"
@@ -25,13 +25,16 @@ func setLogging() {
 }
 
 func main() {
-	provider.SetupConfig()
-
 	setLogging()
 
-	go docker.UpdateDevices()
+	device.SetupConfig()
+
+	go device.UpdateDevices()
 	handler := router.HandleRequests()
 
-	fmt.Printf("Starting provider on port:%v\n", provider.ProviderPort)
-	log.Fatal(http.ListenAndServe(":"+provider.ProviderPort, handler))
+	port_flag := flag.String("port", "10001", "The port to run the server on")
+	flag.Parse()
+
+	fmt.Printf("Starting provider on port:%v\n", *port_flag)
+	log.Fatal(http.ListenAndServe(":"+*port_flag, handler))
 }

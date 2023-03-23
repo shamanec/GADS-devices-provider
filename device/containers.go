@@ -1,8 +1,9 @@
-package docker
+package device
 
 import (
 	"context"
 	"os"
+	"os/user"
 	"strings"
 	"time"
 
@@ -11,14 +12,13 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	"github.com/shamanec/GADS-devices-provider/provider"
 	log "github.com/sirupsen/logrus"
 )
 
 func (device *Device) restartContainer() {
-	if device.State != "Restarting" {
+	if device.getState() != "Restarting" {
 		// Set the current device state to Restarting
-		device.State = "Restarting"
+		device.setState("Restarting")
 
 		// Get the container ID of the device container
 		containerID := device.Container.ContainerID
@@ -29,7 +29,7 @@ func (device *Device) restartContainer() {
 			log.WithFields(log.Fields{
 				"event": "docker_container_restart",
 			}).Error("Could not create docker client while attempting to restart container with ID: " + containerID + ". Error: " + err.Error())
-			device.State = "Failed restart"
+			device.setState("Failed restart")
 			return
 		}
 		defer cli.Close()
@@ -39,14 +39,14 @@ func (device *Device) restartContainer() {
 			log.WithFields(log.Fields{
 				"event": "docker_container_restart",
 			}).Error("Could not restart container with ID: " + containerID + ". Error: " + err.Error())
-			device.State = "Failed restart"
+			device.setState("Failed restart")
 			return
 		}
 
 		log.WithFields(log.Fields{
 			"event": "docker_container_restart",
 		}).Info("Successfully attempted to restart container with ID: " + containerID)
-		device.State = "Available"
+		device.setState("Available")
 		return
 	}
 }
@@ -62,9 +62,9 @@ func (device *Device) removeContainer() {
 	containerID := device.Container.ContainerID
 
 	// Check if the container is not already being removed by checking the state
-	if device.State != "Removing" {
+	if device.getState() != "Removing" {
 		// If device is not already being removed - set state to Removing
-		device.State = "Removing"
+		device.setState("Removing")
 	}
 	log.WithFields(log.Fields{
 		"event": "docker_container_remove",
@@ -77,7 +77,7 @@ func (device *Device) removeContainer() {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
 		}).Error("Could not create docker client while attempting to remove container with ID: " + containerID + ". Error: " + err.Error())
-		device.State = "Failed removing"
+		device.setState("Failed removing")
 		return
 	}
 	defer cli.Close()
@@ -87,7 +87,7 @@ func (device *Device) removeContainer() {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
 		}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
-		device.State = "Failed stopping"
+		device.setState("Failed removing")
 		return
 	}
 
@@ -96,20 +96,17 @@ func (device *Device) removeContainer() {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
 		}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
-		device.State = "Failed removing"
+		device.setState("Failed removing")
 		return
 	}
 
-	device.State = "Disconnected"
+	device.setState("Disconnected")
 	log.WithFields(log.Fields{
 		"event": "docker_container_remove",
 	}).Info("Successfully removed container with ID: " + containerID)
 }
 
 func (device *Device) createIOSContainer() {
-	mutex.Lock()
-	defer mutex.Unlock()
-
 	log.WithFields(log.Fields{
 		"event": "ios_container_create",
 	}).Info("Attempting to create a container for iOS device with udid: " + device.UDID)
@@ -128,7 +125,7 @@ func (device *Device) createIOSContainer() {
 	defer cli.Close()
 
 	// Create the container config
-	config := &container.Config{
+	containerConfig := &container.Config{
 		Image: "ios-appium",
 		ExposedPorts: nat.PortSet{
 			nat.Port("4723"):                     struct{}{},
@@ -136,18 +133,18 @@ func (device *Device) createIOSContainer() {
 			nat.Port("9100"):                     struct{}{},
 			nat.Port(device.ContainerServerPort): struct{}{},
 		},
-		Env: []string{"ON_GRID=" + provider.ConfigData.EnvConfig.ConnectSeleniumGrid,
+		Env: []string{"ON_GRID=" + Config.EnvConfig.ConnectSeleniumGrid,
 			"APPIUM_PORT=" + device.AppiumPort,
 			"DEVICE_UDID=" + device.UDID,
 			"DEVICE_OS_VERSION=" + device.OSVersion,
 			"DEVICE_NAME=" + device.Name,
-			"WDA_BUNDLEID=" + provider.ConfigData.AppiumConfig.WDABundleID,
-			"SUPERVISION_PASSWORD=" + provider.ConfigData.EnvConfig.SupervisionPassword,
-			"SELENIUM_HUB_PORT=" + provider.ConfigData.AppiumConfig.SeleniumHubPort,
-			"SELENIUM_HUB_HOST=" + provider.ConfigData.AppiumConfig.SeleniumHubHost,
-			"DEVICES_HOST=" + provider.ConfigData.AppiumConfig.DevicesHost,
-			"HUB_PROTOCOL=" + provider.ConfigData.AppiumConfig.SeleniumHubProtocolType,
-			"CONTAINERIZED_USBMUXD=" + provider.ConfigData.EnvConfig.ContainerizedUsbmuxd,
+			"WDA_BUNDLEID=" + Config.AppiumConfig.WDABundleID,
+			"SUPERVISION_PASSWORD=" + Config.EnvConfig.SupervisionPassword,
+			"SELENIUM_HUB_PORT=" + Config.AppiumConfig.SeleniumHubPort,
+			"SELENIUM_HUB_HOST=" + Config.AppiumConfig.SeleniumHubHost,
+			"DEVICES_HOST=" + Config.AppiumConfig.DevicesHost,
+			"HUB_PROTOCOL=" + Config.AppiumConfig.SeleniumHubProtocolType,
+			"CONTAINERIZED_USBMUXD=" + Config.EnvConfig.ContainerizedUsbmuxd,
 			"SCREEN_SIZE=" + device.ScreenSize,
 			"CONTAINER_SERVER_PORT=" + device.ContainerServerPort,
 			"DEVICE_MODEL=" + device.Model,
@@ -157,7 +154,7 @@ func (device *Device) createIOSContainer() {
 	var mounts []mount.Mount
 	var resources container.Resources
 
-	if provider.ConfigData.EnvConfig.ContainerizedUsbmuxd == "false" {
+	if Config.EnvConfig.ContainerizedUsbmuxd == "false" {
 		// Mount all iOS devices on the host to the container with /var/run/usbmuxd
 		// Mount /var/lib/lockdown so you don't have to trust device on each new container
 		mounts = []mount.Mount{
@@ -186,13 +183,13 @@ func (device *Device) createIOSContainer() {
 
 	mounts = append(mounts, mount.Mount{
 		Type:   mount.TypeBind,
-		Source: provider.ProjectDir + "/logs/container_" + device.Name + "-" + device.UDID,
+		Source: projectDir + "/logs/container_" + device.Name + "-" + device.UDID,
 		Target: "/opt/logs",
 	})
 
 	mounts = append(mounts, mount.Mount{
 		Type:   mount.TypeBind,
-		Source: provider.ProjectDir + "/apps",
+		Source: projectDir + "/apps",
 		Target: "/opt/ipa",
 	})
 
@@ -240,7 +237,7 @@ func (device *Device) createIOSContainer() {
 	}
 
 	// Create the container
-	resp, err := cli.ContainerCreate(ctx, config, hostConfig, nil, nil, "iosDevice_"+device.UDID)
+	resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "iosDevice_"+device.UDID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_container_create",
@@ -263,27 +260,13 @@ func (device *Device) createIOSContainer() {
 }
 
 func (device *Device) createAndroidContainer() {
-	mutex.Lock()
-	defer mutex.Unlock()
 
 	log.WithFields(log.Fields{
 		"event": "android_container_create",
 	}).Info("Attempting to create a container for Android device with udid: " + device.UDID)
 
 	// Get the device config data
-	deviceName := device.Name
-	deviceOSVersion := device.OSVersion
-	seleniumHubPort := provider.ConfigData.AppiumConfig.SeleniumHubPort
-	seleniumHubHost := provider.ConfigData.AppiumConfig.SeleniumHubHost
-	devicesHost := provider.ConfigData.AppiumConfig.DevicesHost
-	hubProtocol := provider.ConfigData.AppiumConfig.SeleniumHubProtocolType
-	deviceModel := device.Model
-	remoteControl := provider.ConfigData.EnvConfig.RemoteControl
-	minicapFPS := device.MinicapFPS
-	minicapHalfResolution := device.MinicapHalfResolution
-	screenSize := device.ScreenSize
-	screenSizeValues := strings.Split(screenSize, "x")
-	useMinicap := device.UseMinicap
+	screenSizeValues := strings.Split(device.ScreenSize, "x")
 
 	// Create the docker client
 	ctx := context.Background()
@@ -296,31 +279,31 @@ func (device *Device) createAndroidContainer() {
 	}
 	defer cli.Close()
 
-	environmentVars := []string{"ON_GRID=" + provider.ConfigData.EnvConfig.ConnectSeleniumGrid,
+	environmentVars := []string{"ON_GRID=" + Config.EnvConfig.ConnectSeleniumGrid,
 		"APPIUM_PORT=" + device.AppiumPort,
 		"DEVICE_UDID=" + device.UDID,
-		"DEVICE_OS_VERSION=" + deviceOSVersion,
-		"DEVICE_NAME=" + deviceName,
-		"SELENIUM_HUB_PORT=" + seleniumHubPort,
-		"SELENIUM_HUB_HOST=" + seleniumHubHost,
-		"DEVICES_HOST=" + devicesHost,
-		"HUB_PROTOCOL=" + hubProtocol,
+		"DEVICE_OS_VERSION=" + device.OSVersion,
+		"DEVICE_NAME=" + device.Name,
+		"SELENIUM_HUB_PORT=" + Config.AppiumConfig.SeleniumHubPort,
+		"SELENIUM_HUB_HOST=" + Config.AppiumConfig.SeleniumHubHost,
+		"DEVICES_HOST=" + Config.AppiumConfig.DevicesHost,
+		"HUB_PROTOCOL=" + Config.AppiumConfig.SeleniumHubProtocolType,
 		"CONTAINER_SERVER_PORT=" + device.ContainerServerPort,
-		"DEVICE_MODEL=" + deviceModel,
-		"REMOTE_CONTROL=" + remoteControl,
-		"MINICAP_FPS=" + minicapFPS,
-		"MINICAP_HALF_RESOLUTION=" + minicapHalfResolution,
+		"DEVICE_MODEL=" + device.Model,
+		"REMOTE_CONTROL=" + Config.EnvConfig.RemoteControl,
+		"MINICAP_FPS=" + device.MinicapFPS,
+		"MINICAP_HALF_RESOLUTION=" + device.MinicapHalfResolution,
 		"SCREEN_WIDTH=" + screenSizeValues[0],
 		"SCREEN_HEIGHT=" + screenSizeValues[1],
-		"SCREEN_SIZE=" + screenSize,
+		"SCREEN_SIZE=" + device.ScreenSize,
 		"DEVICE_OS=android"}
 
-	if useMinicap != "" {
-		environmentVars = append(environmentVars, "USE_MINICAP="+useMinicap)
+	if device.UseMinicap != "" {
+		environmentVars = append(environmentVars, "USE_MINICAP="+device.UseMinicap)
 	}
 
 	// Create the container config
-	config := &container.Config{
+	containerConfig := &container.Config{
 		Image: "android-appium",
 		ExposedPorts: nat.PortSet{
 			nat.Port("4723"):                     struct{}{},
@@ -329,20 +312,35 @@ func (device *Device) createAndroidContainer() {
 		Env: environmentVars,
 	}
 
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "android_container_create",
+		}).Warn("Could not get home dir using os.UserHomeDir, err: " + err.Error())
+		user, err := user.Current()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"event": "android_container_create",
+			}).Error("Could not get home dir through current user, err: " + err.Error())
+			return
+		}
+		homeDir = user.HomeDir
+	}
+
 	mounts := []mount.Mount{
 		{
 			Type:   mount.TypeBind,
-			Source: provider.ProjectDir + "/logs/container_" + deviceName + "-" + device.UDID,
+			Source: projectDir + "/logs/container_" + device.Name + "-" + device.UDID,
 			Target: "/opt/logs",
 		},
 		{
 			Type:   mount.TypeBind,
-			Source: provider.ProjectDir + "/apps",
+			Source: projectDir + "/apps",
 			Target: "/opt/apk",
 		},
 		{
 			Type:   mount.TypeBind,
-			Source: provider.HomeDir + "/.android",
+			Source: homeDir + "/.android",
 			Target: "/root/.android",
 		},
 		{
@@ -353,10 +351,10 @@ func (device *Device) createAndroidContainer() {
 		},
 	}
 
-	if remoteControl == "true" {
+	if Config.EnvConfig.RemoteControl == "true" {
 		mounts = append(mounts, mount.Mount{
 			Type:   mount.TypeBind,
-			Source: provider.ProjectDir + "/minicap",
+			Source: projectDir + "/minicap",
 			Target: "/root/minicap",
 		})
 	}
@@ -394,7 +392,7 @@ func (device *Device) createAndroidContainer() {
 	}
 
 	// Create a folder for logging for the container
-	err = os.MkdirAll("./logs/container_"+deviceName+"-"+device.UDID, os.ModePerm)
+	err = os.MkdirAll("./logs/container_"+device.Name+"-"+device.UDID, os.ModePerm)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "android_container_create",
@@ -403,7 +401,7 @@ func (device *Device) createAndroidContainer() {
 	}
 
 	// Create the container
-	resp, err := cli.ContainerCreate(ctx, config, host_config, nil, nil, "androidDevice_"+device.UDID)
+	resp, err := cli.ContainerCreate(ctx, containerConfig, host_config, nil, nil, "androidDevice_"+device.UDID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "android_container_create",
