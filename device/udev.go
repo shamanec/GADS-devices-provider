@@ -23,7 +23,7 @@ func CreateUdevRules() error {
 	defer rulesFile.Close()
 
 	// For each device generate the respective rule lines
-	for _, device := range configDevices {
+	for _, device := range Config.Devices {
 		// Create a symlink when device is connected
 		symlink_line := `SUBSYSTEM=="usb", ENV{ID_SERIAL_SHORT}=="` + device.UDID + `", MODE="0666", SYMLINK+="device_` + device.OS + `_` + device.UDID + `"`
 

@@ -11,5 +11,69 @@
     "supervision_password": "patladjan1",
     "containerized_usbmuxd": "true",
     "remote_control": "true"
-  }
+  },
+  "devices-config": [
+    {
+      "os": "ios",
+      "name": "iPhone_11",
+      "os_version": "13.5.1",
+      "udid": "00008030000418C136FB8022",
+      "screen_size": "375x667",
+      "model": "iPhone 11"
+    },
+    {
+      "os": "ios",
+      "name": "iPhone_SE",
+      "os_version": "15.0",
+      "udid": "00008030000418C136FB802E",
+      "screen_size": "375x667",
+      "model": "iPhone SE",
+      "image": "iphone-se-2020.png"
+    },
+    {
+      "os": "ios",
+      "name": "iPad_bejbe",
+      "os_version": "15.1",
+      "udid": "00008103000A69E23CBB001E",
+      "screen_size": "834x1194",
+      "model": "iPad Pro 11"
+    },
+    {
+      "os": "ios",
+      "name": "iPhone_7",
+      "os_version": "14.6",
+      "udid": "ccec159ba0219c9fa0d0fc3d85451ab0dcfebd16",
+      "screen_size": "375x667",
+      "model": "iPhone 7",
+      "image": "iphone-7.png"
+    },
+    {
+      "os": "android",
+      "screen_size": "1080x2241",
+      "udid": "WCR7N18B14002300",
+      "name": "Huawei_P20_Pro",
+      "os_version": "10",
+      "model": "Huawei P20 Pro",
+      "image": "huawei-p20-pro.png",
+      "use_minicap": "false"
+    },
+    {
+      "os": "android",
+      "screen_size": "1080x2240",
+      "udid": "MUN0218928000401",
+      "name": "Huawei_Bejbe",
+      "os_version": "10",
+      "model": "Huawei Mate 20"
+    },
+    {
+      "os": "android",
+      "screen_size": "720x1280",
+      "udid": "RQ30041UV0",
+      "name": "Sony_Xperia",
+      "os_version": "7",
+      "model": "Sony Xperia",
+      "minicap_half_resolution": "false",
+      "use_minicap": "false"
+    }
+  ]
 }

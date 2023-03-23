@@ -11,7 +11,6 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	"github.com/shamanec/GADS-devices-provider/config"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -136,18 +135,18 @@ func (device *Device) createIOSContainer() {
 			nat.Port("9100"):                     struct{}{},
 			nat.Port(device.ContainerServerPort): struct{}{},
 		},
-		Env: []string{"ON_GRID=" + config.ConfigData.EnvConfig.ConnectSeleniumGrid,
+		Env: []string{"ON_GRID=" + Config.EnvConfig.ConnectSeleniumGrid,
 			"APPIUM_PORT=" + device.AppiumPort,
 			"DEVICE_UDID=" + device.UDID,
 			"DEVICE_OS_VERSION=" + device.OSVersion,
 			"DEVICE_NAME=" + device.Name,
-			"WDA_BUNDLEID=" + config.ConfigData.AppiumConfig.WDABundleID,
-			"SUPERVISION_PASSWORD=" + config.ConfigData.EnvConfig.SupervisionPassword,
-			"SELENIUM_HUB_PORT=" + config.ConfigData.AppiumConfig.SeleniumHubPort,
-			"SELENIUM_HUB_HOST=" + config.ConfigData.AppiumConfig.SeleniumHubHost,
-			"DEVICES_HOST=" + config.ConfigData.AppiumConfig.DevicesHost,
-			"HUB_PROTOCOL=" + config.ConfigData.AppiumConfig.SeleniumHubProtocolType,
-			"CONTAINERIZED_USBMUXD=" + config.ConfigData.EnvConfig.ContainerizedUsbmuxd,
+			"WDA_BUNDLEID=" + Config.AppiumConfig.WDABundleID,
+			"SUPERVISION_PASSWORD=" + Config.EnvConfig.SupervisionPassword,
+			"SELENIUM_HUB_PORT=" + Config.AppiumConfig.SeleniumHubPort,
+			"SELENIUM_HUB_HOST=" + Config.AppiumConfig.SeleniumHubHost,
+			"DEVICES_HOST=" + Config.AppiumConfig.DevicesHost,
+			"HUB_PROTOCOL=" + Config.AppiumConfig.SeleniumHubProtocolType,
+			"CONTAINERIZED_USBMUXD=" + Config.EnvConfig.ContainerizedUsbmuxd,
 			"SCREEN_SIZE=" + device.ScreenSize,
 			"CONTAINER_SERVER_PORT=" + device.ContainerServerPort,
 			"DEVICE_MODEL=" + device.Model,
@@ -157,7 +156,7 @@ func (device *Device) createIOSContainer() {
 	var mounts []mount.Mount
 	var resources container.Resources
 
-	if config.ConfigData.EnvConfig.ContainerizedUsbmuxd == "false" {
+	if Config.EnvConfig.ContainerizedUsbmuxd == "false" {
 		// Mount all iOS devices on the host to the container with /var/run/usbmuxd
 		// Mount /var/lib/lockdown so you don't have to trust device on each new container
 		mounts = []mount.Mount{
@@ -186,13 +185,13 @@ func (device *Device) createIOSContainer() {
 
 	mounts = append(mounts, mount.Mount{
 		Type:   mount.TypeBind,
-		Source: config.ProjectDir + "/logs/container_" + device.Name + "-" + device.UDID,
+		Source: ProjectDir + "/logs/container_" + device.Name + "-" + device.UDID,
 		Target: "/opt/logs",
 	})
 
 	mounts = append(mounts, mount.Mount{
 		Type:   mount.TypeBind,
-		Source: config.ProjectDir + "/apps",
+		Source: ProjectDir + "/apps",
 		Target: "/opt/ipa",
 	})
 
@@ -273,12 +272,12 @@ func (device *Device) createAndroidContainer() {
 	// Get the device config data
 	deviceName := device.Name
 	deviceOSVersion := device.OSVersion
-	seleniumHubPort := config.ConfigData.AppiumConfig.SeleniumHubPort
-	seleniumHubHost := config.ConfigData.AppiumConfig.SeleniumHubHost
-	devicesHost := config.ConfigData.AppiumConfig.DevicesHost
-	hubProtocol := config.ConfigData.AppiumConfig.SeleniumHubProtocolType
+	seleniumHubPort := Config.AppiumConfig.SeleniumHubPort
+	seleniumHubHost := Config.AppiumConfig.SeleniumHubHost
+	devicesHost := Config.AppiumConfig.DevicesHost
+	hubProtocol := Config.AppiumConfig.SeleniumHubProtocolType
 	deviceModel := device.Model
-	remoteControl := config.ConfigData.EnvConfig.RemoteControl
+	remoteControl := Config.EnvConfig.RemoteControl
 	minicapFPS := device.MinicapFPS
 	minicapHalfResolution := device.MinicapHalfResolution
 	screenSize := device.ScreenSize
@@ -296,7 +295,7 @@ func (device *Device) createAndroidContainer() {
 	}
 	defer cli.Close()
 
-	environmentVars := []string{"ON_GRID=" + config.ConfigData.EnvConfig.ConnectSeleniumGrid,
+	environmentVars := []string{"ON_GRID=" + Config.EnvConfig.ConnectSeleniumGrid,
 		"APPIUM_PORT=" + device.AppiumPort,
 		"DEVICE_UDID=" + device.UDID,
 		"DEVICE_OS_VERSION=" + deviceOSVersion,
@@ -332,17 +331,17 @@ func (device *Device) createAndroidContainer() {
 	mounts := []mount.Mount{
 		{
 			Type:   mount.TypeBind,
-			Source: config.ProjectDir + "/logs/container_" + deviceName + "-" + device.UDID,
+			Source: ProjectDir + "/logs/container_" + deviceName + "-" + device.UDID,
 			Target: "/opt/logs",
 		},
 		{
 			Type:   mount.TypeBind,
-			Source: config.ProjectDir + "/apps",
+			Source: ProjectDir + "/apps",
 			Target: "/opt/apk",
 		},
 		{
 			Type:   mount.TypeBind,
-			Source: config.HomeDir + "/.android",
+			Source: HomeDir + "/.android",
 			Target: "/root/.android",
 		},
 		{
@@ -356,7 +355,7 @@ func (device *Device) createAndroidContainer() {
 	if remoteControl == "true" {
 		mounts = append(mounts, mount.Mount{
 			Type:   mount.TypeBind,
-			Source: config.ProjectDir + "/minicap",
+			Source: ProjectDir + "/minicap",
 			Target: "/root/minicap",
 		})
 	}

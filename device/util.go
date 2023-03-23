@@ -8,12 +8,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/shamanec/GADS-devices-provider/config"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -54,31 +52,6 @@ func getDeviceJsonBytes() ([]byte, error) {
 	}
 
 	return bs, nil
-}
-
-// Create initial devices from the json config
-func updateDevicesFromConfig() ([]*Device, error) {
-	devices, err := getDeviceJsonData()
-	if err != nil {
-		return nil, err
-	}
-
-	for index, configDevice := range devices {
-		wdaPort := ""
-		if configDevice.OS == "ios" {
-			wdaPort = strconv.Itoa(20001 + index)
-		}
-
-		configDevice.Container = nil
-		configDevice.State = "Disconnected"
-		configDevice.AppiumPort = strconv.Itoa(4841 + index)
-		configDevice.StreamPort = strconv.Itoa(20101 + index)
-		configDevice.ContainerServerPort = strconv.Itoa(20201 + index)
-		configDevice.WDAPort = wdaPort
-		configDevice.Host = config.ConfigData.AppiumConfig.DevicesHost
-	}
-
-	return devices, nil
 }
 
 func getConnectedDevices() ([]string, error) {

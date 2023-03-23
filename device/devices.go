@@ -8,48 +8,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type DeviceContainer struct {
-	ContainerID     string `json:"id"`
-	ContainerStatus string `json:"status"`
-	ImageName       string `json:"image_name"`
-	ContainerName   string `json:"container_name"`
-}
-
-type Device struct {
-	Container             *DeviceContainer `json:"container,omitempty"`
-	State                 string           `json:"state"`
-	UDID                  string           `json:"udid"`
-	OS                    string           `json:"os"`
-	AppiumPort            string           `json:"appium_port"`
-	StreamPort            string           `json:"stream_port"`
-	ContainerServerPort   string           `json:"container_server_port"`
-	WDAPort               string           `json:"wda_port,omitempty"`
-	Name                  string           `json:"name"`
-	OSVersion             string           `json:"os_version"`
-	ScreenSize            string           `json:"screen_size"`
-	Model                 string           `json:"model"`
-	Image                 string           `json:"image,omitempty"`
-	Host                  string           `json:"host"`
-	MinicapFPS            string           `json:"minicap_fps,omitempty"`
-	MinicapHalfResolution string           `json:"minicap_half_resolution,omitempty"`
-	UseMinicap            string           `json:"use_minicap,omitempty"`
-}
-
 var mutex sync.Mutex
-var configDevices []*Device
 
 func UpdateDevices() {
-	var err error = nil
-	configDevices, err = updateDevicesFromConfig()
-	if err != nil {
-		panic(err)
-	}
-	if configDevices == nil {
-		log.WithFields(log.Fields{
-			"event": "device_listener",
-		}).Warn("There are no devices registered in config.json. Please add devices and restart the provider!")
-	}
-
 OUTER:
 	for {
 		// Get a list of the connected device symlinks from /dev
@@ -72,7 +33,7 @@ OUTER:
 
 		// Loop through the devices registered from the config
 	INNER:
-		for _, configDevice := range configDevices {
+		for _, configDevice := range Config.Devices {
 			// Check if the current device is connected to the host
 			connected, err := configDevice.isDeviceConnected(connectedDevices)
 			if err != nil {
@@ -143,5 +104,5 @@ OUTER:
 }
 
 func GetConfigDevices() []*Device {
-	return configDevices
+	return Config.Devices
 }
