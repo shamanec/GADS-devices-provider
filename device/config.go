@@ -16,17 +16,17 @@ type ConfigJsonData struct {
 }
 
 type AppiumConfig struct {
-	DevicesHost             string `json:"devices_host"`
 	SeleniumHubHost         string `json:"selenium_hub_host"`
 	SeleniumHubPort         string `json:"selenium_hub_port"`
 	SeleniumHubProtocolType string `json:"selenium_hub_protocol_type"`
-	WDABundleID             string `json:"wda_bundle_id"`
 }
 
 type EnvConfig struct {
+	DevicesHost         string `json:"devices_host"`
 	ConnectSeleniumGrid string `json:"connect_selenium_grid"`
 	SupervisionPassword string `json:"supervision_password"`
 	RemoteControl       string `json:"remote_control"`
+	WDABundleID         string `json:"wda_bundle_id"`
 }
 
 type Device struct {
@@ -90,7 +90,7 @@ func updateDevicesFromConfig() {
 		configDevice.StreamPort = strconv.Itoa(20101 + index)
 		configDevice.ContainerServerPort = strconv.Itoa(20201 + index)
 		configDevice.WDAPort = wdaPort
-		configDevice.Host = Config.AppiumConfig.DevicesHost
+		configDevice.Host = Config.EnvConfig.DevicesHost
 	}
 }
 
