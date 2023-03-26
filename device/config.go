@@ -24,10 +24,9 @@ type AppiumConfig struct {
 }
 
 type EnvConfig struct {
-	ConnectSeleniumGrid  string `json:"connect_selenium_grid"`
-	SupervisionPassword  string `json:"supervision_password"`
-	ContainerizedUsbmuxd string `json:"containerized_usbmuxd"`
-	RemoteControl        string `json:"remote_control"`
+	ConnectSeleniumGrid string `json:"connect_selenium_grid"`
+	SupervisionPassword string `json:"supervision_password"`
+	RemoteControl       string `json:"remote_control"`
 }
 
 type Device struct {

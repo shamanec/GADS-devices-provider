@@ -144,7 +144,6 @@ func (device *Device) createIOSContainer() {
 			"SELENIUM_HUB_HOST=" + Config.AppiumConfig.SeleniumHubHost,
 			"DEVICES_HOST=" + Config.AppiumConfig.DevicesHost,
 			"HUB_PROTOCOL=" + Config.AppiumConfig.SeleniumHubProtocolType,
-			"CONTAINERIZED_USBMUXD=" + Config.EnvConfig.ContainerizedUsbmuxd,
 			"SCREEN_SIZE=" + device.ScreenSize,
 			"CONTAINER_SERVER_PORT=" + device.ContainerServerPort,
 			"DEVICE_MODEL=" + device.Model,
@@ -154,31 +153,14 @@ func (device *Device) createIOSContainer() {
 	var mounts []mount.Mount
 	var resources container.Resources
 
-	if Config.EnvConfig.ContainerizedUsbmuxd == "false" {
-		// Mount all iOS devices on the host to the container with /var/run/usbmuxd
-		// Mount /var/lib/lockdown so you don't have to trust device on each new container
-		mounts = []mount.Mount{
+	resources = container.Resources{
+		Devices: []container.DeviceMapping{
 			{
-				Type:   mount.TypeBind,
-				Source: "/var/lib/lockdown",
-				Target: "/var/lib/lockdown",
+				PathOnHost:        "/dev/device_ios_" + device.UDID,
+				PathInContainer:   "/dev/bus/usb/003/011",
+				CgroupPermissions: "rwm",
 			},
-			{
-				Type:   mount.TypeBind,
-				Source: "/var/run/usbmuxd",
-				Target: "/var/run/usbmuxd",
-			},
-		}
-	} else {
-		resources = container.Resources{
-			Devices: []container.DeviceMapping{
-				{
-					PathOnHost:        "/dev/device_ios_" + device.UDID,
-					PathInContainer:   "/dev/bus/usb/003/011",
-					CgroupPermissions: "rwm",
-				},
-			},
-		}
+		},
 	}
 
 	mounts = append(mounts, mount.Mount{
