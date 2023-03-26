@@ -31,7 +31,8 @@ You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.h
 
 ### Update the Appium config  
 1. Open `config.json` 
-3. Update your Selenium Grid values and the bundle ID of the used WebDriverAgent in `appium-config`  
+3. Update your Selenium Grid values in `appium-config` - Grid not working atm    
+3. Update the bundle ID of the used WebDriverAgent (if running iOS) in `env-config`  
 
 ### Spin up containers  
 If you have followed all the steps, set up and registered the devices and configured the provider just connect all your devices. Container should be automatically created for each of them.  
