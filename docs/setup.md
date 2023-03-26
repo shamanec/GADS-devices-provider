@@ -3,7 +3,7 @@
 ## Dependencies  
 The provider itself has minimum dependencies:  
 1. Install Docker.  
-2. Install Go 1.17 or higher (that is what I'm using, lower might also work)    
+2. Install Go 1.17 or higher     
 
 ## Update the environment in ./configs/config.json  
 ~1. Set Selenium Grid connection - `true` or `false`. `true` attempts to connect each Appium server to the Selenium Grid instance defined in the same file~ At the moment Selenium Grid connection does not work!  
@@ -16,7 +16,7 @@ You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.h
 
 ## Setup  
 ### Build iOS Docker image
-1. Cd into the provider folder  
+1. Cd into the project folder  
 2. Execute `docker build -f Dockerfile-iOS -t ios-appium .`  
 
 ### Build Android Docker image
@@ -31,7 +31,8 @@ You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.h
 
 ### Update the Appium config  
 1. Open `config.json` 
-3. Update your Selenium Grid values and the bundle ID of the used WebDriverAgent in `appium-config`  
+3. Update your Selenium Grid values in `appium-config` - Grid not working atm    
+3. Update the bundle ID of the used WebDriverAgent (if running iOS) in `env-config`  
 
 ### Spin up containers  
 If you have followed all the steps, set up and registered the devices and configured the provider just connect all your devices. Container should be automatically created for each of them.  
@@ -42,7 +43,7 @@ If you have followed all the steps, set up and registered the devices and config
 
 1. Install `adb`  with `sudo apt install adb`  
 2. Enable `USB Debugging` for each Android device through the developer tools.  
-3. Connect the devices to the host and authorize the USB debugging - this will create pairing keys that are used by the containers so you don't have to authorize the debugging each time a container is created.  
+3. Connect the devices to the host and authorize the USB debugging - this will create pairing keys that are mounted to the containers so you don't have to authorize the debugging each time a container is created.  
 
 ### Register devices in config.json
 1. Open the `config.json` file.  
@@ -114,10 +115,10 @@ You need an Apple Developer account to build and sign `WebDriverAgent`
 3. Set it up for supervision using a new(or existing) supervision identity. You can do that for free without having a paid MDM account.  
 4. Connect each consecutive device and supervise it using the same supervision identity.  
 5. Export your supervision identity file and choose a password.  
-6. Save your new supervision identity file in the project `./configs` (or other) folder as `supervision.p12`.  
+6. Save your new supervision identity file in the project `./configs` folder as `supervision.p12`.  
 7. Open `config.json` and set your `supervision_password` in `env-config`  
 
-~**Note** You can also Trust manually when container is created but this is not optimal~ This is not applicable at the moment because `GADS-docker-server` is set up to work with supervised devices  
+**Note** You can also Trust manually when container is created if no supervision file is provided, but this is not optimal  
 
 ### Register your devices for the project
 1. Open the `config.json` file.  
@@ -130,22 +131,21 @@ You need an Apple Developer account to build and sign `WebDriverAgent`
   * `screen_size` - this is needed to easily work with the stream and remote control. Example: "375x667". You can get it on https://whatismyviewport.com (ScreenSize: at the bottom)   
   * `model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
 
-### Containerized usbmuxd connections - RECOMMENDED
-The usual approach would be to mount `/var/run/usbmuxd` to each container. This in practice shares the socket for all iOS devices connected to the host with all the containers. This way we cannot share a specific device over the network and also a single `usbmuxd` host failure will reflect on all containers. There is a way that we can have `usbmuxd` running inside each container without running on the host at all.  
+### Containerized usbmuxd
+The usual approach would be to mount `/var/run/usbmuxd` to each container. This in practice shares the socket for all iOS devices connected to the host with all the containers. This way a single `usbmuxd` host failure will reflect on all containers. We have a way for `usbmuxd` running inside each container without running on the host at all.  
 
 **Note1** `usbmuxd` HAS to be installed on the host even if we don't really use it. I could not make it work without it.  
 **Note2** `usbmuxd` has to be completely disabled on the host so it doesn't automatically start/stop when you connect/disconnect devices.  
 
-1. Open `config.json` and set `containerized_usbmuxd` to `true`.  
-2. Open terminal and execute `sudo systemctl mask usbmuxd`. This will stop the `usbmuxd` service from automatically starting and in turn will not lock devices from `usbmuxd` running inside the containers - this is the fast approach. You could also spend the time to completely remove this service from the system (without uninstalling `usbmuxd`)  
-3. Validate the service is not running with `sudo systemctl status usbmuxd`  
+1. Open terminal and execute `sudo systemctl mask usbmuxd`. This will stop the `usbmuxd` service from automatically starting and in turn will not lock devices from `usbmuxd` running inside the containers - this is the fast approach. You could also spend the time to completely remove this service from the system (without uninstalling `usbmuxd`)  
+2. Validate the service is not running with `sudo systemctl status usbmuxd`  
 
 **NB** It is preferable to have supervised the devices in advance and provided supervision file and password to make setup even more autonomous.  
 **NB** Please note that this way the devices will not be available to the host, but you shouldn't really need that unless you are setting up new devices and need to find out the UDIDs, in this case just revert the usbmuxd change with `sudo systemctl unmask usbmuxd`, do what you need to do and mask it again, restart all containers or your system and you should be good to go.  
 
-With this approach we mount the symlink of each device created by the udev rules to each separate container. This in turn makes only a specific device available to its respective container which gives us better isolation from host and more stability. One small downside is that if device is disconnected and connected again its respective container will always perform a restart. The reason for this is that upon disconnection the symlink mounted to the container is lost (even if its name is persistent) which forces us to restart the container to remount the newly created symlink when device is reconnected - which is a small price to pay for better stability.  
+With this approach we mount the symlink of each device created by the udev rules to each separate container. This in turn makes only a specific device available to its respective container which gives us better isolation from host and more stability.
 
-### Access iOS devices from a Mac for remote development  
+### Access iOS devices from a Mac for remote development - just for info  
 1. Execute `sudo socat TCP-LISTEN:10015,reuseaddr,fork UNIX-CONNECT:/var/run/usbmuxd` on the Linux host with the devices.  
 2. Execute `sudo socat UNIX-LISTEN:/var/run/usbmuxd,fork,reuseaddr,mode=777 TCP:192.168.1.8:10015` on a Mac machine on the same network as the Linux devices host.  
 3. Restart Xcode and you should see the devices available.  
@@ -158,17 +158,17 @@ This can be used for remote development of iOS apps or execution of native XCUIT
 ```
 {
   "appium-config": {
-    "devices_host": "192.168.1.5",
     "selenium_hub_host": "192.168.1.8",
     "selenium_hub_port": "4444",
-    "selenium_hub_protocol_type": "http",
-    "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner"
+    "selenium_hub_protocol_type": "http"
+    
   },
   "env-config": {
+    "devices_host": "192.168.1.5",
     "connect_selenium_grid": "false",
     "supervision_password": "patladjan1",
-    "containerized_usbmuxd": "true",
-    "remote_control": "true"
+    "remote_control": "true",
+    "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner"
   },
   "devices-config": [
     {

@@ -9,7 +9,6 @@
   "env-config": {
     "connect_selenium_grid": "false",
     "supervision_password": "patladjan1",
-    "containerized_usbmuxd": "true",
     "remote_control": "true"
   },
   "devices-config": [
