@@ -3,7 +3,7 @@
 ## Dependencies  
 The provider itself has minimum dependencies:  
 1. Install Docker.  
-2. Install Go 1.17 or higher (that is what I'm using, lower might also work)    
+2. Install Go 1.17 or higher     
 
 ## Update the environment in ./configs/config.json  
 ~1. Set Selenium Grid connection - `true` or `false`. `true` attempts to connect each Appium server to the Selenium Grid instance defined in the same file~ At the moment Selenium Grid connection does not work!  
@@ -16,7 +16,7 @@ You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.h
 
 ## Setup  
 ### Build iOS Docker image
-1. Cd into the provider folder  
+1. Cd into the project folder  
 2. Execute `docker build -f Dockerfile-iOS -t ios-appium .`  
 
 ### Build Android Docker image
@@ -43,7 +43,7 @@ If you have followed all the steps, set up and registered the devices and config
 
 1. Install `adb`  with `sudo apt install adb`  
 2. Enable `USB Debugging` for each Android device through the developer tools.  
-3. Connect the devices to the host and authorize the USB debugging - this will create pairing keys that are used by the containers so you don't have to authorize the debugging each time a container is created.  
+3. Connect the devices to the host and authorize the USB debugging - this will create pairing keys that are mounted to the containers so you don't have to authorize the debugging each time a container is created.  
 
 ### Register devices in config.json
 1. Open the `config.json` file.  
@@ -115,10 +115,10 @@ You need an Apple Developer account to build and sign `WebDriverAgent`
 3. Set it up for supervision using a new(or existing) supervision identity. You can do that for free without having a paid MDM account.  
 4. Connect each consecutive device and supervise it using the same supervision identity.  
 5. Export your supervision identity file and choose a password.  
-6. Save your new supervision identity file in the project `./configs` (or other) folder as `supervision.p12`.  
+6. Save your new supervision identity file in the project `./configs` folder as `supervision.p12`.  
 7. Open `config.json` and set your `supervision_password` in `env-config`  
 
-~**Note** You can also Trust manually when container is created but this is not optimal~ This is not applicable at the moment because `GADS-docker-server` is set up to work with supervised devices  
+**Note** You can also Trust manually when container is created if no supervision file is provided, but this is not optimal  
 
 ### Register your devices for the project
 1. Open the `config.json` file.  
@@ -158,16 +158,17 @@ This can be used for remote development of iOS apps or execution of native XCUIT
 ```
 {
   "appium-config": {
-    "devices_host": "192.168.1.5",
     "selenium_hub_host": "192.168.1.8",
     "selenium_hub_port": "4444",
-    "selenium_hub_protocol_type": "http",
-    "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner"
+    "selenium_hub_protocol_type": "http"
+    
   },
   "env-config": {
+    "devices_host": "192.168.1.5",
     "connect_selenium_grid": "false",
     "supervision_password": "patladjan1",
-    "remote_control": "true"
+    "remote_control": "true",
+    "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner"
   },
   "devices-config": [
     {
