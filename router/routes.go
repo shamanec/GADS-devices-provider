@@ -57,6 +57,27 @@ func GetProviderDevices(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, responseData)
 }
 
+func DeviceHealth(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	udid := vars["udid"]
+
+	bool, err := device.GetDeviceHealth(udid)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "check_device_health",
+		}).Error("Could not check device health, err: " + err.Error())
+		JSONError(w, "check_device_health", "Could not check device health", 500)
+		return
+	}
+
+	if bool {
+		w.WriteHeader(200)
+		return
+	}
+
+	w.WriteHeader(500)
+}
+
 // @Summary      Get container logs
 // @Description  Get logs of container by provided container ID
 // @Tags         containers
