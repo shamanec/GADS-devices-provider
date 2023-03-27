@@ -27,6 +27,7 @@ func HandleRequests() http.Handler {
 		httpSwagger.DomID("#swagger-ui"),
 	))
 
+	router.HandleFunc("/device/{udid}/health", DeviceHealth).Methods("GET")
 	router.HandleFunc("/device/list", GetProviderDevices).Methods("GET")
 	router.HandleFunc("/containers/{container_id}/logs", GetContainerLogs).Methods("GET")
 	router.HandleFunc("/device/create-udev-rules", CreateUdevRules).Methods("POST")
