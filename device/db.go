@@ -53,12 +53,12 @@ func InsertDevicesDB() error {
 		}
 	}
 
+	go devicesHealthCheck()
+
 	return nil
 }
 
 func (device *Device) updateDB() {
-	device.LastUpdateTimestamp = time.Now().UnixMilli()
-
 	err := r.Table("devices").Update(device).Exec(session)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -71,7 +71,6 @@ func (device *Device) updateStateDB(state string) {
 	dbState := device.getStateDB()
 
 	if dbState != state {
-		device.LastUpdateTimestamp = time.Now().UnixMilli()
 		device.State = state
 		err := r.Table("devices").Update(device).Exec(session)
 		if err != nil {
@@ -85,7 +84,6 @@ func (device *Device) updateStateDB(state string) {
 
 func (device *Device) updateConnectedDB(connected bool) {
 	device.Connected = connected
-	device.LastUpdateTimestamp = time.Now().UnixMilli()
 
 	err := r.Table("devices").Update(device).Exec(session)
 
@@ -110,4 +108,63 @@ func (device *Device) getStateDB() string {
 	}
 
 	return dbState
+}
+
+func (device *Device) getHealthStatusDB() bool {
+	cursor, err := r.Table("devices").Get(device.UDID).Field("Healthy").Run(session)
+	if err != nil {
+		fmt.Println("Could not get device health status in DB, err: " + err.Error())
+	}
+	defer cursor.Close()
+
+	var healthy bool
+	err = cursor.One(&healthy)
+	if err != nil {
+		fmt.Println("Could not get device health status in DB, err: " + err.Error())
+	}
+
+	return healthy
+}
+
+func devicesHealthCheck() {
+	for {
+		for _, device := range Config.Devices {
+			go device.updateHealthStatusDB()
+		}
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func (device *Device) updateHealthStatusDB() {
+	allGood := false
+	var err error = nil
+
+	if device.Connected {
+		allGood, err = device.appiumHealthy()
+		if err != nil {
+			device.Healthy = false
+		}
+
+		if device.OS == "ios" {
+			allGood, err = device.wdaHealthy()
+			if err != nil {
+				device.Healthy = false
+			}
+		}
+
+		//healthStatus := device.getHealthStatusDB()
+		device.LastHealthUpdate = time.Now().UnixMilli()
+
+		if allGood {
+			device.Healthy = true
+		}
+	}
+
+	err = r.Table("devices").Update(device).Exec(session)
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "insert_db",
+		}).Error("Update db fail: " + err.Error())
+	}
 }
