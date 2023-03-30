@@ -32,6 +32,9 @@ type EnvConfig struct {
 type Device struct {
 	Container             *DeviceContainer `json:"container,omitempty"`
 	State                 string           `json:"state"`
+	Connected             bool             `json:"connected,omitempty"`
+	Healthy               bool             `json:"healthy,omitempty"`
+	LastUpdateTimestamp   int64            `json:"last_update_timestamp,omitempty"`
 	UDID                  string           `json:"udid"`
 	OS                    string           `json:"os"`
 	AppiumPort            string           `json:"appium_port"`
@@ -85,12 +88,12 @@ func updateDevicesFromConfig() {
 		}
 
 		configDevice.Container = nil
-		configDevice.State = "Disconnected"
 		configDevice.AppiumPort = strconv.Itoa(4841 + index)
 		configDevice.StreamPort = strconv.Itoa(20101 + index)
 		configDevice.ContainerServerPort = strconv.Itoa(20201 + index)
 		configDevice.WDAPort = wdaPort
 		configDevice.Host = Config.EnvConfig.DevicesHost
+		configDevice.Connected = false
 	}
 }
 

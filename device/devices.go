@@ -42,8 +42,8 @@ OUTER:
 
 			if connected {
 				// Set the initial state to Connected
-				configDevice.State = "Connected"
-				configDevice.updateStateDB("Connected")
+				configDevice.Connected = true
+				configDevice.updateDB()
 
 				// Check if the device has an already created container
 				// Also append the container data to the device struct if it does
@@ -65,7 +65,7 @@ OUTER:
 					}
 					// If the container is Up set the state to Available
 					configDevice.State = "Available"
-					configDevice.updateStateDB("Available")
+					configDevice.updateDB()
 					continue INNER
 				}
 
@@ -83,6 +83,8 @@ OUTER:
 
 			// If the device is not connected
 			if !connected {
+				configDevice.Connected = false
+				configDevice.updateDB()
 				// Check if it has an existing container
 				hasContainer, err := configDevice.hasContainer(allContainers)
 				if err != nil {

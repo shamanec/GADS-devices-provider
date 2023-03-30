@@ -2,6 +2,7 @@ package device
 
 import (
 	"fmt"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
@@ -55,31 +56,43 @@ func InsertDevicesDB() error {
 	return nil
 }
 
+func (device *Device) updateDB() {
+	device.LastUpdateTimestamp = time.Now().UnixMilli()
+
+	err := r.Table("devices").Update(device).Exec(session)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "insert_db",
+		}).Error("Update db fail: " + err.Error())
+	}
+}
+
 func (device *Device) updateStateDB(state string) {
-	cursor, err := r.Table("devices").Get(device.UDID).Field("State").Run(session)
-	if err != nil {
-		fmt.Println("Could not get device state in DB, err: " + err.Error())
-	}
-	defer cursor.Close()
-
-	var dbState string
-	err = cursor.One(&dbState)
-	if err != nil {
-		fmt.Println("Could not get device state in DB, err: " + err.Error())
-	}
-
-	fmt.Println("DB state is: " + dbState + " and new state is: " + state)
+	dbState := device.getStateDB()
 
 	if dbState != state {
-		err = r.Table("devices").Get(device.UDID).Update(map[string]interface{}{
-			"State": state,
-		}).Exec(session)
+		device.LastUpdateTimestamp = time.Now().UnixMilli()
+		device.State = state
+		err := r.Table("devices").Update(device).Exec(session)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"event": "insert_db",
 			}).Error("Update db fail: " + err.Error())
 		}
 		return
+	}
+}
+
+func (device *Device) updateConnectedDB(connected bool) {
+	device.Connected = connected
+	device.LastUpdateTimestamp = time.Now().UnixMilli()
+
+	err := r.Table("devices").Update(device).Exec(session)
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "insert_db",
+		}).Error("Update db fail: " + err.Error())
 	}
 }
 
