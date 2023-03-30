@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/shamanec/GADS-devices-provider/db"
 	"github.com/shamanec/GADS-devices-provider/device"
 	_ "github.com/shamanec/GADS-devices-provider/docs"
 	"github.com/shamanec/GADS-devices-provider/router"
@@ -28,6 +29,11 @@ func main() {
 	setLogging()
 
 	device.SetupConfig()
+	db.New("localhost:32769")
+	err := db.InsertDevicesDB()
+	if err != nil {
+		fmt.Println("Insert failed, err:" + err.Error())
+	}
 
 	go device.UpdateDevices()
 	handler := router.HandleRequests()
