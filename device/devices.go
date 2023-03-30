@@ -43,6 +43,7 @@ OUTER:
 			if connected {
 				// Set the initial state to Connected
 				configDevice.State = "Connected"
+				configDevice.updateStateDB("Connected")
 
 				// Check if the device has an already created container
 				// Also append the container data to the device struct if it does
@@ -64,6 +65,7 @@ OUTER:
 					}
 					// If the container is Up set the state to Available
 					configDevice.State = "Available"
+					configDevice.updateStateDB("Available")
 					continue INNER
 				}
 

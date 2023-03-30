@@ -90,19 +90,3 @@ func (device *Device) hasContainer(allContainers []types.Container) (bool, error
 	}
 	return false, nil
 }
-
-// Set the current device state
-func (device *Device) setState(state string) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	device.State = state
-}
-
-// Get the device state
-func (device *Device) getState() string {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	return device.State
-}
