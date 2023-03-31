@@ -28,6 +28,7 @@ func main() {
 	setLogging()
 
 	device.SetupConfig()
+
 	device.NewDBConn("localhost:32769")
 	err := device.InsertDevicesDB()
 	if err != nil {

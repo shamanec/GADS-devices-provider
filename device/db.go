@@ -18,15 +18,33 @@ func NewDBConn(address string) {
 	})
 
 	if err != nil {
-		panic("Could not connect to db on " + address + ", err: " + err.Error())
+		panic("Could not make initial connection to db on " + address + ", err: " + err.Error())
+	}
+
+	go checkDBConnection()
+}
+
+func checkDBConnection() {
+	for {
+		if !session.IsConnected() {
+			err := session.Reconnect()
+			if err != nil {
+				panic("DB is not connected and could not reestablish connection, err: " + err.Error())
+			}
+		}
+		time.Sleep(2 * time.Second)
 	}
 }
 
+// Insert/update the registered devices from config.json to the DB
+// when starting the provider
 func InsertDevicesDB() error {
 	for _, device := range Config.Devices {
 		// Check if data for the device by UDID already exists in the table
+		fmt.Println(session)
 		cursor, err := r.Table("devices").Get(device.UDID).Run(session)
 		if err != nil {
+			fmt.Println("HERE")
 			return err
 		}
 		defer cursor.Close()
@@ -126,6 +144,7 @@ func (device *Device) getHealthStatusDB() bool {
 	return healthy
 }
 
+// Loop through the registered devices and update the health status in the DB for each device each second
 func devicesHealthCheck() {
 	for {
 		for _, device := range Config.Devices {
@@ -135,6 +154,7 @@ func devicesHealthCheck() {
 	}
 }
 
+// Check Appium and WDA(for iOS) status and update the device health in DB
 func (device *Device) updateHealthStatusDB() {
 	allGood := false
 	var err error = nil
