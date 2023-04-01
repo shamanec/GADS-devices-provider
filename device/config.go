@@ -34,7 +34,7 @@ type Device struct {
 	State                 string           `json:"state"`
 	Connected             bool             `json:"connected,omitempty"`
 	Healthy               bool             `json:"healthy,omitempty"`
-	LastHealthUpdate      int64            `json:"last_update_timestamp,omitempty"`
+	LastHealthyTimestamp  int64            `json:"last_healthy_timestamp,omitempty"`
 	UDID                  string           `json:"udid"`
 	OS                    string           `json:"os"`
 	AppiumPort            string           `json:"appium_port"`

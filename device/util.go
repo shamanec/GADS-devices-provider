@@ -62,13 +62,13 @@ func getHostContainers() ([]types.Container, error) {
 }
 
 // Check if device is connected to the host
-func (device *Device) isDeviceConnected(connectedDevices []string) (bool, error) {
+func (device *Device) isDeviceConnected(connectedDevices []string) {
 	for _, connectedDevice := range connectedDevices {
 		if strings.Contains(connectedDevice, device.UDID) {
-			return true, nil
+			device.Connected = true
 		}
 	}
-	return false, nil
+	device.Connected = false
 }
 
 // Check if device has an existing container

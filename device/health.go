@@ -10,15 +10,6 @@ func (device *Device) appiumHealthy() (bool, error) {
 		return false, err
 	}
 
-	// defer response.Body.Close()
-
-	// body, err := ioutil.ReadAll(response.Body)
-	// if err != nil {
-	// 	fmt.Println("Error:", err)
-	// }
-
-	// fmt.Println(string(body))
-
 	responseCode := response.StatusCode
 
 	if responseCode != 200 {

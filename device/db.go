@@ -71,7 +71,7 @@ func InsertDevicesDB() error {
 		}
 	}
 
-	go devicesHealthCheck()
+	//go devicesHealthCheck()
 
 	return nil
 }
@@ -157,34 +157,38 @@ func devicesHealthCheck() {
 // Check Appium and WDA(for iOS) status and update the device health in DB
 func (device *Device) updateHealthStatusDB() {
 	allGood := false
+	appiumGood := false
+	wdaGood := true
 	var err error = nil
 
 	if device.Connected {
-		allGood, err = device.appiumHealthy()
-		if err != nil {
-			device.Healthy = false
+		appiumGood, _ = device.appiumHealthy()
+
+		if appiumGood && device.OS == "ios" {
+			wdaGood, _ = device.wdaHealthy()
 		}
 
-		if device.OS == "ios" {
-			allGood, err = device.wdaHealthy()
-			if err != nil {
-				device.Healthy = false
-			}
-		}
-
-		//healthStatus := device.getHealthStatusDB()
-		device.LastHealthUpdate = time.Now().UnixMilli()
+		allGood = appiumGood && wdaGood
 
 		if allGood {
+			device.LastHealthyTimestamp = time.Now().UnixMilli()
 			device.Healthy = true
+			err = r.Table("devices").Update(device).Exec(session)
+
+			if err != nil {
+				log.WithFields(log.Fields{
+					"event": "insert_db",
+				}).Error("Update db fail: " + err.Error())
+			}
+
+		} else {
+			device.Healthy = false
+			err = r.Table("devices").Update(device).Exec(session)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"event": "insert_db",
+				}).Error("Update db fail: " + err.Error())
+			}
 		}
-	}
-
-	err = r.Table("devices").Update(device).Exec(session)
-
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "insert_db",
-		}).Error("Update db fail: " + err.Error())
 	}
 }
