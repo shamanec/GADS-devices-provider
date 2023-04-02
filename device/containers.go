@@ -23,18 +23,19 @@ func (device *Device) restartContainer() {
 
 		// Get the container ID of the device container
 		containerID := device.Container.ContainerID
-		ctx := context.Background()
 
-		cli, err := client.NewClientWithOpts(client.FromEnv)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"event": "docker_container_restart",
-			}).Error("Could not create docker client while attempting to restart container with ID: " + containerID + ". Error: " + err.Error())
-			device.State = "Unavailable"
-			device.updateDB()
-			return
+		if cli == nil {
+			err := initDockerClient()
+			if err != nil {
+				log.WithFields(log.Fields{
+					"event": "docker_container_restart",
+				}).Error("Could not create docker client while attempting to restart container with ID: " + containerID + ". Error: " + err.Error())
+				device.State = "Unavailable"
+				device.updateDB()
+			}
 		}
-		defer cli.Close()
+
+		ctx := context.Background()
 
 		// Try to restart the container
 		if err := cli.ContainerRestart(ctx, containerID, nil); err != nil {
@@ -77,16 +78,17 @@ func (device *Device) removeContainer() {
 		"event": "docker_container_remove",
 	}).Info("Attempting to remove container with ID: " + containerID)
 
-	// Create a new context and Docker client
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "docker_container_remove",
-		}).Error("Could not create docker client while attempting to remove container with ID: " + containerID + ". Error: " + err.Error())
-		return
+	if cli == nil {
+		err := initDockerClient()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"event": "docker_container_remove",
+			}).Error("Could not create docker client while attempting to remove container with ID: " + containerID + ". Error: " + err.Error())
+			return
+		}
 	}
-	defer cli.Close()
+
+	ctx := context.Background()
 
 	// Stop the container by the provided container ID
 	if err := cli.ContainerStop(ctx, containerID, nil); err != nil {
@@ -116,16 +118,16 @@ func (device *Device) createIOSContainer() {
 
 	time.Sleep(2 * time.Second)
 
-	// Create docker client
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_container_create",
-		}).Error("Could not create docker client when attempting to create a container for device with udid: " + device.UDID)
-		return
+	if cli == nil {
+		err := initDockerClient()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"event": "ios_container_create",
+			}).Error("Could not create docker client when attempting to create a container for device with udid: " + device.UDID)
+			return
+		}
 	}
-	defer cli.Close()
 
 	// Create the container config
 	containerConfig := &container.Config{
@@ -213,7 +215,7 @@ func (device *Device) createIOSContainer() {
 	}
 
 	// Create a folder for logging for the container
-	err = os.MkdirAll("./logs/container_"+device.Name+"-"+device.UDID, os.ModePerm)
+	err := os.MkdirAll("./logs/container_"+device.Name+"-"+device.UDID, os.ModePerm)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_container_create",
@@ -254,7 +256,7 @@ func (device *Device) createAndroidContainer() {
 	screenSizeValues := strings.Split(device.ScreenSize, "x")
 
 	// Create the docker client
-	ctx := context.Background()
+
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -262,7 +264,8 @@ func (device *Device) createAndroidContainer() {
 		}).Error("Could not create docker client when attempting to create a container for device with udid: " + device.UDID)
 		return
 	}
-	defer cli.Close()
+
+	ctx := context.Background()
 
 	environmentVars := []string{"ON_GRID=" + Config.EnvConfig.ConnectSeleniumGrid,
 		"APPIUM_PORT=" + device.AppiumPort,

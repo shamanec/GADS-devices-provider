@@ -38,17 +38,29 @@ func getConnectedDevices() ([]string, error) {
 	return connectedDevices, nil
 }
 
-// Get list of all containers on host
-func getHostContainers() ([]types.Container, error) {
-	// Create a new Docker client
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+var cli *client.Client
+
+func initDockerClient() error {
+	var err error
+	cli, err = client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_host_containers",
 		}).Error(". Error: " + err.Error())
-		return nil, errors.New("Could not create docker client")
+		return err
 	}
-	defer cli.Close()
+
+	return nil
+}
+
+// Get list of all containers on host
+func getHostContainers() ([]types.Container, error) {
+	if cli == nil {
+		err := initDockerClient()
+		if err != nil {
+			return []types.Container{}, err
+		}
+	}
 
 	// Get the list of containers
 	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
