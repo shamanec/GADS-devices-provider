@@ -30,7 +30,7 @@ func (device *Device) restartContainer() {
 			log.WithFields(log.Fields{
 				"event": "docker_container_restart",
 			}).Error("Could not create docker client while attempting to restart container with ID: " + containerID + ". Error: " + err.Error())
-			device.State = "Failed restart"
+			device.State = "Unavailable"
 			device.updateDB()
 			return
 		}
@@ -41,7 +41,7 @@ func (device *Device) restartContainer() {
 			log.WithFields(log.Fields{
 				"event": "docker_container_restart",
 			}).Error("Could not restart container with ID: " + containerID + ". Error: " + err.Error())
-			device.State = "Failed restart"
+			device.State = "Unavailable"
 			device.updateDB()
 			return
 		}

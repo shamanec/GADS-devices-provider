@@ -10,15 +10,15 @@ import (
 
 var session *r.Session
 
-func NewDBConn(address string) {
+func NewDBConn() {
 	var err error = nil
 	session, err = r.Connect(r.ConnectOpts{
-		Address:  address,
+		Address:  Config.EnvConfig.RethinkDB,
 		Database: "gads",
 	})
 
 	if err != nil {
-		panic("Could not make initial connection to db on " + address + ", err: " + err.Error())
+		panic("Could not make initial connection to db on " + Config.EnvConfig.RethinkDB + ", err: " + err.Error())
 	}
 
 	go checkDBConnection()
