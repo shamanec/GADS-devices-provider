@@ -60,6 +60,8 @@ func (device *Device) removeContainer() {
 	// Regardless of the removal outcome
 	defer func() {
 		device.Container = nil
+		device.State = "Unavailable"
+		device.updateDB()
 	}()
 
 	// Get the ID of the device container
@@ -82,8 +84,6 @@ func (device *Device) removeContainer() {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
 		}).Error("Could not create docker client while attempting to remove container with ID: " + containerID + ". Error: " + err.Error())
-		device.State = "Failed removing"
-		device.updateDB()
 		return
 	}
 	defer cli.Close()
@@ -93,8 +93,6 @@ func (device *Device) removeContainer() {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
 		}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
-		device.State = "Failed removing"
-		device.updateDB()
 		return
 	}
 
@@ -103,13 +101,9 @@ func (device *Device) removeContainer() {
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
 		}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
-		device.State = "Failed removing"
-		device.updateDB()
 		return
 	}
 
-	device.State = "Unavailable"
-	device.updateDB()
 	log.WithFields(log.Fields{
 		"event": "docker_container_remove",
 	}).Info("Successfully removed container with ID: " + containerID)

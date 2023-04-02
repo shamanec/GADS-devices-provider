@@ -63,19 +63,13 @@ func InsertDevicesDB() error {
 
 		// If data for the device with this UDID exists in the DB
 		// Update it with the latest info
-		err = r.Table("devices").Update(device).Exec(session)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"event": "insert_db",
-			}).Error("Update db fail: " + err.Error())
-		}
+		device.updateDB()
 	}
-
-	//go devicesHealthCheck()
 
 	return nil
 }
 
+// Update the respective device document in the DB
 func (device *Device) updateDB() {
 	err := r.Table("devices").Update(device).Exec(session)
 	if err != nil {
@@ -85,33 +79,7 @@ func (device *Device) updateDB() {
 	}
 }
 
-func (device *Device) updateStateDB(state string) {
-	dbState := device.getStateDB()
-
-	if dbState != state {
-		device.State = state
-		err := r.Table("devices").Update(device).Exec(session)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"event": "insert_db",
-			}).Error("Update db fail: " + err.Error())
-		}
-		return
-	}
-}
-
-func (device *Device) updateConnectedDB(connected bool) {
-	device.Connected = connected
-
-	err := r.Table("devices").Update(device).Exec(session)
-
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "insert_db",
-		}).Error("Update db fail: " + err.Error())
-	}
-}
-
+// Get the current State of the device from the DB
 func (device *Device) getStateDB() string {
 	cursor, err := r.Table("devices").Get(device.UDID).Field("State").Run(session)
 	if err != nil {
@@ -126,22 +94,6 @@ func (device *Device) getStateDB() string {
 	}
 
 	return dbState
-}
-
-func (device *Device) getHealthStatusDB() bool {
-	cursor, err := r.Table("devices").Get(device.UDID).Field("Healthy").Run(session)
-	if err != nil {
-		fmt.Println("Could not get device health status in DB, err: " + err.Error())
-	}
-	defer cursor.Close()
-
-	var healthy bool
-	err = cursor.One(&healthy)
-	if err != nil {
-		fmt.Println("Could not get device health status in DB, err: " + err.Error())
-	}
-
-	return healthy
 }
 
 // Loop through the registered devices and update the health status in the DB for each device each second
@@ -159,7 +111,6 @@ func (device *Device) updateHealthStatusDB() {
 	allGood := false
 	appiumGood := false
 	wdaGood := true
-	var err error = nil
 
 	if device.Connected {
 		appiumGood, _ = device.appiumHealthy()
@@ -173,22 +124,11 @@ func (device *Device) updateHealthStatusDB() {
 		if allGood {
 			device.LastHealthyTimestamp = time.Now().UnixMilli()
 			device.Healthy = true
-			err = r.Table("devices").Update(device).Exec(session)
-
-			if err != nil {
-				log.WithFields(log.Fields{
-					"event": "insert_db",
-				}).Error("Update db fail: " + err.Error())
-			}
+			device.updateDB()
 
 		} else {
 			device.Healthy = false
-			err = r.Table("devices").Update(device).Exec(session)
-			if err != nil {
-				log.WithFields(log.Fields{
-					"event": "insert_db",
-				}).Error("Update db fail: " + err.Error())
-			}
+			device.updateDB()
 		}
 	}
 }
