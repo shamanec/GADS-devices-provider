@@ -29,7 +29,7 @@ func main() {
 
 	device.SetupConfig()
 
-	device.NewDBConn("localhost:32769")
+	device.NewDBConn(device.Config.EnvConfig.RethinkDB)
 	err := device.InsertDevicesDB()
 	if err != nil {
 		fmt.Println("Insert failed, err:" + err.Error())

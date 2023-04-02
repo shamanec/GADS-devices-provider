@@ -27,6 +27,7 @@ type EnvConfig struct {
 	SupervisionPassword string `json:"supervision_password"`
 	RemoteControl       string `json:"remote_control"`
 	WDABundleID         string `json:"wda_bundle_id"`
+	RethinkDB           string `json:"rethink_db"`
 }
 
 type Device struct {
@@ -94,6 +95,7 @@ func updateDevicesFromConfig() {
 		configDevice.WDAPort = wdaPort
 		configDevice.Host = Config.EnvConfig.DevicesHost
 		configDevice.Connected = false
+		configDevice.State = "Unavailable"
 	}
 }
 
