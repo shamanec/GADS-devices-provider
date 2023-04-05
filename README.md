@@ -1,5 +1,8 @@
 ## Introduction
 
+## NB
+This is the last autonomous version of the provider. All mainstream changes will be made in regard of using GADS for remote control. To make changes to the server running inside the containers checkout the `autonomous` branch of `GADS-docker-server`, do the changes, build the `GADS-docker-server` with `go build -o container-server .` and paste the new version inside the `GADS-devices-provider` folder and rebuild your Docker images.  
+
 * GADS-devices-provider is a server providing option to spin up/down Docker containers for iOS/Android Appium testing. Can be used autonomously or in conjunction with [GADS](https://github.com/shamanec/GADS) and have your own device farm with basic providers orchestration and devices remote control.   
 **NB** I've been doing this having only small number of devices available. It looks like everything is pretty much working but I do not know how it would behave on a bigger scale.  
 

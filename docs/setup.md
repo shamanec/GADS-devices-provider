@@ -1,5 +1,8 @@
 # Provider setup  
 
+## NB
+This is the last autonomous version of the provider. All mainstream changes will be made in regard of using GADS for remote control. To make changes to the server running inside the containers checkout the `autonomous` branch of `GADS-docker-server`, do the changes, build the `GADS-docker-server` with `go build -o container-server .` and paste the new version inside the `GADS-devices-provider` folder and rebuild your Docker images.  
+
 ## Dependencies  
 The provider itself has minimum dependencies:  
 1. Install Docker.  
