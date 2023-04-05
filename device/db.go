@@ -100,7 +100,9 @@ func (device *Device) getStateDB() string {
 func devicesHealthCheck() {
 	for {
 		for _, device := range Config.Devices {
-			go device.updateHealthStatusDB()
+			if device.Connected == true {
+				go device.updateHealthStatusDB()
+			}
 		}
 		time.Sleep(1 * time.Second)
 	}
@@ -112,23 +114,21 @@ func (device *Device) updateHealthStatusDB() {
 	appiumGood := false
 	wdaGood := true
 
-	if device.Connected {
-		appiumGood, _ = device.appiumHealthy()
+	appiumGood, _ = device.appiumHealthy()
 
-		if appiumGood && device.OS == "ios" {
-			wdaGood, _ = device.wdaHealthy()
-		}
+	if appiumGood && device.OS == "ios" {
+		wdaGood, _ = device.wdaHealthy()
+	}
 
-		allGood = appiumGood && wdaGood
+	allGood = appiumGood && wdaGood
 
-		if allGood {
-			device.LastHealthyTimestamp = time.Now().UnixMilli()
-			device.Healthy = true
-			device.updateDB()
+	if allGood {
+		device.LastHealthyTimestamp = time.Now().UnixMilli()
+		device.Healthy = true
+		device.updateDB()
 
-		} else {
-			device.Healthy = false
-			device.updateDB()
-		}
+	} else {
+		device.Healthy = false
+		device.updateDB()
 	}
 }
