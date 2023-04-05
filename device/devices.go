@@ -35,6 +35,7 @@ func UpdateDevices() {
 	// Start updating the devices Connected status
 	go updateDevicesConnectedStatus()
 	go devicesHealthCheck()
+	time.Sleep(2 * time.Second)
 
 OUTER:
 	for {
@@ -50,61 +51,61 @@ OUTER:
 
 		// Loop through the devices registered from the config
 	INNER:
-		for _, configDevice := range Config.Devices {
+		for _, device := range Config.Devices {
 
-			if configDevice.Connected {
-				configDevice.updateDB()
+			if device.Connected {
+				device.updateDB()
 
 				// Check if the device has an already created container
 				// Also append the container data to the device struct if it does
-				hasContainer, err := configDevice.hasContainer(allContainers)
+				hasContainer, err := device.hasContainer(allContainers)
 				if err != nil {
 					log.WithFields(log.Fields{
 						"event": "device_listener",
-					}).Error("Could not check if device " + configDevice.UDID + " has a container, err: " + err.Error())
+					}).Error("Could not check if device " + device.UDID + " has a container, err: " + err.Error())
 					continue INNER
 				}
 
 				// If the device has container
 				if hasContainer {
 					// If the container is not Up
-					if !strings.Contains(configDevice.Container.ContainerStatus, "Up") {
+					if !strings.Contains(device.Container.ContainerStatus, "Up") {
 						// Restart the container
-						go configDevice.restartContainer()
+						go device.restartContainer()
 						continue INNER
 					}
 					// If the container is Up set the state to Available
-					configDevice.State = "Available"
-					configDevice.updateDB()
+					device.State = "Available"
+					device.updateDB()
 					continue INNER
 				}
 
-				if configDevice.OS == "ios" {
-					go configDevice.createIOSContainer()
+				if device.OS == "ios" {
+					go device.createIOSContainer()
 					continue INNER
 				}
 
-				if configDevice.OS == "android" {
-					go configDevice.createAndroidContainer()
+				if device.OS == "android" {
+					go device.createAndroidContainer()
 					continue INNER
 				}
 				continue INNER
 			}
 
 			// If the device is not connected
-			if !configDevice.Connected {
-				configDevice.updateDB()
+			if !device.Connected {
+				device.updateDB()
 				// Check if it has an existing container
-				hasContainer, err := configDevice.hasContainer(allContainers)
+				hasContainer, err := device.hasContainer(allContainers)
 				if err != nil {
 					log.WithFields(log.Fields{
 						"event": "device_listener",
-					}).Error("Could not check if device " + configDevice.UDID + " has a container, err: " + err.Error())
+					}).Error("Could not check if device " + device.UDID + " has a container, err: " + err.Error())
 					continue INNER
 				}
 				// If it has a container - remove it
 				if hasContainer {
-					configDevice.removeContainer()
+					device.removeContainer()
 				}
 			}
 		}
