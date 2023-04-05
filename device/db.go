@@ -38,7 +38,7 @@ func checkDBConnection() {
 
 // Insert/update the registered devices from config.json to the DB
 // when starting the provider
-func InsertDevicesDB() error {
+func insertDevicesDB() error {
 	for _, device := range Config.Devices {
 		// Check if data for the device by UDID already exists in the table
 		fmt.Println(session)

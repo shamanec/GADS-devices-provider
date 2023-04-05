@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -64,24 +65,46 @@ var projectDir string
 var Config ConfigJsonData
 
 // Set up the configuration data for the provider
-func SetupConfig() {
+func SetupConfig() error {
 	var err error
 
 	projectDir, err = os.Getwd()
 	if err != nil {
-		panic("Could not get project dir: " + err.Error())
+		return err
 	}
 
 	err = getConfigJsonData()
 	if err != nil {
-		panic("Could not get config data from config.json: " + err.Error())
+		return err
 	}
 
-	updateDevicesFromConfig()
+	err = updateDevicesFromConfig()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Loop through the devices from config.json and initialize the empty values
-func updateDevicesFromConfig() {
+func updateDevicesFromConfig() error {
+	connectedDevices, err := getConnectedDevices()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "device_listener",
+		}).Error("Could not get the devices from /dev, err: " + err.Error())
+		return err
+	}
+
+	for _, device := range Config.Devices {
+		device.Connected = false
+		for _, connectedDevice := range connectedDevices {
+			if strings.Contains(connectedDevice, device.UDID) {
+				device.Connected = true
+			}
+		}
+	}
+
 	for index, configDevice := range Config.Devices {
 		wdaPort := ""
 		if configDevice.OS == "ios" {
@@ -94,9 +117,15 @@ func updateDevicesFromConfig() {
 		configDevice.ContainerServerPort = strconv.Itoa(20201 + index)
 		configDevice.WDAPort = wdaPort
 		configDevice.Host = Config.EnvConfig.DevicesHost
-		configDevice.Connected = false
 		configDevice.State = "Unavailable"
 	}
+
+	err = insertDevicesDB()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Read the config.json file and initialize the configuration struct

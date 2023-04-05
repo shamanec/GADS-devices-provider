@@ -27,10 +27,8 @@ func setLogging() {
 func main() {
 	setLogging()
 
-	device.SetupConfig()
-
 	device.NewDBConn()
-	err := device.InsertDevicesDB()
+	err := device.SetupConfig()
 	if err != nil {
 		fmt.Println("Insert failed, err:" + err.Error())
 	}
