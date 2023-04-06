@@ -80,23 +80,6 @@ func (device *Device) updateDB() {
 	}
 }
 
-// Get the current State of the device from the DB
-func (device *Device) getStateDB() string {
-	cursor, err := r.Table("devices").Get(device.UDID).Field("State").Run(session)
-	if err != nil {
-		fmt.Println("Could not get device state in DB, err: " + err.Error())
-	}
-	defer cursor.Close()
-
-	var dbState string
-	err = cursor.One(&dbState)
-	if err != nil {
-		fmt.Println("Could not get device state in DB, err: " + err.Error())
-	}
-
-	return dbState
-}
-
 // Loop through the registered devices and update the health status in the DB for each device each second
 func devicesHealthCheck() {
 	for {
