@@ -11,7 +11,6 @@ import (
 var session *r.Session
 
 func NewDBConn() {
-	fmt.Println("Address is " + Config.EnvConfig.RethinkDB)
 	var err error = nil
 	session, err = r.Connect(r.ConnectOpts{
 		Address:  Config.EnvConfig.RethinkDB,
@@ -42,7 +41,6 @@ func checkDBConnection() {
 func insertDevicesDB() error {
 	for _, device := range Config.Devices {
 		// Check if data for the device by UDID already exists in the table
-		fmt.Println(session)
 		cursor, err := r.Table("devices").Get(device.UDID).Run(session)
 		if err != nil {
 			fmt.Println("HERE")
