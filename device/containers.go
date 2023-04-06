@@ -15,14 +15,24 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (device *Device) restartContainer() {
-	if device.getStateDB() != "Restarting" {
-		// Set the current device state to Restarting
-		device.State = "Restarting"
-		device.updateDB()
+var restartedContainers = make(map[string]int)
+var removedContainers = make(map[string]int)
 
-		// Get the container ID of the device container
-		containerID := device.Container.ContainerID
+func (device *Device) restartContainer() {
+	// Get the container ID of the device container
+	containerID := device.Container.ContainerID
+
+	// Delete the container from the map with containers being restarted when the function returns
+	defer delete(restartedContainers, containerID)
+
+	// Check if the container is already in the map with containers being restarted
+	_, ok := restartedContainers[containerID]
+
+	// If its not in the map, then its not being restarted
+	// So we can initiate a restart
+	if !ok {
+		// Add the container to the map with containers being restarted
+		restartedContainers[containerID] = 1
 
 		if cli == nil {
 			err := initDockerClient()
@@ -30,8 +40,6 @@ func (device *Device) restartContainer() {
 				log.WithFields(log.Fields{
 					"event": "docker_container_restart",
 				}).Error("Could not create docker client while attempting to restart container with ID: " + containerID + ". Error: " + err.Error())
-				device.State = "Unavailable"
-				device.updateDB()
 			}
 		}
 
@@ -42,73 +50,68 @@ func (device *Device) restartContainer() {
 			log.WithFields(log.Fields{
 				"event": "docker_container_restart",
 			}).Error("Could not restart container with ID: " + containerID + ". Error: " + err.Error())
-			device.State = "Unavailable"
-			device.updateDB()
 			return
 		}
 
 		log.WithFields(log.Fields{
 			"event": "docker_container_restart",
 		}).Info("Successfully attempted to restart container with ID: " + containerID)
-		device.State = "Available"
-		device.updateDB()
 		return
 	}
 }
 
 func (device *Device) removeContainer() {
-	// Remove the container info from the device
-	// Regardless of the removal outcome
-	defer func() {
-		device.Container = nil
-		device.State = "Unavailable"
-		device.updateDB()
-	}()
-
 	// Get the ID of the device container
 	containerID := device.Container.ContainerID
 
-	// Check if the container is not already being removed by checking the state
-	if device.getStateDB() != "Removing" {
-		// If device is not already being removed - set state to Removing
-		device.State = "Removing"
-		device.updateDB()
-	}
-	log.WithFields(log.Fields{
-		"event": "docker_container_remove",
-	}).Info("Attempting to remove container with ID: " + containerID)
+	// Delete the container from the map with containers being removed when the function returns
+	defer delete(removedContainers, containerID)
 
-	if cli == nil {
-		err := initDockerClient()
-		if err != nil {
+	// If its not in the map, then its not being removed
+	// So we can initiate a removal
+	_, ok := removedContainers[containerID]
+	if !ok {
+		// Add the container to the map with containers being removed
+		removedContainers[containerID] = 1
+
+		log.WithFields(log.Fields{
+			"event": "docker_container_remove",
+		}).Info("Attempting to remove container with ID: " + containerID)
+
+		if cli == nil {
+			err := initDockerClient()
+			if err != nil {
+				log.WithFields(log.Fields{
+					"event": "docker_container_remove",
+				}).Error("Could not create docker client while attempting to remove container with ID: " + containerID + ". Error: " + err.Error())
+				return
+			}
+		}
+
+		ctx := context.Background()
+
+		// Stop the container by the provided container ID
+		if err := cli.ContainerStop(ctx, containerID, nil); err != nil {
 			log.WithFields(log.Fields{
 				"event": "docker_container_remove",
-			}).Error("Could not create docker client while attempting to remove container with ID: " + containerID + ". Error: " + err.Error())
+			}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
 			return
 		}
-	}
 
-	ctx := context.Background()
+		// Remove the stopped container
+		if err := cli.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{}); err != nil {
+			log.WithFields(log.Fields{
+				"event": "docker_container_remove",
+			}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
+			return
+		}
 
-	// Stop the container by the provided container ID
-	if err := cli.ContainerStop(ctx, containerID, nil); err != nil {
+		device.Container = nil
+		device.updateDB()
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
-		}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
-		return
+		}).Info("Successfully removed container with ID: " + containerID)
 	}
-
-	// Remove the stopped container
-	if err := cli.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{}); err != nil {
-		log.WithFields(log.Fields{
-			"event": "docker_container_remove",
-		}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
-		return
-	}
-
-	log.WithFields(log.Fields{
-		"event": "docker_container_remove",
-	}).Info("Successfully removed container with ID: " + containerID)
 }
 
 func (device *Device) createIOSContainer() {

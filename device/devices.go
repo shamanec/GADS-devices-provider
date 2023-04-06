@@ -74,9 +74,7 @@ OUTER:
 						go device.restartContainer()
 						continue INNER
 					}
-					// If the container is Up set the state to Available
-					device.State = "Available"
-					device.updateDB()
+
 					continue INNER
 				}
 

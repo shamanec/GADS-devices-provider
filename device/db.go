@@ -11,6 +11,7 @@ import (
 var session *r.Session
 
 func NewDBConn() {
+	fmt.Println("Address is " + Config.EnvConfig.RethinkDB)
 	var err error = nil
 	session, err = r.Connect(r.ConnectOpts{
 		Address:  Config.EnvConfig.RethinkDB,

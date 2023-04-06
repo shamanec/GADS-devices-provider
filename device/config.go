@@ -33,7 +33,6 @@ type EnvConfig struct {
 
 type Device struct {
 	Container             *DeviceContainer `json:"container,omitempty"`
-	State                 string           `json:"state"`
 	Connected             bool             `json:"connected,omitempty"`
 	Healthy               bool             `json:"healthy,omitempty"`
 	LastHealthyTimestamp  int64            `json:"last_healthy_timestamp,omitempty"`
@@ -78,6 +77,8 @@ func SetupConfig() error {
 		return err
 	}
 
+	NewDBConn()
+
 	err = updateDevicesFromConfig()
 	if err != nil {
 		return err
@@ -117,7 +118,6 @@ func updateDevicesFromConfig() error {
 		configDevice.ContainerServerPort = strconv.Itoa(20201 + index)
 		configDevice.WDAPort = wdaPort
 		configDevice.Host = Config.EnvConfig.DevicesHost
-		configDevice.State = "Unavailable"
 	}
 
 	err = insertDevicesDB()
