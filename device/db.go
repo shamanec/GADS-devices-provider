@@ -10,7 +10,8 @@ import (
 
 var session *r.Session
 
-func NewDBConn() {
+// Create a new connection to the DB
+func newDBConn() {
 	var err error = nil
 	session, err = r.Connect(r.ConnectOpts{
 		Address:  Config.EnvConfig.RethinkDB,
@@ -24,6 +25,7 @@ func NewDBConn() {
 	go checkDBConnection()
 }
 
+// Check if the DB connection is alive and attempt to reconnect if not
 func checkDBConnection() {
 	for {
 		if !session.IsConnected() {

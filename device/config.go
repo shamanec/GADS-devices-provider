@@ -77,7 +77,7 @@ func SetupConfig() error {
 		return err
 	}
 
-	NewDBConn()
+	newDBConn()
 
 	err = updateDevicesFromConfig()
 	if err != nil {
