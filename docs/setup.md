@@ -3,7 +3,12 @@
 ## Dependencies  
 The provider itself has minimum dependencies:  
 1. Install Docker.  
-2. Install Go 1.17 or higher     
+2. Install Go 1.17 or higher  
+
+## RethinkDB
+The project uses RethinkDB for syncing devices availability between providers and GADS UI. You need to have RethinkDB running and set up as explained in the [GADS](https://github.com/shamanec/GADS) readme before running the provider.  
+1. Open `config.json`  
+2. Update the `rethink_db` value in `env-config` with the IP address of the machine running the RethinkDB instance and the port on which it is accepting connections. The default port if you followed the setup would be `32771`. Example: `192.168.1.2:32771`  
 
 ## Update the environment in ./configs/config.json  
 ~1. Set Selenium Grid connection - `true` or `false`. `true` attempts to connect each Appium server to the Selenium Grid instance defined in the same file~ At the moment Selenium Grid connection does not work!  
