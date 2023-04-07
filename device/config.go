@@ -89,6 +89,7 @@ func SetupConfig() error {
 
 // Loop through the devices from config.json and initialize the empty values
 func updateDevicesFromConfig() error {
+	// Get the currently connected devices from /dev
 	connectedDevices, err := getConnectedDevices()
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -97,29 +98,29 @@ func updateDevicesFromConfig() error {
 		return err
 	}
 
-	for _, device := range Config.Devices {
+	// Loop through the devices from the config and the currently connected devices and update the Connected field
+	for index, device := range Config.Devices {
 		device.Connected = false
 		for _, connectedDevice := range connectedDevices {
 			if strings.Contains(connectedDevice, device.UDID) {
 				device.Connected = true
 			}
 		}
-	}
 
-	for index, configDevice := range Config.Devices {
 		wdaPort := ""
-		if configDevice.OS == "ios" {
+		if device.OS == "ios" {
 			wdaPort = strconv.Itoa(20001 + index)
 		}
-
-		configDevice.Container = nil
-		configDevice.AppiumPort = strconv.Itoa(4841 + index)
-		configDevice.StreamPort = strconv.Itoa(20101 + index)
-		configDevice.ContainerServerPort = strconv.Itoa(20201 + index)
-		configDevice.WDAPort = wdaPort
-		configDevice.Host = Config.EnvConfig.DevicesHost
+		device.Container = nil
+		device.AppiumPort = strconv.Itoa(4841 + index)
+		device.StreamPort = strconv.Itoa(20101 + index)
+		device.ContainerServerPort = strconv.Itoa(20201 + index)
+		device.WDAPort = wdaPort
+		device.Host = Config.EnvConfig.DevicesHost
 	}
 
+	// Insert the devices to the DB if they are not already inserted
+	// or update them if they are
 	err = insertDevicesDB()
 	if err != nil {
 		return err
