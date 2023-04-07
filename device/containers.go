@@ -58,6 +58,7 @@ func (device *Device) restartContainer() {
 		}).Info("Successfully attempted to restart container with ID: " + containerID)
 		return
 	}
+	delete(restartedContainers, containerID)
 }
 
 func (device *Device) removeContainer() {
@@ -112,6 +113,7 @@ func (device *Device) removeContainer() {
 			"event": "docker_container_remove",
 		}).Info("Successfully removed container with ID: " + containerID)
 	}
+	delete(removedContainers, containerID)
 }
 
 func (device *Device) createIOSContainer() {

@@ -48,7 +48,6 @@ func insertDevicesDB() error {
 			fmt.Println("HERE")
 			return err
 		}
-		defer cursor.Close()
 
 		// If there is no data for the device with this UDID
 		// Insert the data into the table
@@ -61,6 +60,7 @@ func insertDevicesDB() error {
 			}
 			continue
 		}
+		cursor.Close()
 
 		// If data for the device with this UDID exists in the DB
 		// Update it with the latest info
