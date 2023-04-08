@@ -1,4 +1,5 @@
 # Provider setup  
+Currently the project assumes that GADS UI, RethinkDB and device providers are on the same network. They can all be on the same machine as well.  
 
 ## Dependencies  
 The provider itself has minimum dependencies:  
