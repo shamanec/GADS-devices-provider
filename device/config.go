@@ -63,7 +63,8 @@ type DeviceContainer struct {
 var projectDir string
 var Config ConfigJsonData
 
-// Set up the configuration data for the provider
+// Set up the configuration for the provider
+// Get the data from config.json, start a DB connection and update the devices
 func SetupConfig() error {
 	var err error
 
@@ -87,7 +88,7 @@ func SetupConfig() error {
 	return nil
 }
 
-// Loop through the devices from config.json and initialize the empty values
+// Loop through the devices from config.json and initialize them
 func updateDevicesFromConfig() error {
 	// Get the currently connected devices from /dev
 	connectedDevices, err := getConnectedDevices()

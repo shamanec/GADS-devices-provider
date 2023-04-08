@@ -6,14 +6,11 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 )
-
-var mutex sync.Mutex
 
 // Get all the connected devices to the host by reading the symlinks in /dev
 func getConnectedDevices() ([]string, error) {
