@@ -19,7 +19,7 @@ func newDBConn() {
 	})
 
 	if err != nil {
-		panic("Could not make initial connection to db on " + Config.EnvConfig.RethinkDB + ", err: " + err.Error())
+		panic("Could not make initial connection to RethinkDB on " + Config.EnvConfig.RethinkDB + ", make sure it is set up and running, err: " + err.Error())
 	}
 
 	go checkDBConnection()
