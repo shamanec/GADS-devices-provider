@@ -9,6 +9,7 @@ func (device *Device) appiumHealthy() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer response.Body.Close()
 
 	responseCode := response.StatusCode
 
@@ -24,6 +25,7 @@ func (device *Device) wdaHealthy() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer response.Body.Close()
 
 	responseCode := response.StatusCode
 	if responseCode != 200 {
