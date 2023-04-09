@@ -26,8 +26,8 @@ func updateDevicesConnectedStatus() {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "device_listener",
-		}).Error("Could not get the devices from /dev, err: " + err.Error())
-		panic(err)
+		}).Error("Could not get the devices from /dev: " + err.Error())
+		panic("Could not get the devices from /dev: " + err.Error())
 	}
 
 	for _, device := range Config.Devices {
@@ -46,7 +46,7 @@ func updateDevices() {
 	allContainers, err := getHostContainers()
 	if err != nil {
 		log.WithFields(log.Fields{
-			"event": "device_listener",
+			"event": "device_update",
 		}).Error("Could not get host containers: " + err.Error())
 		return
 	}
@@ -62,8 +62,8 @@ func updateDevices() {
 			hasContainer, err := device.hasContainer(allContainers)
 			if err != nil {
 				log.WithFields(log.Fields{
-					"event": "device_listener",
-				}).Error("Could not check if device " + device.UDID + " has a container, err: " + err.Error())
+					"event": "device_update",
+				}).Error("Could not check if device " + device.UDID + " has a container: " + err.Error())
 				continue
 			}
 
@@ -98,8 +98,8 @@ func updateDevices() {
 			hasContainer, err := device.hasContainer(allContainers)
 			if err != nil {
 				log.WithFields(log.Fields{
-					"event": "device_listener",
-				}).Error("Could not check if device " + device.UDID + " has a container, err: " + err.Error())
+					"event": "device_update",
+				}).Error("Could not check if device " + device.UDID + " has a container: " + err.Error())
 				continue
 			}
 			// If it has a container - remove it
@@ -157,7 +157,7 @@ func devicesWatcher() {
 					return
 				}
 				log.WithFields(log.Fields{
-					"event": "dev_watcher",
+					"event": "device_watcher",
 				}).Info("There was an error with the /dev watcher: " + err.Error())
 			}
 		}

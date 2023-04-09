@@ -68,18 +68,22 @@ var Config ConfigJsonData
 func SetupConfig() error {
 	var err error
 
+	// Get the current project folder
 	projectDir, err = os.Getwd()
 	if err != nil {
 		return err
 	}
 
+	// Read the config.json file into Config
 	err = getConfigJsonData()
 	if err != nil {
 		return err
 	}
 
+	// Create a connection to the DB
 	newDBConn()
 
+	// Initialize the devices from config.json and update them in the DB
 	err = updateDevicesFromConfig()
 	if err != nil {
 		return err
@@ -95,12 +99,13 @@ func updateDevicesFromConfig() error {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "device_listener",
-		}).Error("Could not get the devices from /dev, err: " + err.Error())
+		}).Error("Could not get the devices from /dev: " + err.Error())
 		return err
 	}
 
-	// Loop through the devices from the config and the currently connected devices and update the Connected field
+	// Loop through the devices from the config
 	for index, device := range Config.Devices {
+		// Update each device Connected field
 		device.Connected = false
 		for _, connectedDevice := range connectedDevices {
 			if strings.Contains(connectedDevice, device.UDID) {
@@ -108,6 +113,7 @@ func updateDevicesFromConfig() error {
 			}
 		}
 
+		// Update the other fields
 		wdaPort := ""
 		if device.OS == "ios" {
 			wdaPort = strconv.Itoa(20001 + index)

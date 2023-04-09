@@ -4,6 +4,7 @@ import (
 	"net/http"
 )
 
+// Check if a device is healthy by checking Appium and WebDriverAgent(for iOS) services
 func GetDeviceHealth(udid string) (bool, error) {
 	device := getDeviceByUDID(udid)
 
@@ -23,6 +24,7 @@ func GetDeviceHealth(udid string) (bool, error) {
 	return allGood, nil
 }
 
+// Check if the Appium server for a device is up
 func (device *Device) appiumHealthy() (bool, error) {
 	response, err := http.Get("http://localhost:" + device.AppiumPort + "/status")
 	if err != nil {
@@ -39,6 +41,7 @@ func (device *Device) appiumHealthy() (bool, error) {
 	return true, nil
 }
 
+// Check if the WebDriverAgent server for an iOS device is up
 func (device *Device) wdaHealthy() (bool, error) {
 	response, err := http.Get("http://localhost:" + device.WDAPort + "/status")
 	if err != nil {

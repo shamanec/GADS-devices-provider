@@ -37,6 +37,9 @@ func getConnectedDevices() ([]string, error) {
 
 var cli *client.Client
 
+// Create a docker client singleton to be used by the provider
+// This avoids exhausting docker socket connections and also makes code cleaner
+// Might be changed in the future if this becomes a problem
 func initDockerClient() error {
 	var err error
 	cli, err = client.NewClientWithOpts(client.FromEnv)
@@ -65,19 +68,9 @@ func getHostContainers() ([]types.Container, error) {
 		log.WithFields(log.Fields{
 			"event": "get_host_containers",
 		}).Error(". Error: " + err.Error())
-		return nil, errors.New("Could not get container list")
+		return nil, errors.New("Could not get container list: " + err.Error())
 	}
 	return containers, nil
-}
-
-// Check if device is connected to the host
-func (device *Device) isDeviceConnected(connectedDevices []string) {
-	for _, connectedDevice := range connectedDevices {
-		if strings.Contains(connectedDevice, device.UDID) {
-			device.Connected = true
-		}
-	}
-	device.Connected = false
 }
 
 // Check if device has an existing container
@@ -100,6 +93,7 @@ func (device *Device) hasContainer(allContainers []types.Container) (bool, error
 	return false, nil
 }
 
+// Get a device pointer from Config for a device by udid
 func getDeviceByUDID(udid string) *Device {
 	for _, device := range Config.Devices {
 		if device.UDID == udid {

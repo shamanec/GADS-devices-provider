@@ -1,7 +1,6 @@
 package device
 
 import (
-	"fmt"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -19,7 +18,7 @@ func newDBConn() {
 	})
 
 	if err != nil {
-		panic("Could not make initial connection to RethinkDB on " + Config.EnvConfig.RethinkDB + ", make sure it is set up and running, err: " + err.Error())
+		panic("Could not make initial connection to RethinkDB on " + Config.EnvConfig.RethinkDB + ", make sure it is set up and running: " + err.Error())
 	}
 
 	go checkDBConnection()
@@ -31,7 +30,7 @@ func checkDBConnection() {
 		if !session.IsConnected() {
 			err := session.Reconnect()
 			if err != nil {
-				panic("DB is not connected and could not reestablish connection, err: " + err.Error())
+				panic("DB is not connected and could not reestablish connection: " + err.Error())
 			}
 		}
 		time.Sleep(2 * time.Second)
@@ -45,7 +44,6 @@ func insertDevicesDB() error {
 		// Check if data for the device by UDID already exists in the table
 		cursor, err := r.Table("devices").Get(device.UDID).Run(session)
 		if err != nil {
-			fmt.Println("HERE")
 			return err
 		}
 
@@ -56,7 +54,7 @@ func insertDevicesDB() error {
 			if err != nil {
 				log.WithFields(log.Fields{
 					"event": "insert_db",
-				}).Error("Insert db fail: " + err.Error())
+				}).Error("Inserting device in DB failed: " + err.Error())
 			}
 			continue
 		}
@@ -75,8 +73,8 @@ func (device *Device) updateDB() {
 	err := r.Table("devices").Update(device).Exec(session)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"event": "insert_db",
-		}).Error("Update db fail: " + err.Error())
+			"event": "update_db",
+		}).Error("Updating device in DB failed: " + err.Error())
 	}
 }
 

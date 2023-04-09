@@ -19,6 +19,7 @@ var restartedContainers = make(map[string]int)
 var removedContainers = make(map[string]int)
 var createdContainers = make(map[string]int)
 
+// Restart a device container
 func (device *Device) restartContainer() {
 	// Get the container ID of the device container
 	containerID := device.Container.ContainerID
@@ -35,12 +36,13 @@ func (device *Device) restartContainer() {
 		// Add the container to the map with containers being restarted
 		restartedContainers[containerID] = 1
 
+		// Check the Docker client
 		if cli == nil {
 			err := initDockerClient()
 			if err != nil {
 				log.WithFields(log.Fields{
 					"event": "docker_container_restart",
-				}).Error("Could not create docker client while attempting to restart container with ID: " + containerID + ". Error: " + err.Error())
+				}).Error("Could not create docker client while attempting to restart container with ID: " + containerID + ": " + err.Error())
 			}
 		}
 
@@ -50,7 +52,7 @@ func (device *Device) restartContainer() {
 		if err := cli.ContainerRestart(ctx, containerID, nil); err != nil {
 			log.WithFields(log.Fields{
 				"event": "docker_container_restart",
-			}).Error("Could not restart container with ID: " + containerID + ". Error: " + err.Error())
+			}).Error("Could not restart container with ID: " + containerID + ": " + err.Error())
 			return
 		}
 
@@ -59,9 +61,12 @@ func (device *Device) restartContainer() {
 		}).Info("Successfully attempted to restart container with ID: " + containerID)
 		return
 	}
+
+	// Delete the container from the map with containers being restarted
 	delete(restartedContainers, containerID)
 }
 
+// Remove a device container
 func (device *Device) removeContainer() {
 	// Get the ID of the device container
 	containerID := device.Container.ContainerID
@@ -80,12 +85,13 @@ func (device *Device) removeContainer() {
 			"event": "docker_container_remove",
 		}).Info("Attempting to remove container with ID: " + containerID)
 
+		// Check the Docker client
 		if cli == nil {
 			err := initDockerClient()
 			if err != nil {
 				log.WithFields(log.Fields{
 					"event": "docker_container_remove",
-				}).Error("Could not create docker client while attempting to remove container with ID: " + containerID + ". Error: " + err.Error())
+				}).Error("Could not create docker client while attempting to remove container with ID: " + containerID + ": " + err.Error())
 				return
 			}
 		}
@@ -96,7 +102,7 @@ func (device *Device) removeContainer() {
 		if err := cli.ContainerStop(ctx, containerID, nil); err != nil {
 			log.WithFields(log.Fields{
 				"event": "docker_container_remove",
-			}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
+			}).Error("Could not remove container with ID: " + containerID + ": " + err.Error())
 			return
 		}
 
@@ -104,19 +110,23 @@ func (device *Device) removeContainer() {
 		if err := cli.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{}); err != nil {
 			log.WithFields(log.Fields{
 				"event": "docker_container_remove",
-			}).Error("Could not remove container with ID: " + containerID + ". Error: " + err.Error())
+			}).Error("Could not remove container with ID: " + containerID + ": " + err.Error())
 			return
 		}
 
+		// Remove the container from the device pointer and update the DB
 		device.Container = nil
 		device.updateDB()
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
 		}).Info("Successfully removed container with ID: " + containerID)
 	}
+
+	// Delete the container from the map with containers being removed
 	delete(removedContainers, containerID)
 }
 
+// Create an iOS device container
 func (device *Device) createIOSContainer() {
 	// Delete the container from the map with containers being created when the function returns
 	defer delete(createdContainers, device.UDID)
@@ -233,7 +243,7 @@ func (device *Device) createIOSContainer() {
 		if err != nil {
 			log.WithFields(log.Fields{
 				"event": "ios_container_create",
-			}).Error("Could not create logs folder when attempting to create a container for device with udid: " + device.UDID + ". Error: " + err.Error())
+			}).Error("Could not create logs folder when attempting to create a container for device with udid: " + device.UDID + ": " + err.Error())
 			return
 		}
 
@@ -242,7 +252,7 @@ func (device *Device) createIOSContainer() {
 		if err != nil {
 			log.WithFields(log.Fields{
 				"event": "ios_container_create",
-			}).Error("Could not create a container for device with udid: " + device.UDID + ". Error: " + err.Error())
+			}).Error("Could not create a container for device with udid: " + device.UDID + ": " + err.Error())
 			return
 		}
 
@@ -251,7 +261,7 @@ func (device *Device) createIOSContainer() {
 		if err != nil {
 			log.WithFields(log.Fields{
 				"event": "ios_container_create",
-			}).Error("Could not start container for device with udid: " + device.UDID + ". Error: " + err.Error())
+			}).Error("Could not start container for device with udid: " + device.UDID + ": " + err.Error())
 			return
 		}
 
@@ -259,9 +269,11 @@ func (device *Device) createIOSContainer() {
 			"event": "ios_container_create",
 		}).Info("Successfully created a container for iOS device with udid: " + device.UDID)
 	}
+	// Delete the container from the map with containers being created
 	delete(createdContainers, device.UDID)
 }
 
+// Create an Android device container
 func (device *Device) createAndroidContainer() {
 	// Delete the container from the map with containers being created when the function returns
 	defer delete(createdContainers, device.UDID)
@@ -327,12 +339,12 @@ func (device *Device) createAndroidContainer() {
 		if err != nil {
 			log.WithFields(log.Fields{
 				"event": "android_container_create",
-			}).Warn("Could not get home dir using os.UserHomeDir, err: " + err.Error())
+			}).Warn("Could not get home dir using os.UserHomeDir: " + err.Error())
 			user, err := user.Current()
 			if err != nil {
 				log.WithFields(log.Fields{
 					"event": "android_container_create",
-				}).Error("Could not get home dir through current user, err: " + err.Error())
+				}).Error("Could not get home dir through current user: " + err.Error())
 				return
 			}
 			homeDir = user.HomeDir
@@ -407,7 +419,7 @@ func (device *Device) createAndroidContainer() {
 		if err != nil {
 			log.WithFields(log.Fields{
 				"event": "android_container_create",
-			}).Error("Could not create logs folder when attempting to create a container for device with udid: " + device.UDID + ". Error: " + err.Error())
+			}).Error("Could not create logs folder when attempting to create a container for device with udid: " + device.UDID + ": " + err.Error())
 			return
 		}
 
@@ -416,7 +428,7 @@ func (device *Device) createAndroidContainer() {
 		if err != nil {
 			log.WithFields(log.Fields{
 				"event": "android_container_create",
-			}).Error("Could not create a container for device with udid: " + device.UDID + ". Error: " + err.Error())
+			}).Error("Could not create a container for device with udid: " + device.UDID + ": " + err.Error())
 			return
 		}
 
@@ -425,7 +437,7 @@ func (device *Device) createAndroidContainer() {
 		if err != nil {
 			log.WithFields(log.Fields{
 				"event": "android_container_create",
-			}).Error("Could not start container for device with udid: " + device.UDID + ". Error: " + err.Error())
+			}).Error("Could not start container for device with udid: " + device.UDID + ": " + err.Error())
 			return
 		}
 
@@ -433,5 +445,6 @@ func (device *Device) createAndroidContainer() {
 			"event": "android_container_create",
 		}).Info("Successfully created a container for Android device with udid: " + device.UDID)
 	}
+	// Delete the container from the map with containers being created
 	delete(createdContainers, device.UDID)
 }
