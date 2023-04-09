@@ -146,7 +146,6 @@ func devicesWatcher() {
 						updateDevicesConnectedStatus()
 						updateDevices()
 					}
-
 				}
 
 				// If we have a Remove event in /dev (device was disconnected)
