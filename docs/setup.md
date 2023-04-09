@@ -32,8 +32,10 @@ You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.h
 ### Setup udev rules
 **NB** Before this step you need to register your devices in `config.json` according to [Devices setup](#devices-setup)  
 1. Execute `curl -X POST http://localhost:{ProviderPort}/device/create-udev-rules`  
-2. Copy the newly created `90-device.rules` file to `/etc/udev/rules.d/` - `sudo cp 90-device.rules /etc/udev/rules/`  
+2. Copy the newly created `90-device.rules` file in the project folder to `/etc/udev/rules.d/` - `sudo cp 90-device.rules /etc/udev/rules/`  
 3. Execute `sudo udevadm control --reload-rules` or restart the machine    
+
+**NB** You need to perform this step each time you add a new device to `config.json` so that the symlink for that respective device is properly created in `/dev`  
 
 ### Update the Appium config  
 1. Open `config.json` 
@@ -115,7 +117,7 @@ You need an Apple Developer account to build and sign `WebDriverAgent`
 ### Provide the WebDriverAgent ipa  
 1. Paste your WDA ipa in the `./apps` folder with name `WebDriverAgent.ipa` (exact name is important for the scripts)  
 
-### Supervise the iOS devices  
+### Supervise the iOS devices - NON-MANDATORY BUT PREFERABLE
 1. Install Apple Configurator 2 on your Mac.  
 2. Attach your first device.  
 3. Set it up for supervision using a new(or existing) supervision identity. You can do that for free without having a paid MDM account.  
@@ -137,7 +139,7 @@ You need an Apple Developer account to build and sign `WebDriverAgent`
   * `screen_size` - this is needed to easily work with the stream and remote control. Example: "375x667". You can get it on https://whatismyviewport.com (ScreenSize: at the bottom)   
   * `model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
 
-### Containerized usbmuxd
+### Containerized usbmuxd - DO NOT SKIP
 The usual approach would be to mount `/var/run/usbmuxd` to each container. This in practice shares the socket for all iOS devices connected to the host with all the containers. This way a single `usbmuxd` host failure will reflect on all containers. We have a way for `usbmuxd` running inside each container without running on the host at all.  
 
 **Note1** `usbmuxd` HAS to be installed on the host even if we don't really use it. I could not make it work without it.  
