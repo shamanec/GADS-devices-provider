@@ -19,7 +19,7 @@ func setLogging() {
 	log.SetFormatter(&log.JSONFormatter{})
 	projectLogFile, err := os.OpenFile("./logs/provider.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
-		panic("Could not set log output" + err.Error())
+		panic("Could not set log output: " + err.Error())
 	}
 	log.SetOutput(projectLogFile)
 }
@@ -27,17 +27,18 @@ func setLogging() {
 func main() {
 	setLogging()
 
+	port_flag := flag.String("port", "10001", "The port to run the server on")
+	flag.Parse()
+
+	fmt.Printf("Starting provider on port:%v\n", *port_flag)
+
 	err := device.SetupConfig()
 	if err != nil {
-		fmt.Println("Insert failed, err:" + err.Error())
+		fmt.Println("Initial config setup failed: " + err.Error())
 	}
 
 	go device.UpdateDevices()
 	handler := router.HandleRequests()
 
-	port_flag := flag.String("port", "10001", "The port to run the server on")
-	flag.Parse()
-
-	fmt.Printf("Starting provider on port:%v\n", *port_flag)
 	log.Fatal(http.ListenAndServe(":"+*port_flag, handler))
 }

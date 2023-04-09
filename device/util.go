@@ -99,3 +99,13 @@ func (device *Device) hasContainer(allContainers []types.Container) (bool, error
 	}
 	return false, nil
 }
+
+func getDeviceByUDID(udid string) *Device {
+	for _, device := range Config.Devices {
+		if device.UDID == udid {
+			return device
+		}
+	}
+
+	return nil
+}
