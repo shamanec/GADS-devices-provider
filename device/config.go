@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -27,11 +28,14 @@ type EnvConfig struct {
 	SupervisionPassword string `json:"supervision_password"`
 	RemoteControl       string `json:"remote_control"`
 	WDABundleID         string `json:"wda_bundle_id"`
+	RethinkDB           string `json:"rethink_db"`
 }
 
 type Device struct {
 	Container             *DeviceContainer `json:"container,omitempty"`
-	State                 string           `json:"state"`
+	Connected             bool             `json:"connected,omitempty"`
+	Healthy               bool             `json:"healthy,omitempty"`
+	LastHealthyTimestamp  int64            `json:"last_healthy_timestamp,omitempty"`
 	UDID                  string           `json:"udid"`
 	OS                    string           `json:"os"`
 	AppiumPort            string           `json:"appium_port"`
@@ -59,39 +63,77 @@ type DeviceContainer struct {
 var projectDir string
 var Config ConfigJsonData
 
-// Set up the configuration data for the provider
-func SetupConfig() {
+// Set up the configuration for the provider
+// Get the data from config.json, start a DB connection and update the devices
+func SetupConfig() error {
 	var err error
 
+	// Get the current project folder
 	projectDir, err = os.Getwd()
 	if err != nil {
-		panic("Could not get project dir: " + err.Error())
+		return err
 	}
 
+	// Read the config.json file into Config
 	err = getConfigJsonData()
 	if err != nil {
-		panic("Could not get config data from config.json: " + err.Error())
+		return err
 	}
 
-	updateDevicesFromConfig()
+	// Create a connection to the DB
+	newDBConn()
+
+	// Initialize the devices from config.json and update them in the DB
+	err = updateDevicesFromConfig()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// Loop through the devices from config.json and initialize the empty values
-func updateDevicesFromConfig() {
-	for index, configDevice := range Config.Devices {
-		wdaPort := ""
-		if configDevice.OS == "ios" {
-			wdaPort = strconv.Itoa(20001 + index)
+// Loop through the devices from config.json and initialize them
+func updateDevicesFromConfig() error {
+	// Get the currently connected devices from /dev
+	connectedDevices, err := getConnectedDevices()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "device_listener",
+		}).Error("Could not get the devices from /dev: " + err.Error())
+		return err
+	}
+
+	// Loop through the devices from the config
+	for index, device := range Config.Devices {
+		// Update each device Connected field
+		device.Connected = false
+		for _, connectedDevice := range connectedDevices {
+			if strings.Contains(connectedDevice, device.UDID) {
+				device.Connected = true
+			}
 		}
 
-		configDevice.Container = nil
-		configDevice.State = "Disconnected"
-		configDevice.AppiumPort = strconv.Itoa(4841 + index)
-		configDevice.StreamPort = strconv.Itoa(20101 + index)
-		configDevice.ContainerServerPort = strconv.Itoa(20201 + index)
-		configDevice.WDAPort = wdaPort
-		configDevice.Host = Config.EnvConfig.DevicesHost
+		// Update the other fields
+		wdaPort := ""
+		if device.OS == "ios" {
+			wdaPort = strconv.Itoa(20001 + index)
+		}
+		device.Container = nil
+		device.AppiumPort = strconv.Itoa(4841 + index)
+		device.StreamPort = strconv.Itoa(20101 + index)
+		device.ContainerServerPort = strconv.Itoa(20201 + index)
+		device.WDAPort = wdaPort
+		device.Host = Config.EnvConfig.DevicesHost
 	}
+
+	// Insert the devices to the DB if they are not already inserted
+	// or update them if they are
+	err = insertDevicesDB()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Read the config.json file and initialize the configuration struct

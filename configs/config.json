@@ -9,7 +9,8 @@
     "supervision_password": "patladjan1",
     "remote_control": "true",
     "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner",
-    "devices_host": "192.168.1.2"
+    "devices_host": "192.168.1.2",
+    "rethink_db": "192.168.1.2:32771"
   },
   "devices-config": [
     {

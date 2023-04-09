@@ -6,14 +6,11 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 )
-
-var mutex sync.Mutex
 
 // Get all the connected devices to the host by reading the symlinks in /dev
 func getConnectedDevices() ([]string, error) {
@@ -38,17 +35,32 @@ func getConnectedDevices() ([]string, error) {
 	return connectedDevices, nil
 }
 
-// Get list of all containers on host
-func getHostContainers() ([]types.Container, error) {
-	// Create a new Docker client
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+var cli *client.Client
+
+// Create a docker client singleton to be used by the provider
+// This avoids exhausting docker socket connections and also makes code cleaner
+// Might be changed in the future if this becomes a problem
+func initDockerClient() error {
+	var err error
+	cli, err = client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_host_containers",
 		}).Error(". Error: " + err.Error())
-		return nil, errors.New("Could not create docker client")
+		return err
 	}
-	defer cli.Close()
+
+	return nil
+}
+
+// Get list of all containers on host
+func getHostContainers() ([]types.Container, error) {
+	if cli == nil {
+		err := initDockerClient()
+		if err != nil {
+			return []types.Container{}, err
+		}
+	}
 
 	// Get the list of containers
 	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
@@ -56,19 +68,9 @@ func getHostContainers() ([]types.Container, error) {
 		log.WithFields(log.Fields{
 			"event": "get_host_containers",
 		}).Error(". Error: " + err.Error())
-		return nil, errors.New("Could not get container list")
+		return nil, errors.New("Could not get container list: " + err.Error())
 	}
 	return containers, nil
-}
-
-// Check if device is connected to the host
-func (device *Device) isDeviceConnected(connectedDevices []string) (bool, error) {
-	for _, connectedDevice := range connectedDevices {
-		if strings.Contains(connectedDevice, device.UDID) {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 // Check if device has an existing container
@@ -91,18 +93,13 @@ func (device *Device) hasContainer(allContainers []types.Container) (bool, error
 	return false, nil
 }
 
-// Set the current device state
-func (device *Device) setState(state string) {
-	mutex.Lock()
-	defer mutex.Unlock()
+// Get a device pointer from Config for a device by udid
+func getDeviceByUDID(udid string) *Device {
+	for _, device := range Config.Devices {
+		if device.UDID == udid {
+			return device
+		}
+	}
 
-	device.State = state
-}
-
-// Get the device state
-func (device *Device) getState() string {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	return device.State
+	return nil
 }

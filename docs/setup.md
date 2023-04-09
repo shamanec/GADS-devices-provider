@@ -1,9 +1,15 @@
 # Provider setup  
+Currently the project assumes that GADS UI, RethinkDB and device providers are on the same network. They can all be on the same machine as well.  
 
 ## Dependencies  
 The provider itself has minimum dependencies:  
 1. Install Docker.  
-2. Install Go 1.17 or higher     
+2. Install Go 1.17 or higher  
+
+## RethinkDB
+The project uses RethinkDB for syncing devices availability between providers and GADS UI. You need to have RethinkDB running and set up as explained in the [GADS](https://github.com/shamanec/GADS) readme before running the provider.  
+1. Open `config.json`  
+2. Update the `rethink_db` value in `env-config` with the IP address of the machine running the RethinkDB instance and the port on which it is accepting connections. The default port if you followed the setup would be `32771`. Example: `192.168.1.2:32771`  
 
 ## Update the environment in ./configs/config.json  
 ~1. Set Selenium Grid connection - `true` or `false`. `true` attempts to connect each Appium server to the Selenium Grid instance defined in the same file~ At the moment Selenium Grid connection does not work!  
@@ -26,8 +32,10 @@ You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.h
 ### Setup udev rules
 **NB** Before this step you need to register your devices in `config.json` according to [Devices setup](#devices-setup)  
 1. Execute `curl -X POST http://localhost:{ProviderPort}/device/create-udev-rules`  
-2. Copy the newly created `90-device.rules` file to `/etc/udev/rules.d/` - `sudo cp 90-device.rules /etc/udev/rules/`  
+2. Copy the newly created `90-device.rules` file in the project folder to `/etc/udev/rules.d/` - `sudo cp 90-device.rules /etc/udev/rules/`  
 3. Execute `sudo udevadm control --reload-rules` or restart the machine    
+
+**NB** You need to perform this step each time you add a new device to `config.json` so that the symlink for that respective device is properly created in `/dev`  
 
 ### Update the Appium config  
 1. Open `config.json` 
@@ -109,7 +117,7 @@ You need an Apple Developer account to build and sign `WebDriverAgent`
 ### Provide the WebDriverAgent ipa  
 1. Paste your WDA ipa in the `./apps` folder with name `WebDriverAgent.ipa` (exact name is important for the scripts)  
 
-### Supervise the iOS devices  
+### Supervise the iOS devices - NON-MANDATORY BUT PREFERABLE
 1. Install Apple Configurator 2 on your Mac.  
 2. Attach your first device.  
 3. Set it up for supervision using a new(or existing) supervision identity. You can do that for free without having a paid MDM account.  
@@ -131,7 +139,7 @@ You need an Apple Developer account to build and sign `WebDriverAgent`
   * `screen_size` - this is needed to easily work with the stream and remote control. Example: "375x667". You can get it on https://whatismyviewport.com (ScreenSize: at the bottom)   
   * `model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
 
-### Containerized usbmuxd
+### Containerized usbmuxd - DO NOT SKIP
 The usual approach would be to mount `/var/run/usbmuxd` to each container. This in practice shares the socket for all iOS devices connected to the host with all the containers. This way a single `usbmuxd` host failure will reflect on all containers. We have a way for `usbmuxd` running inside each container without running on the host at all.  
 
 **Note1** `usbmuxd` HAS to be installed on the host even if we don't really use it. I could not make it work without it.  

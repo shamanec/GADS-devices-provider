@@ -7,6 +7,8 @@ import (
 )
 
 // Generate the udev rules file
+// These udev rules create symlinks for the devices in /dev
+// Which we can then use to check device connectivity and attach devices to their respective containers
 func CreateUdevRules() error {
 	log.WithFields(log.Fields{
 		"event": "create_udev_rules",
@@ -22,7 +24,7 @@ func CreateUdevRules() error {
 	}
 	defer rulesFile.Close()
 
-	// For each device generate the respective rule lines
+	// For each device in Config generate the respective rule lines
 	for _, device := range Config.Devices {
 		// Create a symlink when device is connected
 		symlink_line := `SUBSYSTEM=="usb", ENV{ID_SERIAL_SHORT}=="` + device.UDID + `", MODE="0666", SYMLINK+="device_` + device.OS + `_` + device.UDID + `"`

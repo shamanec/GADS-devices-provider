@@ -4,34 +4,7 @@ import (
 	"net/http"
 )
 
-func (device *Device) appiumHealthy() (bool, error) {
-	response, err := http.Get("http://localhost:" + device.AppiumPort + "/status")
-	if err != nil {
-		return false, err
-	}
-
-	responseCode := response.StatusCode
-	if responseCode != 200 {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func (device *Device) wdaHealthy() (bool, error) {
-	response, err := http.Get("http://localhost:" + device.WDAPort + "/status")
-	if err != nil {
-		return false, err
-	}
-
-	responseCode := response.StatusCode
-	if responseCode != 200 {
-		return false, nil
-	}
-
-	return true, nil
-}
-
+// Check if a device is healthy by checking Appium and WebDriverAgent(for iOS) services
 func GetDeviceHealth(udid string) (bool, error) {
 	device := getDeviceByUDID(udid)
 
@@ -51,12 +24,35 @@ func GetDeviceHealth(udid string) (bool, error) {
 	return allGood, nil
 }
 
-func getDeviceByUDID(udid string) *Device {
-	for _, device := range Config.Devices {
-		if device.UDID == udid {
-			return device
-		}
+// Check if the Appium server for a device is up
+func (device *Device) appiumHealthy() (bool, error) {
+	response, err := http.Get("http://localhost:" + device.AppiumPort + "/status")
+	if err != nil {
+		return false, err
+	}
+	defer response.Body.Close()
+
+	responseCode := response.StatusCode
+
+	if responseCode != 200 {
+		return false, nil
 	}
 
-	return nil
+	return true, nil
+}
+
+// Check if the WebDriverAgent server for an iOS device is up
+func (device *Device) wdaHealthy() (bool, error) {
+	response, err := http.Get("http://localhost:" + device.WDAPort + "/status")
+	if err != nil {
+		return false, err
+	}
+	defer response.Body.Close()
+
+	responseCode := response.StatusCode
+	if responseCode != 200 {
+		return false, nil
+	}
+
+	return true, nil
 }
