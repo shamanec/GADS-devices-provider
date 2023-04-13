@@ -6,7 +6,7 @@ import (
 
 // Check if a device is healthy by checking Appium and WebDriverAgent(for iOS) services
 func GetDeviceHealth(udid string) (bool, error) {
-	device := getDeviceByUDID(udid)
+	device := GetDeviceByUDID(udid)
 
 	allGood := false
 	allGood, err := device.appiumHealthy()

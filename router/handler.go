@@ -31,6 +31,7 @@ func HandleRequests() http.Handler {
 	router.HandleFunc("/device/list", GetProviderDevices).Methods("GET")
 	router.HandleFunc("/containers/{container_id}/logs", GetContainerLogs).Methods("GET")
 	router.HandleFunc("/device/create-udev-rules", CreateUdevRules).Methods("POST")
+	router.HandleFunc("/device/{udid}/tap", DeviceTap)
 	router.HandleFunc("/logs", GetLogs)
 
 	return originHandler(router)

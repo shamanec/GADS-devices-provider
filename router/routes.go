@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os/exec"
 
@@ -181,4 +182,119 @@ func GetLogs(w http.ResponseWriter, r *http.Request) {
 
 	// Reply with the read logs lines
 	fmt.Fprintf(w, out.String())
+}
+
+type tapData struct {
+	X         int    `json:"x"`
+	Y         int    `json:"y"`
+	SessionID string `json:"sessionID"`
+}
+
+func DeviceTap(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+	udid := vars["udid"]
+	device := device.GetDeviceByUDID(udid)
+
+	var requestBody tapData
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var requestURL string
+
+	if device.OS == "android" {
+		requestURL = "http://localhost:" + device.AppiumPort + "/session/" + requestBody.SessionID + "/actions"
+
+		action := androidPointerActions{
+			[]androidPointerAction{
+				{
+					Type: "pointer",
+					ID:   "finger1",
+					Parameters: androidActionParameters{
+						PointerType: "touch",
+					},
+					Actions: []androidAction{
+						{
+							Type:     "pointerMove",
+							Duration: 0,
+							X:        requestBody.X,
+							Y:        requestBody.Y,
+						},
+						{
+							Type:   "pointerDown",
+							Button: 0,
+						},
+						{
+							Type:     "pause",
+							Duration: 200,
+						},
+						{
+							Type:     "pointerUp",
+							Duration: 0,
+						},
+					},
+				},
+			},
+		}
+
+		actionJSON, err := util.ConvertToJSONString(action)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		fmt.Println("THE JSON IS: ")
+		fmt.Println(actionJSON)
+
+		// Create a new HTTP client
+		client := http.DefaultClient
+
+		req, err := http.NewRequest(http.MethodPost, requestURL, bytes.NewBuffer([]byte(actionJSON)))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		// Send the request
+		res, err := client.Do(req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		defer res.Body.Close()
+
+		// Read the response body
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		w.WriteHeader(res.StatusCode)
+		fmt.Fprintf(w, string(body))
+	}
+}
+
+type androidAction struct {
+	Type     string `json:"type"`
+	Duration int    `json:"duration"`
+	X        int    `json:"x"`
+	Y        int    `json:"y"`
+	Button   int    `json:"button"`
+}
+
+type androidActionParameters struct {
+	PointerType string `json:"pointerType"`
+}
+
+type androidPointerAction struct {
+	Type       string                  `json:"type"`
+	ID         string                  `json:"id"`
+	Parameters androidActionParameters `json:"parameters"`
+	Actions    []androidAction         `json:"actions"`
+}
+
+type androidPointerActions struct {
+	Actions []androidPointerAction `json:"actions"`
 }

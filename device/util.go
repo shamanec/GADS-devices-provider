@@ -94,7 +94,7 @@ func (device *Device) hasContainer(allContainers []types.Container) (bool, error
 }
 
 // Get a device pointer from Config for a device by udid
-func getDeviceByUDID(udid string) *Device {
+func GetDeviceByUDID(udid string) *Device {
 	for _, device := range Config.Devices {
 		if device.UDID == udid {
 			return device
