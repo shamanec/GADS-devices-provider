@@ -313,17 +313,10 @@ func (device *Device) createAndroidContainer() {
 			"HUB_PROTOCOL=" + Config.AppiumConfig.SeleniumHubProtocolType,
 			"CONTAINER_SERVER_PORT=" + device.ContainerServerPort,
 			"DEVICE_MODEL=" + device.Model,
-			"REMOTE_CONTROL=" + Config.EnvConfig.RemoteControl,
-			"MINICAP_FPS=" + device.MinicapFPS,
-			"MINICAP_HALF_RESOLUTION=" + device.MinicapHalfResolution,
 			"SCREEN_WIDTH=" + screenSizeValues[0],
 			"SCREEN_HEIGHT=" + screenSizeValues[1],
 			"SCREEN_SIZE=" + device.ScreenSize,
 			"DEVICE_OS=android"}
-
-		if device.UseMinicap != "" {
-			environmentVars = append(environmentVars, "USE_MINICAP="+device.UseMinicap)
-		}
 
 		// Create the container config
 		containerConfig := &container.Config{
@@ -372,14 +365,6 @@ func (device *Device) createAndroidContainer() {
 				Target:      "/dev/device_android_" + device.UDID,
 				BindOptions: &mount.BindOptions{Propagation: "shared"},
 			},
-		}
-
-		if Config.EnvConfig.RemoteControl == "true" {
-			mounts = append(mounts, mount.Mount{
-				Type:   mount.TypeBind,
-				Source: projectDir + "/minicap",
-				Target: "/root/minicap",
-			})
 		}
 
 		resources := container.Resources{
