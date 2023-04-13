@@ -63,32 +63,10 @@ If you have followed all the steps, set up and registered the devices and config
   * `name` - avoid using special characters and spaces except '_'. Example: "Huawei_P20_Pro"  
   * `udid` - UDID of the Android device, can get it with `adb devices`   
   * `model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
-  * `minicap_fps` - non-mandatory field, if not provided `minicap` will run with uncapped FPS  
-  * `minicap_half_resolution` - non-mandatory field, add with `true` if you want to achieve maximum FPS, will lower stream quality though  
-  * `use_minicap` - non-mandatory field, add with `false` if you want to use `GADS-Android-stream` in case `minicap` does not work for the device
 
 ### Kill adb-server
 1. You need to make sure that adb-server is not running on the host before you start devices containers.  
 2. Run `adb kill-server`.  
-
-### Minicap setup
-
-**NB** You can skip this step if you are not going to use remote control with [GADS](https://github.com/shamanec/GADS). In `config.json` change `remote_control` to `false` in `env-config`  
-**NB** You can skip this step if you want to use `GADS-Android-stream`, refer to the json explanation above  
-
-1. Unzip the `minicap.zip` file directly into the main project folder. You should see a single `minicap` folder.   
-*Note that this might or might not work for you*  
-
-or  
-
-1. Setup Android SDK.  
-2. Download and setup Android NDK.  
-3. Clone [minicap](https://github.com/shamanec/minicap.git) in the main project folder in a `minicap` folder(default).  
-4. Open the `minicap` folder.  
-5. Execute `git submodule init` and `git submodule update`.  
-6. Execute `ndk-build`.  
-7. Execute `experimental/gradlew -p experimental assembleDebug`  
-8. Execute `ndk-build NDK_DEBUG=1 1>&2`  
 
 ## iOS setup
 ### Dependencies
@@ -175,7 +153,6 @@ This can be used for remote development of iOS apps or execution of native XCUIT
     "devices_host": "192.168.1.5",
     "connect_selenium_grid": "false",
     "supervision_password": "patladjan1",
-    "remote_control": "true",
     "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner"
   },
   "devices-config": [
@@ -193,10 +170,7 @@ This can be used for remote development of iOS apps or execution of native XCUIT
       "udid": "WCR7N18B14002300",
       "name": "Huawei_P20_Pro",
       "os_version": "10",
-      "model": "Huawei P20 Pro",
-      "minicap_fps" : "30",
-      "minicap_half_resolution": "true",
-      "use_minicap": "false"
+      "model": "Huawei P20 Pro"
     }
   ]
 }

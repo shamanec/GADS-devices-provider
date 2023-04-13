@@ -26,31 +26,27 @@ type EnvConfig struct {
 	DevicesHost         string `json:"devices_host"`
 	ConnectSeleniumGrid string `json:"connect_selenium_grid"`
 	SupervisionPassword string `json:"supervision_password"`
-	RemoteControl       string `json:"remote_control"`
 	WDABundleID         string `json:"wda_bundle_id"`
 	RethinkDB           string `json:"rethink_db"`
 }
 
 type Device struct {
-	Container             *DeviceContainer `json:"container,omitempty"`
-	Connected             bool             `json:"connected,omitempty"`
-	Healthy               bool             `json:"healthy,omitempty"`
-	LastHealthyTimestamp  int64            `json:"last_healthy_timestamp,omitempty"`
-	UDID                  string           `json:"udid"`
-	OS                    string           `json:"os"`
-	AppiumPort            string           `json:"appium_port"`
-	StreamPort            string           `json:"stream_port"`
-	ContainerServerPort   string           `json:"container_server_port"`
-	WDAPort               string           `json:"wda_port,omitempty"`
-	Name                  string           `json:"name"`
-	OSVersion             string           `json:"os_version"`
-	ScreenSize            string           `json:"screen_size"`
-	Model                 string           `json:"model"`
-	Image                 string           `json:"image,omitempty"`
-	Host                  string           `json:"host"`
-	MinicapFPS            string           `json:"minicap_fps,omitempty"`
-	MinicapHalfResolution string           `json:"minicap_half_resolution,omitempty"`
-	UseMinicap            string           `json:"use_minicap,omitempty"`
+	Container            *DeviceContainer `json:"container,omitempty"`
+	Connected            bool             `json:"connected,omitempty"`
+	Healthy              bool             `json:"healthy,omitempty"`
+	LastHealthyTimestamp int64            `json:"last_healthy_timestamp,omitempty"`
+	UDID                 string           `json:"udid"`
+	OS                   string           `json:"os"`
+	AppiumPort           string           `json:"appium_port"`
+	StreamPort           string           `json:"stream_port"`
+	ContainerServerPort  string           `json:"container_server_port"`
+	WDAPort              string           `json:"wda_port,omitempty"`
+	Name                 string           `json:"name"`
+	OSVersion            string           `json:"os_version"`
+	ScreenSize           string           `json:"screen_size"`
+	Model                string           `json:"model"`
+	Image                string           `json:"image,omitempty"`
+	Host                 string           `json:"host"`
 }
 
 type DeviceContainer struct {

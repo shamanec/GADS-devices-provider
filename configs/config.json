@@ -7,7 +7,6 @@
   "env-config": {
     "connect_selenium_grid": "false",
     "supervision_password": "patladjan1",
-    "remote_control": "true",
     "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner",
     "devices_host": "192.168.1.2",
     "rethink_db": "192.168.1.2:32771"
@@ -54,8 +53,7 @@
       "name": "Huawei_P20_Pro",
       "os_version": "10",
       "model": "Huawei P20 Pro",
-      "image": "huawei-p20-pro.png",
-      "use_minicap": "false"
+      "image": "huawei-p20-pro.png"
     },
     {
       "os": "android",
@@ -71,9 +69,7 @@
       "udid": "RQ30041UV0",
       "name": "Sony_Xperia",
       "os_version": "7",
-      "model": "Sony Xperia",
-      "minicap_half_resolution": "false",
-      "use_minicap": "false"
+      "model": "Sony Xperia"
     }
   ]
 }
