@@ -181,71 +181,75 @@ func DeviceTap(c *gin.Context) {
 
 	if device.OS == "android" {
 		requestURL = "http://localhost:" + device.AppiumPort + "/session/" + requestBody.SessionID + "/actions"
+	}
 
-		action := androidPointerActions{
-			[]androidPointerAction{
-				{
-					Type: "pointer",
-					ID:   "finger1",
-					Parameters: androidActionParameters{
-						PointerType: "touch",
+	if device.OS == "ios" {
+		requestURL = "http://localhost:" + device.WDAPort + "/session/" + requestBody.SessionID + "/actions"
+	}
+
+	action := androidPointerActions{
+		[]androidPointerAction{
+			{
+				Type: "pointer",
+				ID:   "finger1",
+				Parameters: androidActionParameters{
+					PointerType: "touch",
+				},
+				Actions: []androidAction{
+					{
+						Type:     "pointerMove",
+						Duration: 0,
+						X:        requestBody.X,
+						Y:        requestBody.Y,
 					},
-					Actions: []androidAction{
-						{
-							Type:     "pointerMove",
-							Duration: 0,
-							X:        requestBody.X,
-							Y:        requestBody.Y,
-						},
-						{
-							Type:   "pointerDown",
-							Button: 0,
-						},
-						{
-							Type:     "pause",
-							Duration: 200,
-						},
-						{
-							Type:     "pointerUp",
-							Duration: 0,
-						},
+					{
+						Type:   "pointerDown",
+						Button: 0,
+					},
+					{
+						Type:     "pause",
+						Duration: 200,
+					},
+					{
+						Type:     "pointerUp",
+						Duration: 0,
 					},
 				},
 			},
-		}
-
-		actionJSON, err := util.ConvertToJSONString(action)
-		if err != nil {
-			http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// Create a new HTTP client
-		client := http.DefaultClient
-
-		req, err := http.NewRequest(http.MethodPost, requestURL, bytes.NewBuffer([]byte(actionJSON)))
-		if err != nil {
-			http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-			return
-		}
-		// Send the request
-		res, err := client.Do(req)
-		if err != nil {
-			http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-			return
-		}
-		defer res.Body.Close()
-
-		// Read the response body
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		c.Writer.WriteHeader(res.StatusCode)
-		fmt.Fprintf(c.Writer, string(body))
+		},
 	}
+
+	actionJSON, err := util.ConvertToJSONString(action)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Create a new HTTP client
+	client := http.DefaultClient
+
+	req, err := http.NewRequest(http.MethodPost, requestURL, bytes.NewBuffer([]byte(actionJSON)))
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// Send the request
+	res, err := client.Do(req)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer res.Body.Close()
+
+	// Read the response body
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	c.Writer.WriteHeader(res.StatusCode)
+	fmt.Fprintf(c.Writer, string(body))
 }
 
 type androidAction struct {
