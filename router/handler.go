@@ -18,6 +18,8 @@ func HandleRequests() *gin.Engine {
 	router.POST("/device/:udid/lock", DeviceLock)
 	router.POST("/device/:udid/unlock", DeviceUnlock)
 	router.POST("/device/:udid/screenshot", DeviceScreenshot)
+	router.POST("/device/:udid/swipe", DeviceSwipe)
+	router.GET("/device/:udid/stream", DeviceStream)
 	router.GET("/logs", GetLogs)
 
 	return router

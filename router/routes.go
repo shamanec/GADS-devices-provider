@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os/exec"
@@ -164,6 +165,8 @@ func GetLogs(c *gin.Context) {
 type actionData struct {
 	X         float64 `json:"x,omitempty"`
 	Y         float64 `json:"y,omitempty"`
+	EndX      float64 `json:"endX,omitempty"`
+	EndY      float64 `json:"endY,omitempty`
 	SessionID string  `json:"sessionID,omitempty"`
 }
 
@@ -187,15 +190,15 @@ func DeviceTap(c *gin.Context) {
 		requestURL = "http://localhost:" + device.WDAPort + "/session/" + requestBody.SessionID + "/actions"
 	}
 
-	action := androidPointerActions{
-		[]androidPointerAction{
+	action := devicePointerActions{
+		[]devicePointerAction{
 			{
 				Type: "pointer",
 				ID:   "finger1",
-				Parameters: androidActionParameters{
+				Parameters: deviceActionParameters{
 					PointerType: "touch",
 				},
-				Actions: []androidAction{
+				Actions: []deviceAction{
 					{
 						Type:     "pointerMove",
 						Duration: 0,
@@ -218,6 +221,106 @@ func DeviceTap(c *gin.Context) {
 			},
 		},
 	}
+
+	fmt.Println("REQUEST URL: ")
+	fmt.Println(requestURL)
+
+	actionJSON, err := util.ConvertToJSONString(action)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println(actionJSON)
+
+	// Create a new HTTP client
+	client := http.DefaultClient
+
+	req, err := http.NewRequest(http.MethodPost, requestURL, bytes.NewBuffer([]byte(actionJSON)))
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// Send the request
+	res, err := client.Do(req)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer res.Body.Close()
+
+	// Read the response body
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println("OPF")
+	fmt.Println(string(body))
+	fmt.Println(res.StatusCode)
+
+	c.Writer.WriteHeader(res.StatusCode)
+	fmt.Fprintf(c.Writer, string(body))
+}
+
+func DeviceSwipe(c *gin.Context) {
+	udid := c.Param("udid")
+	device := device.GetDeviceByUDID(udid)
+
+	var requestBody actionData
+	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var requestURL string
+
+	if device.OS == "android" {
+		requestURL = "http://localhost:" + device.AppiumPort + "/session/" + requestBody.SessionID + "/actions"
+	}
+
+	if device.OS == "ios" {
+		requestURL = "http://localhost:" + device.WDAPort + "/session/" + requestBody.SessionID + "/actions"
+	}
+
+	action := devicePointerActions{
+		[]devicePointerAction{
+			{
+				Type: "pointer",
+				ID:   "finger1",
+				Parameters: deviceActionParameters{
+					PointerType: "touch",
+				},
+				Actions: []deviceAction{
+					{
+						Type:     "pointerMove",
+						Duration: 0,
+						X:        requestBody.X,
+						Y:        requestBody.Y,
+					},
+					{
+						Type:   "pointerDown",
+						Button: 0,
+					},
+					{
+						Type:     "pointerMove",
+						Duration: 750,
+						Origin:   "viewport",
+						X:        requestBody.EndX,
+						Y:        requestBody.EndY,
+					},
+					{
+						Type:     "pointerUp",
+						Duration: 0,
+					},
+				},
+			},
+		},
+	}
+
+	fmt.Println("Request URL is: ")
+	fmt.Println(requestURL)
 
 	actionJSON, err := util.ConvertToJSONString(action)
 	if err != nil {
@@ -252,27 +355,28 @@ func DeviceTap(c *gin.Context) {
 	fmt.Fprintf(c.Writer, string(body))
 }
 
-type androidAction struct {
+type deviceAction struct {
 	Type     string  `json:"type"`
 	Duration int     `json:"duration"`
 	X        float64 `json:"x"`
 	Y        float64 `json:"y"`
 	Button   int     `json:"button"`
+	Origin   string  `json:"origin,omitempty"`
 }
 
-type androidActionParameters struct {
+type deviceActionParameters struct {
 	PointerType string `json:"pointerType"`
 }
 
-type androidPointerAction struct {
-	Type       string                  `json:"type"`
-	ID         string                  `json:"id"`
-	Parameters androidActionParameters `json:"parameters"`
-	Actions    []androidAction         `json:"actions"`
+type devicePointerAction struct {
+	Type       string                 `json:"type"`
+	ID         string                 `json:"id"`
+	Parameters deviceActionParameters `json:"parameters"`
+	Actions    []deviceAction         `json:"actions"`
 }
 
-type androidPointerActions struct {
-	Actions []androidPointerAction `json:"actions"`
+type devicePointerActions struct {
+	Actions []devicePointerAction `json:"actions"`
 }
 
 // =======================================
@@ -474,4 +578,45 @@ func DeviceScreenshot(c *gin.Context) {
 
 	c.Writer.WriteHeader(lockResponse.StatusCode)
 	fmt.Fprintf(c.Writer, string(lockResponseBody))
+}
+
+const mjpegFrameFooter = "\r\n\r\n"
+const mjpegFrameHeader = "--BoundaryString\r\nContent-type: image/jpg\r\nContent-Length: %d\r\n\r\n"
+
+func DeviceStream(c *gin.Context) {
+	udid := c.Param("udid")
+	device := device.GetDeviceByUDID(udid)
+
+	deviceStreamURL := ""
+	if device.OS == "android" {
+		deviceStreamURL = "http://localhost:" + device.ContainerServerPort + "/stream"
+	}
+
+	if device.OS == "ios" {
+		deviceStreamURL = "http://localhost:" + device.StreamPort
+	}
+	client := http.Client{}
+
+	// Replace this URL with the actual endpoint URL serving the JPEG stream
+	resp, err := client.Get(deviceStreamURL)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Error connecting to the stream")
+		return
+	}
+	defer resp.Body.Close()
+
+	c.Status(resp.StatusCode)
+	copyHeaders(c.Writer.Header(), resp.Header)
+	_, err = io.Copy(c.Writer, resp.Body)
+	if err != nil {
+		return
+	}
+}
+
+func copyHeaders(dst, src http.Header) {
+	for k, vv := range src {
+		for _, v := range vv {
+			dst.Add(k, v)
+		}
+	}
 }
