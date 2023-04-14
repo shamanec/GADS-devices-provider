@@ -162,9 +162,9 @@ func GetLogs(c *gin.Context) {
 // TAP
 
 type actionData struct {
-	X         int    `json:"x,omitempty"`
-	Y         int    `json:"y,omitempty"`
-	SessionID string `json:"sessionID,omitempty"`
+	X         float64 `json:"x,omitempty"`
+	Y         float64 `json:"y,omitempty"`
+	SessionID string  `json:"sessionID,omitempty"`
 }
 
 func DeviceTap(c *gin.Context) {
@@ -249,11 +249,11 @@ func DeviceTap(c *gin.Context) {
 }
 
 type androidAction struct {
-	Type     string `json:"type"`
-	Duration int    `json:"duration"`
-	X        int    `json:"x"`
-	Y        int    `json:"y"`
-	Button   int    `json:"button"`
+	Type     string  `json:"type"`
+	Duration int     `json:"duration"`
+	X        float64 `json:"x"`
+	Y        float64 `json:"y"`
+	Button   int     `json:"button"`
 }
 
 type androidActionParameters struct {
