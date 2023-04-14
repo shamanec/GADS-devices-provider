@@ -14,6 +14,7 @@ func HandleRequests() *gin.Engine {
 	router.GET("/containers/:containerID/logs", GetContainerLogs)
 	router.POST("/device/create-udev-rules", CreateUdevRules)
 	router.POST("/device/:udid/tap", DeviceTap)
+	router.POST("/device/:udid/home", DeviceHome)
 	router.GET("/logs", GetLogs)
 
 	return router

@@ -158,17 +158,20 @@ func GetLogs(c *gin.Context) {
 	fmt.Fprintf(c.Writer, out.String())
 }
 
-type tapData struct {
-	X         int    `json:"x"`
-	Y         int    `json:"y"`
-	SessionID string `json:"sessionID"`
+//=======================================
+// TAP
+
+type actionData struct {
+	X         int    `json:"x,omitempty"`
+	Y         int    `json:"y,omitempty"`
+	SessionID string `json:"sessionID,omitempty"`
 }
 
 func DeviceTap(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.GetDeviceByUDID(udid)
 
-	var requestBody tapData
+	var requestBody actionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
 		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
 		return
@@ -266,4 +269,59 @@ type androidPointerAction struct {
 
 type androidPointerActions struct {
 	Actions []androidPointerAction `json:"actions"`
+}
+
+// =======================================
+func DeviceHome(c *gin.Context) {
+	udid := c.Param("udid")
+	device := device.GetDeviceByUDID(udid)
+
+	host := "http://localhost:"
+
+	var deviceHomeURL string
+	if device.OS == "android" {
+		var requestBody actionData
+		if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
+			http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		deviceHomeURL = host + device.AppiumPort + "/session/" + requestBody.SessionID + "/appium/device/press_keycode"
+	}
+
+	if device.OS == "ios" {
+		deviceHomeURL = host + device.WDAPort + "/wda/homescreen"
+	}
+
+	// Create a new HTTP client
+	client := http.DefaultClient
+
+	homeRequestBody := ""
+	if device.OS == "android" {
+		homeRequestBody = `{"keycode": 3}`
+	}
+
+	fmt.Println("Will request " + deviceHomeURL)
+	req, err := http.NewRequest(http.MethodPost, deviceHomeURL, bytes.NewBuffer([]byte(homeRequestBody)))
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// Send the request
+	homeResponse, err := client.Do(req)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer homeResponse.Body.Close()
+
+	// Read the response body
+	homeResponseBody, err := ioutil.ReadAll(homeResponse.Body)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	c.Writer.WriteHeader(homeResponse.StatusCode)
+	fmt.Fprintf(c.Writer, string(homeResponseBody))
 }
