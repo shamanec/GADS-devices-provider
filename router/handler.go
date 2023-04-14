@@ -17,6 +17,7 @@ func HandleRequests() *gin.Engine {
 	router.POST("/device/:udid/home", DeviceHome)
 	router.POST("/device/:udid/lock", DeviceLock)
 	router.POST("/device/:udid/unlock", DeviceUnlock)
+	router.GET("/device/:udid/screenshot", DeviceScreenshot)
 	router.GET("/logs", GetLogs)
 
 	return router
