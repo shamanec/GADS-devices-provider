@@ -245,9 +245,6 @@ func DeviceTap(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fmt.Println("THE JSON IS: ")
-		fmt.Println(actionJSON)
-
 		// Create a new HTTP client
 		client := http.DefaultClient
 
