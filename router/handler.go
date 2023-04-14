@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // Make all browser requests to any provider host accessible
@@ -18,14 +17,6 @@ func originHandler(h http.Handler) http.Handler {
 func HandleRequests() http.Handler {
 	// Create a new instance of the mux router
 	router := mux.NewRouter().StrictSlash(true)
-
-	router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
-	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
-		httpSwagger.URL("/swagger/doc.json"), //The url pointing to API definition
-		httpSwagger.DeepLinking(true),
-		httpSwagger.DocExpansion("none"),
-		httpSwagger.DomID("#swagger-ui"),
-	))
 
 	router.HandleFunc("/device/{udid}/health", DeviceHealth).Methods("GET")
 	router.HandleFunc("/device/list", GetProviderDevices).Methods("GET")
