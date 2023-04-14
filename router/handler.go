@@ -1,29 +1,20 @@
 package router
 
 import (
-	"net/http"
-
-	"github.com/gorilla/mux"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
-// Make all browser requests to any provider host accessible
-func originHandler(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		h.ServeHTTP(w, r)
-	})
-}
+func HandleRequests() *gin.Engine {
 
-func HandleRequests() http.Handler {
-	// Create a new instance of the mux router
-	router := mux.NewRouter().StrictSlash(true)
+	router := gin.Default()
+	router.Use(cors.Default())
+	router.GET("/device/:udid/health", DeviceHealth)
+	router.GET("/device/list", GetProviderDevices)
+	router.GET("/containers/:containerID/logs", GetContainerLogs)
+	router.POST("/device/create-udev-rules", CreateUdevRules)
+	router.POST("/device/:udid/tap", DeviceTap)
+	router.GET("/logs", GetLogs)
 
-	router.HandleFunc("/device/{udid}/health", DeviceHealth).Methods("GET")
-	router.HandleFunc("/device/list", GetProviderDevices).Methods("GET")
-	router.HandleFunc("/containers/{container_id}/logs", GetContainerLogs).Methods("GET")
-	router.HandleFunc("/device/create-udev-rules", CreateUdevRules).Methods("POST")
-	router.HandleFunc("/device/{udid}/tap", DeviceTap)
-	router.HandleFunc("/logs", GetLogs)
-
-	return originHandler(router)
+	return router
 }

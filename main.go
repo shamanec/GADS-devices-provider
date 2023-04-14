@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/shamanec/GADS-devices-provider/device"
@@ -42,6 +41,6 @@ func main() {
 	go device.UpdateDevices()
 
 	// Handle the endpoints
-	handler := router.HandleRequests()
-	log.Fatal(http.ListenAndServe(":"+*port_flag, handler))
+	r := router.HandleRequests()
+	r.Run(":10001")
 }
