@@ -325,3 +325,100 @@ func DeviceHome(c *gin.Context) {
 	c.Writer.WriteHeader(homeResponse.StatusCode)
 	fmt.Fprintf(c.Writer, string(homeResponseBody))
 }
+
+// =======================================
+func DeviceLock(c *gin.Context) {
+	udid := c.Param("udid")
+	device := device.GetDeviceByUDID(udid)
+
+	var requestBody actionData
+	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	host := "http://localhost:"
+	var deviceHomeURL string
+	if device.OS == "android" {
+		deviceHomeURL = host + device.AppiumPort + "/session/" + requestBody.SessionID + "/appium/device/lock"
+	}
+
+	if device.OS == "ios" {
+		deviceHomeURL = host + device.WDAPort + "/session/" + requestBody.SessionID + "/wda/lock"
+	}
+
+	// Create a new HTTP client
+	client := http.DefaultClient
+
+	fmt.Println("Will request " + deviceHomeURL)
+	req, err := http.NewRequest(http.MethodPost, deviceHomeURL, nil)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// Send the request
+	lockResponse, err := client.Do(req)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer lockResponse.Body.Close()
+
+	// Read the response body
+	lockResponseBody, err := ioutil.ReadAll(lockResponse.Body)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	c.Writer.WriteHeader(lockResponse.StatusCode)
+	fmt.Fprintf(c.Writer, string(lockResponseBody))
+}
+
+func DeviceUnlock(c *gin.Context) {
+	udid := c.Param("udid")
+	device := device.GetDeviceByUDID(udid)
+
+	var requestBody actionData
+	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	host := "http://localhost:"
+	var deviceHomeURL string
+	if device.OS == "android" {
+		deviceHomeURL = host + device.AppiumPort + "/session/" + requestBody.SessionID + "/appium/device/unlock"
+	}
+
+	if device.OS == "ios" {
+		deviceHomeURL = host + device.WDAPort + "/session/" + requestBody.SessionID + "/wda/unlock"
+	}
+
+	// Create a new HTTP client
+	client := http.DefaultClient
+
+	fmt.Println("Will request " + deviceHomeURL)
+	req, err := http.NewRequest(http.MethodPost, deviceHomeURL, nil)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// Send the request
+	lockResponse, err := client.Do(req)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer lockResponse.Body.Close()
+
+	// Read the response body
+	lockResponseBody, err := ioutil.ReadAll(lockResponse.Body)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	c.Writer.WriteHeader(lockResponse.StatusCode)
+	fmt.Fprintf(c.Writer, string(lockResponseBody))
+}

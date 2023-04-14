@@ -15,6 +15,8 @@ func HandleRequests() *gin.Engine {
 	router.POST("/device/create-udev-rules", CreateUdevRules)
 	router.POST("/device/:udid/tap", DeviceTap)
 	router.POST("/device/:udid/home", DeviceHome)
+	router.POST("/device/:udid/lock", DeviceLock)
+	router.POST("/device/:udid/unlock", DeviceUnlock)
 	router.GET("/logs", GetLogs)
 
 	return router
