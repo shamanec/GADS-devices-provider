@@ -22,7 +22,7 @@ func DeviceHealth(c *gin.Context) {
 		log.WithFields(log.Fields{
 			"event": "check_device_health",
 		}).Error("Could not check device health, err: " + err.Error())
-		JSONError(c.Writer, "check_device_health", "Could not check device health", 500)
+		JSONError(c.Writer, "check_device_health", "Could not check device health, err:"+err.Error(), 500)
 		return
 	}
 
@@ -43,13 +43,7 @@ func DeviceHome(c *gin.Context) {
 
 	var deviceHomeURL string
 	if device.OS == "android" {
-		var requestBody actionData
-		if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
-			http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		deviceHomeURL = host + device.AppiumPort + "/session/" + requestBody.SessionID + "/appium/device/press_keycode"
+		deviceHomeURL = host + device.AppiumPort + "/session/" + device.AppiumSessionID + "/appium/device/press_keycode"
 	}
 
 	if device.OS == "ios" {
@@ -93,20 +87,14 @@ func DeviceLock(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.GetDeviceByUDID(udid)
 
-	var requestBody actionData
-	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	host := "http://localhost:"
 	var deviceHomeURL string
 	if device.OS == "android" {
-		deviceHomeURL = host + device.AppiumPort + "/session/" + requestBody.SessionID + "/appium/device/lock"
+		deviceHomeURL = host + device.AppiumPort + "/session/" + device.AppiumSessionID + "/appium/device/lock"
 	}
 
 	if device.OS == "ios" {
-		deviceHomeURL = host + device.WDAPort + "/session/" + requestBody.SessionID + "/wda/lock"
+		deviceHomeURL = host + device.WDAPort + "/session/" + device.WDASessionID + "/wda/lock"
 	}
 
 	// Create a new HTTP client
@@ -141,20 +129,14 @@ func DeviceUnlock(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.GetDeviceByUDID(udid)
 
-	var requestBody actionData
-	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	host := "http://localhost:"
 	var deviceHomeURL string
 	if device.OS == "android" {
-		deviceHomeURL = host + device.AppiumPort + "/session/" + requestBody.SessionID + "/appium/device/unlock"
+		deviceHomeURL = host + device.AppiumPort + "/session/" + device.AppiumSessionID + "/appium/device/unlock"
 	}
 
 	if device.OS == "ios" {
-		deviceHomeURL = host + device.WDAPort + "/session/" + requestBody.SessionID + "/wda/unlock"
+		deviceHomeURL = host + device.WDAPort + "/session/" + device.WDASessionID + "/wda/unlock"
 	}
 
 	// Create a new HTTP client
@@ -189,20 +171,14 @@ func DeviceScreenshot(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.GetDeviceByUDID(udid)
 
-	var requestBody actionData
-	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	host := "http://localhost:"
 	var deviceHomeURL string
 	if device.OS == "android" {
-		deviceHomeURL = host + device.AppiumPort + "/session/" + requestBody.SessionID + "/screenshot"
+		deviceHomeURL = host + device.AppiumPort + "/session/" + device.AppiumSessionID + "/screenshot"
 	}
 
 	if device.OS == "ios" {
-		deviceHomeURL = host + device.WDAPort + "/session/" + requestBody.SessionID + "/screenshot"
+		deviceHomeURL = host + device.WDAPort + "/session/" + device.WDASessionID + "/screenshot"
 	}
 
 	// Create a new HTTP client
@@ -280,11 +256,10 @@ func copyHeaders(destination, source http.Header) {
 // ACTIONS
 
 type actionData struct {
-	X         float64 `json:"x,omitempty"`
-	Y         float64 `json:"y,omitempty"`
-	EndX      float64 `json:"endX,omitempty"`
-	EndY      float64 `json:"endY,omitempty`
-	SessionID string  `json:"sessionID,omitempty"`
+	X    float64 `json:"x,omitempty"`
+	Y    float64 `json:"y,omitempty"`
+	EndX float64 `json:"endX,omitempty"`
+	EndY float64 `json:"endY,omitempty`
 }
 
 func DeviceTap(c *gin.Context) {
@@ -300,11 +275,11 @@ func DeviceTap(c *gin.Context) {
 	var requestURL string
 
 	if device.OS == "android" {
-		requestURL = "http://localhost:" + device.AppiumPort + "/session/" + requestBody.SessionID + "/actions"
+		requestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/actions"
 	}
 
 	if device.OS == "ios" {
-		requestURL = "http://localhost:" + device.WDAPort + "/session/" + requestBody.SessionID + "/actions"
+		requestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/actions"
 	}
 
 	action := devicePointerActions{
@@ -385,11 +360,11 @@ func DeviceSwipe(c *gin.Context) {
 	var requestURL string
 
 	if device.OS == "android" {
-		requestURL = "http://localhost:" + device.AppiumPort + "/session/" + requestBody.SessionID + "/actions"
+		requestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/actions"
 	}
 
 	if device.OS == "ios" {
-		requestURL = "http://localhost:" + device.WDAPort + "/session/" + requestBody.SessionID + "/actions"
+		requestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/actions"
 	}
 
 	action := devicePointerActions{
