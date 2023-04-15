@@ -63,7 +63,7 @@ func DeviceHome(c *gin.Context) {
 		return
 	}
 
-	c.Writer.WriteHeader(homeResponse.StatusCode)
+	copyHeaders(c.Writer.Header(), homeResponse.Header)
 	fmt.Fprintf(c.Writer, string(homeResponseBody))
 }
 
@@ -111,7 +111,7 @@ func DeviceLock(c *gin.Context) {
 		return
 	}
 
-	c.Writer.WriteHeader(lockResponse.StatusCode)
+	copyHeaders(c.Writer.Header(), lockResponse.Header)
 	fmt.Fprintf(c.Writer, string(lockResponseBody))
 }
 
@@ -159,7 +159,7 @@ func DeviceUnlock(c *gin.Context) {
 		return
 	}
 
-	c.Writer.WriteHeader(lockResponse.StatusCode)
+	copyHeaders(c.Writer.Header(), lockResponse.Header)
 	fmt.Fprintf(c.Writer, string(lockResponseBody))
 }
 
@@ -207,7 +207,7 @@ func DeviceScreenshot(c *gin.Context) {
 		return
 	}
 
-	c.Writer.WriteHeader(lockResponse.StatusCode)
+	copyHeaders(c.Writer.Header(), lockResponse.Header)
 	fmt.Fprintf(c.Writer, string(lockResponseBody))
 }
 
@@ -239,7 +239,6 @@ func DeviceStream(c *gin.Context) {
 	}
 	defer resp.Body.Close()
 
-	c.Status(resp.StatusCode)
 	copyHeaders(c.Writer.Header(), resp.Header)
 	_, err = io.Copy(c.Writer, resp.Body)
 	if err != nil {
@@ -348,7 +347,7 @@ func DeviceTap(c *gin.Context) {
 		return
 	}
 
-	c.Writer.WriteHeader(res.StatusCode)
+	copyHeaders(c.Writer.Header(), res.Header)
 	fmt.Fprintf(c.Writer, string(body))
 }
 
@@ -436,7 +435,7 @@ func DeviceSwipe(c *gin.Context) {
 		return
 	}
 
-	c.Writer.WriteHeader(res.StatusCode)
+	copyHeaders(c.Writer.Header(), res.Header)
 	fmt.Fprintf(c.Writer, string(body))
 }
 
