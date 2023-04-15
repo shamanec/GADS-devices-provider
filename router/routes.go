@@ -57,25 +57,6 @@ func GetProviderDevices(c *gin.Context) {
 	fmt.Fprintf(c.Writer, responseData)
 }
 
-func DeviceHealth(c *gin.Context) {
-	udid := c.Param("udid")
-	bool, err := device.GetDeviceHealth(udid)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "check_device_health",
-		}).Error("Could not check device health, err: " + err.Error())
-		JSONError(c.Writer, "check_device_health", "Could not check device health", 500)
-		return
-	}
-
-	if bool {
-		c.Writer.WriteHeader(200)
-		return
-	}
-
-	c.Writer.WriteHeader(500)
-}
-
 func GetContainerLogs(c *gin.Context) {
 	containerID := c.Param("containerID")
 

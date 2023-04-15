@@ -11,7 +11,28 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shamanec/GADS-devices-provider/device"
 	"github.com/shamanec/GADS-devices-provider/util"
+	log "github.com/sirupsen/logrus"
 )
+
+// Check the device health by checking Appium and WDA(for iOS)
+func DeviceHealth(c *gin.Context) {
+	udid := c.Param("udid")
+	bool, err := device.GetDeviceHealth(udid)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "check_device_health",
+		}).Error("Could not check device health, err: " + err.Error())
+		JSONError(c.Writer, "check_device_health", "Could not check device health", 500)
+		return
+	}
+
+	if bool {
+		c.Writer.WriteHeader(200)
+		return
+	}
+
+	c.Writer.WriteHeader(500)
+}
 
 // Call the respective Appium/WDA endpoint to go to Homescreen
 func DeviceHome(c *gin.Context) {
