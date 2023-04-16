@@ -430,67 +430,9 @@ func DeviceTap(c *gin.Context) {
 		return
 	}
 
-	var requestURL string
-
-	if device.OS == "android" {
-		requestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/actions"
-	}
-
-	if device.OS == "ios" {
-		requestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/actions"
-	}
-
-	action := devicePointerActions{
-		[]devicePointerAction{
-			{
-				Type: "pointer",
-				ID:   "finger1",
-				Parameters: deviceActionParameters{
-					PointerType: "touch",
-				},
-				Actions: []deviceAction{
-					{
-						Type:     "pointerMove",
-						Duration: 0,
-						X:        requestBody.X,
-						Y:        requestBody.Y,
-					},
-					{
-						Type:   "pointerDown",
-						Button: 0,
-					},
-					{
-						Type:     "pause",
-						Duration: 50,
-					},
-					{
-						Type:     "pointerUp",
-						Duration: 0,
-					},
-				},
-			},
-		},
-	}
-
-	actionJSON, err := util.ConvertToJSONString(action)
+	res, err := appiumTap(device, requestBody.X, requestBody.Y)
 	if err != nil {
 		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Create a new HTTP client
-	client := http.DefaultClient
-
-	req, err := http.NewRequest(http.MethodPost, requestURL, bytes.NewBuffer([]byte(actionJSON)))
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-	// Send the request
-	res, err := client.Do(req)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
 	}
 	defer res.Body.Close()
 
