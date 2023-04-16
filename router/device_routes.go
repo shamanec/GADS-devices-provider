@@ -292,10 +292,132 @@ func DeviceAppiumSource(c *gin.Context) {
 // ACTIONS
 
 type actionData struct {
-	X    float64 `json:"x,omitempty"`
-	Y    float64 `json:"y,omitempty"`
-	EndX float64 `json:"endX,omitempty"`
-	EndY float64 `json:"endY,omitempty`
+	X          float64 `json:"x,omitempty"`
+	Y          float64 `json:"y,omitempty"`
+	EndX       float64 `json:"endX,omitempty"`
+	EndY       float64 `json:"endY,omitempty`
+	TextToType string  `json:"text,omitempty"`
+}
+
+func DeviceTypeText(c *gin.Context) {
+	udid := c.Param("udid")
+	device := device.GetDeviceByUDID(udid)
+
+	var requestBody actionData
+	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var activeElementRequestURL string
+
+	if device.OS == "android" {
+		activeElementRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/active"
+	}
+
+	if device.OS == "ios" {
+		activeElementRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/active"
+	}
+
+	activeElementResp, err := http.Get(activeElementRequestURL)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Could not get active element: "+err.Error())
+		return
+	}
+
+	// Read the response body
+	activeElementRespBody, err := ioutil.ReadAll(activeElementResp.Body)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var activeElementData map[string]interface{}
+	err = json.Unmarshal(activeElementRespBody, &activeElementData)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	activeElementID := activeElementData["value"].(map[string]interface{})["ELEMENT"].(string)
+
+	setValueRequestURL := ""
+	if device.OS == "android" {
+		setValueRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/" + activeElementID + "/value"
+	}
+
+	if device.OS == "ios" {
+		setValueRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/" + activeElementID + "/value"
+	}
+
+	setValueRequestBody := `{"text":"` + requestBody.TextToType + `"}`
+	setValueResponse, err := http.Post(setValueRequestURL, "application/json", bytes.NewBuffer([]byte(setValueRequestBody)))
+	// Read the response body
+	body, err := ioutil.ReadAll(setValueResponse.Body)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	copyHeaders(c.Writer.Header(), setValueResponse.Header)
+	fmt.Fprintf(c.Writer, string(body))
+}
+
+func DeviceClearText(c *gin.Context) {
+	udid := c.Param("udid")
+	device := device.GetDeviceByUDID(udid)
+
+	var activeElementRequestURL string
+
+	if device.OS == "android" {
+		activeElementRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/active"
+	}
+
+	if device.OS == "ios" {
+		activeElementRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/active"
+	}
+
+	activeElementResp, err := http.Get(activeElementRequestURL)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Could not get active element: "+err.Error())
+		return
+	}
+
+	// Read the response body
+	activeElementRespBody, err := ioutil.ReadAll(activeElementResp.Body)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var activeElementData map[string]interface{}
+	err = json.Unmarshal(activeElementRespBody, &activeElementData)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	activeElementID := activeElementData["value"].(map[string]interface{})["ELEMENT"].(string)
+
+	clearValueRequestURL := ""
+	if device.OS == "android" {
+		clearValueRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/" + activeElementID + "/clear"
+	}
+
+	if device.OS == "ios" {
+		clearValueRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/" + activeElementID + "/clear"
+	}
+
+	clearValueResponse, err := http.Post(clearValueRequestURL, "application/json", nil)
+	// Read the response body
+	body, err := ioutil.ReadAll(clearValueResponse.Body)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	copyHeaders(c.Writer.Header(), clearValueResponse.Header)
+	fmt.Fprintf(c.Writer, string(body))
 }
 
 func DeviceTap(c *gin.Context) {
