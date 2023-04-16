@@ -252,6 +252,42 @@ func copyHeaders(destination, source http.Header) {
 	}
 }
 
+//======================================
+// Appium source
+
+func DeviceAppiumSource(c *gin.Context) {
+	udid := c.Param("udid")
+	device := device.GetDeviceByUDID(udid)
+
+	sourceURL := ""
+	if device.OS == "android" {
+		sourceURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/source"
+	}
+
+	if device.OS == "ios" {
+		sourceURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/source"
+	}
+
+	fmt.Println(sourceURL)
+	resp, err := http.Get(sourceURL)
+	if err != nil {
+		fmt.Println("ERROR HERE 2")
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+	}
+
+	// Read the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("ERROR HERE")
+		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer resp.Body.Close()
+
+	copyHeaders(c.Writer.Header(), resp.Header)
+	fmt.Fprintf(c.Writer, string(body))
+}
+
 //=======================================
 // ACTIONS
 
