@@ -461,7 +461,7 @@ func DeviceTap(c *gin.Context) {
 					},
 					{
 						Type:     "pause",
-						Duration: 200,
+						Duration: 50,
 					},
 					{
 						Type:     "pointerUp",
@@ -546,7 +546,7 @@ func DeviceSwipe(c *gin.Context) {
 					},
 					{
 						Type:     "pointerMove",
-						Duration: 750,
+						Duration: 500,
 						Origin:   "viewport",
 						X:        requestBody.EndX,
 						Y:        requestBody.EndY,
