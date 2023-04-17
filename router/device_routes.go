@@ -86,28 +86,9 @@ func DeviceLock(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.GetDeviceByUDID(udid)
 
-	host := "http://localhost:"
-	var deviceHomeURL string
-	if device.OS == "android" {
-		deviceHomeURL = host + device.AppiumPort + "/session/" + device.AppiumSessionID + "/appium/device/lock"
-	}
-
-	if device.OS == "ios" {
-		deviceHomeURL = host + device.WDAPort + "/session/" + device.WDASessionID + "/wda/lock"
-	}
-
-	// Create a new HTTP client
-	client := http.DefaultClient
-
-	req, err := http.NewRequest(http.MethodPost, deviceHomeURL, nil)
+	lockResponse, err := appiumLockUnlock(device, "lock")
 	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-	// Send the request
-	lockResponse, err := client.Do(req)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 	defer lockResponse.Body.Close()
@@ -115,7 +96,7 @@ func DeviceLock(c *gin.Context) {
 	// Read the response body
 	lockResponseBody, err := ioutil.ReadAll(lockResponse.Body)
 	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -128,28 +109,9 @@ func DeviceUnlock(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.GetDeviceByUDID(udid)
 
-	host := "http://localhost:"
-	var deviceHomeURL string
-	if device.OS == "android" {
-		deviceHomeURL = host + device.AppiumPort + "/session/" + device.AppiumSessionID + "/appium/device/unlock"
-	}
-
-	if device.OS == "ios" {
-		deviceHomeURL = host + device.WDAPort + "/session/" + device.WDASessionID + "/wda/unlock"
-	}
-
-	// Create a new HTTP client
-	client := http.DefaultClient
-
-	req, err := http.NewRequest(http.MethodPost, deviceHomeURL, nil)
+	lockResponse, err := appiumLockUnlock(device, "unlock")
 	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-	// Send the request
-	lockResponse, err := client.Do(req)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 	defer lockResponse.Body.Close()
@@ -157,7 +119,7 @@ func DeviceUnlock(c *gin.Context) {
 	// Read the response body
 	lockResponseBody, err := ioutil.ReadAll(lockResponse.Body)
 	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -170,41 +132,18 @@ func DeviceScreenshot(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.GetDeviceByUDID(udid)
 
-	host := "http://localhost:"
-	var deviceHomeURL string
-	if device.OS == "android" {
-		deviceHomeURL = host + device.AppiumPort + "/session/" + device.AppiumSessionID + "/screenshot"
-	}
-
-	if device.OS == "ios" {
-		deviceHomeURL = host + device.WDAPort + "/session/" + device.WDASessionID + "/screenshot"
-	}
-
-	// Create a new HTTP client
-	client := http.DefaultClient
-
-	req, err := http.NewRequest(http.MethodGet, deviceHomeURL, nil)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-	// Send the request
-	lockResponse, err := client.Do(req)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-	defer lockResponse.Body.Close()
+	screenshotResp, err := appiumScreenshot(device)
+	defer screenshotResp.Body.Close()
 
 	// Read the response body
-	lockResponseBody, err := ioutil.ReadAll(lockResponse.Body)
+	screenshotRespBody, err := ioutil.ReadAll(screenshotResp.Body)
 	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	copyHeaders(c.Writer.Header(), lockResponse.Header)
-	fmt.Fprintf(c.Writer, string(lockResponseBody))
+	copyHeaders(c.Writer.Header(), screenshotResp.Header)
+	fmt.Fprintf(c.Writer, string(screenshotRespBody))
 }
 
 // ================================
@@ -258,27 +197,15 @@ func DeviceAppiumSource(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.GetDeviceByUDID(udid)
 
-	sourceURL := ""
-	if device.OS == "android" {
-		sourceURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/source"
-	}
-
-	if device.OS == "ios" {
-		sourceURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/source"
-	}
-
-	fmt.Println(sourceURL)
-	resp, err := http.Get(sourceURL)
+	resp, err := appiumSource(device)
 	if err != nil {
-		fmt.Println("ERROR HERE 2")
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, err.Error())
 	}
 
 	// Read the response body
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("ERROR HERE")
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 	defer resp.Body.Close()

@@ -9,6 +9,25 @@ import (
 	"github.com/shamanec/GADS-devices-provider/util"
 )
 
+func appiumLockUnlock(device *device.Device, lock string) (*http.Response, error) {
+	host := "http://localhost:"
+	var deviceHomeURL string
+	if device.OS == "android" {
+		deviceHomeURL = host + device.AppiumPort + "/session/" + device.AppiumSessionID + "/appium/device/" + lock
+	}
+
+	if device.OS == "ios" {
+		deviceHomeURL = host + device.WDAPort + "/session/" + device.WDASessionID + "/wda/" + lock
+	}
+
+	lockResponse, err := http.Post(deviceHomeURL, "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return lockResponse, nil
+}
+
 func appiumTap(device *device.Device, x float64, y float64) (*http.Response, error) {
 	var appiumRequestURL string
 
@@ -150,4 +169,41 @@ func appiumSwipe(device *device.Device, x, y, endX, endY float64) (*http.Respons
 
 	// Return the response object
 	return res, nil
+}
+
+func appiumSource(device *device.Device) (*http.Response, error) {
+	sourceURL := ""
+	if device.OS == "android" {
+		sourceURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/source"
+	}
+
+	if device.OS == "ios" {
+		sourceURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/source"
+	}
+
+	resp, err := http.Get(sourceURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func appiumScreenshot(device *device.Device) (*http.Response, error) {
+	host := "http://localhost:"
+	var screenshotURL string
+	if device.OS == "android" {
+		screenshotURL = host + device.AppiumPort + "/session/" + device.AppiumSessionID + "/screenshot"
+	}
+
+	if device.OS == "ios" {
+		screenshotURL = host + device.WDAPort + "/session/" + device.WDASessionID + "/screenshot"
+	}
+
+	resp, err := http.Get(screenshotURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
