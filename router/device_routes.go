@@ -21,7 +21,7 @@ func DeviceHealth(c *gin.Context) {
 		log.WithFields(log.Fields{
 			"event": "check_device_health",
 		}).Error("Could not check device health, err: " + err.Error())
-		JSONError(c.Writer, "check_device_health", "Could not check device health, err:"+err.Error(), 500)
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -59,13 +59,13 @@ func DeviceHome(c *gin.Context) {
 
 	req, err := http.NewRequest(http.MethodPost, deviceHomeURL, bytes.NewBuffer([]byte(homeRequestBody)))
 	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 	// Send the request
 	homeResponse, err := client.Do(req)
 	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 	defer homeResponse.Body.Close()
@@ -73,7 +73,7 @@ func DeviceHome(c *gin.Context) {
 	// Read the response body
 	homeResponseBody, err := ioutil.ReadAll(homeResponse.Body)
 	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -148,8 +148,6 @@ func DeviceScreenshot(c *gin.Context) {
 
 // ================================
 // Device screen streaming
-const mjpegFrameFooter = "\r\n\r\n"
-const mjpegFrameHeader = "--BoundaryString\r\nContent-type: image/jpg\r\nContent-Length: %d\r\n\r\n"
 
 // Call the device stream endpoint and proxy it to the respective provider stream endpoint
 func DeviceStream(c *gin.Context) {
@@ -197,20 +195,21 @@ func DeviceAppiumSource(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.GetDeviceByUDID(udid)
 
-	resp, err := appiumSource(device)
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-	}
-
-	// Read the response body
-	body, err := ioutil.ReadAll(resp.Body)
+	sourceResp, err := appiumSource(device)
 	if err != nil {
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
-	defer resp.Body.Close()
 
-	copyHeaders(c.Writer.Header(), resp.Header)
+	// Read the response body
+	body, err := ioutil.ReadAll(sourceResp.Body)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	defer sourceResp.Body.Close()
+
+	copyHeaders(c.Writer.Header(), sourceResp.Header)
 	fmt.Fprintf(c.Writer, string(body))
 }
 
@@ -223,181 +222,6 @@ type actionData struct {
 	EndX       float64 `json:"endX,omitempty"`
 	EndY       float64 `json:"endY,omitempty`
 	TextToType string  `json:"text,omitempty"`
-}
-
-func DeviceTypeText(c *gin.Context) {
-	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
-
-	var requestBody actionData
-	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	var activeElementRequestURL string
-
-	if device.OS == "android" {
-		activeElementRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/active"
-	}
-
-	if device.OS == "ios" {
-		activeElementRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/active"
-	}
-
-	activeElementResp, err := http.Get(activeElementRequestURL)
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Could not get active element: "+err.Error())
-		return
-	}
-
-	// Read the response body
-	activeElementRespBody, err := ioutil.ReadAll(activeElementResp.Body)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	var activeElementData map[string]interface{}
-	err = json.Unmarshal(activeElementRespBody, &activeElementData)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	activeElementID := activeElementData["value"].(map[string]interface{})["ELEMENT"].(string)
-
-	setValueRequestURL := ""
-	if device.OS == "android" {
-		setValueRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/" + activeElementID + "/value"
-	}
-
-	if device.OS == "ios" {
-		setValueRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/" + activeElementID + "/value"
-	}
-
-	setValueRequestBody := `{"text":"` + requestBody.TextToType + `"}`
-	setValueResponse, err := http.Post(setValueRequestURL, "application/json", bytes.NewBuffer([]byte(setValueRequestBody)))
-	// Read the response body
-	body, err := ioutil.ReadAll(setValueResponse.Body)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	copyHeaders(c.Writer.Header(), setValueResponse.Header)
-	fmt.Fprintf(c.Writer, string(body))
-}
-
-func DeviceClearText(c *gin.Context) {
-	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
-
-	var activeElementRequestURL string
-
-	if device.OS == "android" {
-		activeElementRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/active"
-	}
-
-	if device.OS == "ios" {
-		activeElementRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/active"
-	}
-
-	activeElementResp, err := http.Get(activeElementRequestURL)
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Could not get active element: "+err.Error())
-		return
-	}
-
-	// Read the response body
-	activeElementRespBody, err := ioutil.ReadAll(activeElementResp.Body)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	var activeElementData map[string]interface{}
-	err = json.Unmarshal(activeElementRespBody, &activeElementData)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	activeElementID := activeElementData["value"].(map[string]interface{})["ELEMENT"].(string)
-
-	clearValueRequestURL := ""
-	if device.OS == "android" {
-		clearValueRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/" + activeElementID + "/clear"
-	}
-
-	if device.OS == "ios" {
-		clearValueRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/" + activeElementID + "/clear"
-	}
-
-	clearValueResponse, err := http.Post(clearValueRequestURL, "application/json", nil)
-	// Read the response body
-	body, err := ioutil.ReadAll(clearValueResponse.Body)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	copyHeaders(c.Writer.Header(), clearValueResponse.Header)
-	fmt.Fprintf(c.Writer, string(body))
-}
-
-func DeviceTap(c *gin.Context) {
-	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
-
-	var requestBody actionData
-	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	res, err := appiumTap(device, requestBody.X, requestBody.Y)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-	}
-	defer res.Body.Close()
-
-	// Read the response body
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	copyHeaders(c.Writer.Header(), res.Header)
-	fmt.Fprintf(c.Writer, string(body))
-}
-
-func DeviceSwipe(c *gin.Context) {
-	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
-
-	var requestBody actionData
-	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	res, err := appiumSwipe(device, requestBody.X, requestBody.Y, requestBody.EndX, requestBody.EndY)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-	}
-	defer res.Body.Close()
-
-	// Read the response body
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	copyHeaders(c.Writer.Header(), res.Header)
-	fmt.Fprintf(c.Writer, string(body))
 }
 
 type deviceAction struct {
@@ -422,4 +246,108 @@ type devicePointerAction struct {
 
 type devicePointerActions struct {
 	Actions []devicePointerAction `json:"actions"`
+}
+
+func DeviceTypeText(c *gin.Context) {
+	udid := c.Param("udid")
+	device := device.GetDeviceByUDID(udid)
+
+	var requestBody actionData
+	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	typeResp, err := appiumTypeText(device, requestBody.TextToType)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	body, err := ioutil.ReadAll(typeResp.Body)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	defer typeResp.Body.Close()
+
+	copyHeaders(c.Writer.Header(), typeResp.Header)
+	fmt.Fprintf(c.Writer, string(body))
+}
+
+func DeviceClearText(c *gin.Context) {
+	udid := c.Param("udid")
+	device := device.GetDeviceByUDID(udid)
+
+	clearResp, err := appiumClearText(device)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	body, err := ioutil.ReadAll(clearResp.Body)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	defer clearResp.Body.Close()
+
+	copyHeaders(c.Writer.Header(), clearResp.Header)
+	fmt.Fprintf(c.Writer, string(body))
+}
+
+func DeviceTap(c *gin.Context) {
+	udid := c.Param("udid")
+	device := device.GetDeviceByUDID(udid)
+
+	var requestBody actionData
+	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	tapResp, err := appiumTap(device, requestBody.X, requestBody.Y)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	defer tapResp.Body.Close()
+
+	// Read the response body
+	body, err := ioutil.ReadAll(tapResp.Body)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	copyHeaders(c.Writer.Header(), tapResp.Header)
+	fmt.Fprintf(c.Writer, string(body))
+}
+
+func DeviceSwipe(c *gin.Context) {
+	udid := c.Param("udid")
+	device := device.GetDeviceByUDID(udid)
+
+	var requestBody actionData
+	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	swipeResp, err := appiumSwipe(device, requestBody.X, requestBody.Y, requestBody.EndX, requestBody.EndY)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	defer swipeResp.Body.Close()
+
+	// Read the response body
+	body, err := ioutil.ReadAll(swipeResp.Body)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	copyHeaders(c.Writer.Header(), swipeResp.Header)
+	fmt.Fprintf(c.Writer, string(body))
 }

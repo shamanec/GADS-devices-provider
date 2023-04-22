@@ -2,7 +2,9 @@ package router
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/shamanec/GADS-devices-provider/device"
@@ -206,4 +208,99 @@ func appiumScreenshot(device *device.Device) (*http.Response, error) {
 	}
 
 	return resp, nil
+}
+
+func appiumTypeText(device *device.Device, text string) (*http.Response, error) {
+	var activeElementRequestURL string
+
+	if device.OS == "android" {
+		activeElementRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/active"
+	}
+
+	if device.OS == "ios" {
+		activeElementRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/active"
+	}
+
+	activeElementResp, err := http.Get(activeElementRequestURL)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read the response body
+	activeElementRespBody, err := ioutil.ReadAll(activeElementResp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var activeElementData map[string]interface{}
+	err = json.Unmarshal(activeElementRespBody, &activeElementData)
+	if err != nil {
+		return nil, err
+	}
+
+	activeElementID := activeElementData["value"].(map[string]interface{})["ELEMENT"].(string)
+
+	setValueRequestURL := ""
+	if device.OS == "android" {
+		setValueRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/" + activeElementID + "/value"
+	}
+
+	if device.OS == "ios" {
+		setValueRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/" + activeElementID + "/value"
+	}
+
+	setValueRequestBody := `{"text":"` + text + `"}`
+	setValueResponse, err := http.Post(setValueRequestURL, "application/json", bytes.NewBuffer([]byte(setValueRequestBody)))
+	if err != nil {
+		return nil, err
+	}
+
+	return setValueResponse, nil
+}
+
+func appiumClearText(device *device.Device) (*http.Response, error) {
+	var activeElementRequestURL string
+
+	if device.OS == "android" {
+		activeElementRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/active"
+	}
+
+	if device.OS == "ios" {
+		activeElementRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/active"
+	}
+
+	activeElementResp, err := http.Get(activeElementRequestURL)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read the response body
+	activeElementRespBody, err := ioutil.ReadAll(activeElementResp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var activeElementData map[string]interface{}
+	err = json.Unmarshal(activeElementRespBody, &activeElementData)
+	if err != nil {
+		return nil, err
+	}
+
+	activeElementID := activeElementData["value"].(map[string]interface{})["ELEMENT"].(string)
+
+	clearValueRequestURL := ""
+	if device.OS == "android" {
+		clearValueRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/" + activeElementID + "/clear"
+	}
+
+	if device.OS == "ios" {
+		clearValueRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/" + activeElementID + "/clear"
+	}
+
+	clearValueResponse, err := http.Post(clearValueRequestURL, "application/json", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return clearValueResponse, nil
 }
