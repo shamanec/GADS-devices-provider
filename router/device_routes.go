@@ -1,7 +1,6 @@
 package router
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -38,32 +37,8 @@ func DeviceHome(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.GetDeviceByUDID(udid)
 
-	host := "http://localhost:"
-
-	var deviceHomeURL string
-	if device.OS == "android" {
-		deviceHomeURL = host + device.AppiumPort + "/session/" + device.AppiumSessionID + "/appium/device/press_keycode"
-	}
-
-	if device.OS == "ios" {
-		deviceHomeURL = host + device.WDAPort + "/wda/homescreen"
-	}
-
-	// Create a new HTTP client
-	client := http.DefaultClient
-
-	homeRequestBody := ""
-	if device.OS == "android" {
-		homeRequestBody = `{"keycode": 3}`
-	}
-
-	req, err := http.NewRequest(http.MethodPost, deviceHomeURL, bytes.NewBuffer([]byte(homeRequestBody)))
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
-	}
 	// Send the request
-	homeResponse, err := client.Do(req)
+	homeResponse, err := appiumHome(device)
 	if err != nil {
 		c.String(http.StatusBadRequest, err.Error())
 		return
@@ -77,6 +52,7 @@ func DeviceHome(c *gin.Context) {
 		return
 	}
 
+	c.Writer.WriteHeader(homeResponse.StatusCode)
 	copyHeaders(c.Writer.Header(), homeResponse.Header)
 	fmt.Fprintf(c.Writer, string(homeResponseBody))
 }
@@ -100,6 +76,7 @@ func DeviceLock(c *gin.Context) {
 		return
 	}
 
+	c.Writer.WriteHeader(lockResponse.StatusCode)
 	copyHeaders(c.Writer.Header(), lockResponse.Header)
 	fmt.Fprintf(c.Writer, string(lockResponseBody))
 }
@@ -123,6 +100,7 @@ func DeviceUnlock(c *gin.Context) {
 		return
 	}
 
+	c.Writer.WriteHeader(lockResponse.StatusCode)
 	copyHeaders(c.Writer.Header(), lockResponse.Header)
 	fmt.Fprintf(c.Writer, string(lockResponseBody))
 }
@@ -142,6 +120,7 @@ func DeviceScreenshot(c *gin.Context) {
 		return
 	}
 
+	c.Writer.WriteHeader(screenshotResp.StatusCode)
 	copyHeaders(c.Writer.Header(), screenshotResp.Header)
 	fmt.Fprintf(c.Writer, string(screenshotRespBody))
 }
@@ -209,6 +188,7 @@ func DeviceAppiumSource(c *gin.Context) {
 	}
 	defer sourceResp.Body.Close()
 
+	c.Writer.WriteHeader(sourceResp.StatusCode)
 	copyHeaders(c.Writer.Header(), sourceResp.Header)
 	fmt.Fprintf(c.Writer, string(body))
 }
@@ -254,6 +234,7 @@ func DeviceTypeText(c *gin.Context) {
 
 	var requestBody actionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
+		fmt.Println("DOES IT ERROR")
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
@@ -271,6 +252,7 @@ func DeviceTypeText(c *gin.Context) {
 	}
 	defer typeResp.Body.Close()
 
+	c.Writer.WriteHeader(typeResp.StatusCode)
 	copyHeaders(c.Writer.Header(), typeResp.Header)
 	fmt.Fprintf(c.Writer, string(body))
 }
@@ -292,6 +274,7 @@ func DeviceClearText(c *gin.Context) {
 	}
 	defer clearResp.Body.Close()
 
+	c.Writer.WriteHeader(clearResp.StatusCode)
 	copyHeaders(c.Writer.Header(), clearResp.Header)
 	fmt.Fprintf(c.Writer, string(body))
 }
@@ -320,6 +303,7 @@ func DeviceTap(c *gin.Context) {
 		return
 	}
 
+	c.Writer.WriteHeader(tapResp.StatusCode)
 	copyHeaders(c.Writer.Header(), tapResp.Header)
 	fmt.Fprintf(c.Writer, string(body))
 }
@@ -348,6 +332,7 @@ func DeviceSwipe(c *gin.Context) {
 		return
 	}
 
+	c.Writer.WriteHeader(swipeResp.StatusCode)
 	copyHeaders(c.Writer.Header(), swipeResp.Header)
 	fmt.Fprintf(c.Writer, string(body))
 }

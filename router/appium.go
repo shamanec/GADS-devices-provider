@@ -210,6 +210,12 @@ func appiumScreenshot(device *device.Device) (*http.Response, error) {
 	return resp, nil
 }
 
+type ActiveElementData struct {
+	Value struct {
+		Element string `json:"ELEMENT"`
+	} `json:"value"`
+}
+
 func appiumTypeText(device *device.Device, text string) (*http.Response, error) {
 	var activeElementRequestURL string
 
@@ -231,14 +237,16 @@ func appiumTypeText(device *device.Device, text string) (*http.Response, error) 
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(string(activeElementRespBody))
 
-	var activeElementData map[string]interface{}
+	var activeElementData ActiveElementData
 	err = json.Unmarshal(activeElementRespBody, &activeElementData)
 	if err != nil {
 		return nil, err
 	}
 
-	activeElementID := activeElementData["value"].(map[string]interface{})["ELEMENT"].(string)
+	fmt.Printf("%s", activeElementData)
+	activeElementID := activeElementData.Value.Element
 
 	setValueRequestURL := ""
 	if device.OS == "android" {
@@ -303,4 +311,27 @@ func appiumClearText(device *device.Device) (*http.Response, error) {
 	}
 
 	return clearValueResponse, nil
+}
+
+func appiumHome(device *device.Device) (*http.Response, error) {
+	var homeURL string
+	if device.OS == "android" {
+		homeURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/appium/device/press_keycode"
+	}
+
+	if device.OS == "ios" {
+		homeURL = "http://localhost:" + device.WDAPort + "/wda/homescreen"
+	}
+
+	requestBody := ""
+	if device.OS == "android" {
+		requestBody = `{"keycode": 3}`
+	}
+
+	homeResponse, err := http.Post(homeURL, "application/json", bytes.NewBuffer([]byte(requestBody)))
+	if err != nil {
+		return nil, err
+	}
+
+	return homeResponse, nil
 }
