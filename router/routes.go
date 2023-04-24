@@ -10,7 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 	"github.com/shamanec/GADS-devices-provider/device"
 	"github.com/shamanec/GADS-devices-provider/util"
 
@@ -48,48 +48,17 @@ func SimpleJSONResponse(w http.ResponseWriter, responseMessage string, code int)
 	json.NewEncoder(w).Encode(message)
 }
 
-func GetProviderDevices(w http.ResponseWriter, r *http.Request) {
+func GetProviderDevices(c *gin.Context) {
 	responseData, err := util.ConvertToJSONString(device.GetConfigDevices())
 	if err != nil {
-		JSONError(w, "get_available_devices", "Could not get available devices", 500)
+		JSONError(c.Writer, "get_available_devices", "Could not get available devices", 500)
 		return
 	}
-	fmt.Fprintf(w, responseData)
+	fmt.Fprintf(c.Writer, responseData)
 }
 
-func DeviceHealth(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	udid := vars["udid"]
-
-	bool, err := device.GetDeviceHealth(udid)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "check_device_health",
-		}).Error("Could not check device health, err: " + err.Error())
-		JSONError(w, "check_device_health", "Could not check device health", 500)
-		return
-	}
-
-	if bool {
-		w.WriteHeader(200)
-		return
-	}
-
-	w.WriteHeader(500)
-}
-
-// @Summary      Get container logs
-// @Description  Get logs of container by provided container ID
-// @Tags         containers
-// @Produce      json
-// @Param        container_id path string true "Container ID"
-// @Success      200 {object} JsonResponse
-// @Failure      500 {object} JsonErrorResponse
-// @Router       /containers/{container_id}/logs [get]
-func GetContainerLogs(w http.ResponseWriter, r *http.Request) {
-	// Get the request path vars
-	vars := mux.Vars(r)
-	containerID := vars["container_id"]
+func GetContainerLogs(c *gin.Context) {
+	containerID := c.Param("containerID")
 
 	// Create the context and Docker client
 	ctx := context.Background()
@@ -98,7 +67,7 @@ func GetContainerLogs(w http.ResponseWriter, r *http.Request) {
 		log.WithFields(log.Fields{
 			"event": "get_container_logs",
 		}).Error("Could not create docker client while attempting to get logs for container with ID: " + containerID + ". Error: " + err.Error())
-		JSONError(w, "get_container_logs", "Could not get logs for container with ID: "+containerID, 500)
+		JSONError(c.Writer, "get_container_logs", "Could not get logs for container with ID: "+containerID, 500)
 		return
 	}
 
@@ -111,7 +80,7 @@ func GetContainerLogs(w http.ResponseWriter, r *http.Request) {
 		log.WithFields(log.Fields{
 			"event": "get_container_logs",
 		}).Error("Could not get logs for container with ID: " + containerID + ". Error: " + err.Error())
-		JSONError(w, "get_container_logs", "Could not get logs for container with ID: "+containerID, 500)
+		JSONError(c.Writer, "get_container_logs", "Could not get logs for container with ID: "+containerID, 500)
 		return
 	}
 
@@ -124,37 +93,23 @@ func GetContainerLogs(w http.ResponseWriter, r *http.Request) {
 	// If there are any logs - reply with them
 	// Or reply with a generic string
 	if newStr != "" {
-		SimpleJSONResponse(w, newStr, 200)
+		SimpleJSONResponse(c.Writer, newStr, 200)
 	} else {
-		SimpleJSONResponse(w, "There are no existing logs for this container.", 200)
+		SimpleJSONResponse(c.Writer, "There are no existing logs for this container.", 200)
 	}
 }
 
-// @Summary      Creates the udev rules for device symlink and container creation
-// @Description  Creates 90-device.rules file to be used by udev
-// @Tags         device
-// @Produce      json
-// @Success      200 {object} JsonResponse
-// @Failure      500 {object} JsonErrorResponse
-// @Router       /device/create-udev-rules [post]
-func CreateUdevRules(w http.ResponseWriter, r *http.Request) {
+func CreateUdevRules(c *gin.Context) {
 	err := device.CreateUdevRules()
 	if err != nil {
-		JSONError(w, "create_udev_rules", "Could not create udev rules file", 500)
+		JSONError(c.Writer, "create_udev_rules", "Could not create udev rules file", 500)
 		return
 	}
 
-	SimpleJSONResponse(w, "Successfully created 90-device.rules file in project dir", 200)
+	SimpleJSONResponse(c.Writer, "Successfully created 90-device.rules file in project dir", 200)
 }
 
-// @Summary      Get provider logs
-// @Description  Gets provider logs as plain text response
-// @Tags         provider-logs
-// @Produces	 text
-// @Success      200
-// @Failure      200
-// @Router       /provider-logs [get]
-func GetLogs(w http.ResponseWriter, r *http.Request) {
+func GetLogs(c *gin.Context) {
 	// Create the command string to read the last 1000 lines of provider.log
 	commandString := "tail -n 1000 ./logs/provider.log"
 
@@ -175,10 +130,10 @@ func GetLogs(w http.ResponseWriter, r *http.Request) {
 		}).Warning("Attempted to get project logs but no logs available.")
 
 		// Reply with generic message on error
-		fmt.Fprintf(w, "No logs available.")
+		fmt.Fprintf(c.Writer, "No logs available.")
 		return
 	}
 
 	// Reply with the read logs lines
-	fmt.Fprintf(w, out.String())
+	fmt.Fprintf(c.Writer, out.String())
 }

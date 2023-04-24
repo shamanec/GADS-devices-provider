@@ -17,3 +17,15 @@ func ConvertToJSONString(data interface{}) (string, error) {
 	}
 	return string(b), nil
 }
+
+// Unmarshal provided JSON string into a struct
+func UnmarshalJSONString(jsonString string, v interface{}) error {
+	bs := []byte(jsonString)
+
+	err := json.Unmarshal(bs, v)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

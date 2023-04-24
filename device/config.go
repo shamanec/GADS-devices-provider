@@ -47,6 +47,8 @@ type Device struct {
 	Model                string           `json:"model"`
 	Image                string           `json:"image,omitempty"`
 	Host                 string           `json:"host"`
+	AppiumSessionID      string           `json:"appiumSessionID,omitempty"`
+	WDASessionID         string           `json:"wdaSessionID,omitempty"`
 }
 
 type DeviceContainer struct {
