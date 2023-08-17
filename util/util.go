@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"net"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -28,4 +29,16 @@ func UnmarshalJSONString(jsonString string, v interface{}) error {
 	}
 
 	return nil
+}
+
+func GetFreePort() (port int, err error) {
+	var a *net.TCPAddr
+	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
+		var l *net.TCPListener
+		if l, err = net.ListenTCP("tcp", a); err == nil {
+			defer l.Close()
+			return l.Addr().(*net.TCPAddr).Port, nil
+		}
+	}
+	return
 }

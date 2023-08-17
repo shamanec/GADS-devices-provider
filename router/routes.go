@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os/exec"
 
 	"github.com/docker/docker/api/types"
@@ -136,4 +138,42 @@ func GetLogs(c *gin.Context) {
 
 	// Reply with the read logs lines
 	fmt.Fprintf(c.Writer, out.String())
+}
+
+func AppiumReverseProxy(c *gin.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			if err, ok := r.(error); ok {
+				fmt.Println("Appium Reverse Proxy panic:", err)
+			} else {
+				fmt.Println("Appium Reverse Proxy panic:", r)
+			}
+
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Internal Server Error",
+			})
+		}
+	}()
+
+	udid := c.Param("udid")
+	device := device.GetDeviceByUDID(udid)
+
+	target := "http://localhost:" + device.AppiumPort
+	path := c.Param("proxyPath")
+
+	proxy := newAppiumProxy(target, path)
+	proxy.ServeHTTP(c.Writer, c.Request)
+}
+
+func newAppiumProxy(target string, path string) *httputil.ReverseProxy {
+	targetURL, _ := url.Parse(target)
+
+	return &httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL.Scheme = targetURL.Scheme
+			req.URL.Host = targetURL.Host
+			req.URL.Path = targetURL.Path + path
+			req.Host = targetURL.Host
+		},
+	}
 }

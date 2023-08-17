@@ -24,6 +24,7 @@ func HandleRequests() *gin.Engine {
 	router.POST("/device/:udid/typeText", DeviceTypeText)
 	router.POST("/device/:udid/clearText", DeviceClearText)
 	router.GET("/logs", GetLogs)
+	router.Any("/device/:udid/appium/*proxyPath", AppiumReverseProxy)
 
 	return router
 }
