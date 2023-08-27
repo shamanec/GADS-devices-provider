@@ -45,5 +45,6 @@ func main() {
 
 	// Handle the endpoints
 	r := router.HandleRequests()
+
 	r.Run(":10001")
 }
