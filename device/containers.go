@@ -324,6 +324,7 @@ func (device *Device) createAndroidContainer() {
 			ExposedPorts: nat.PortSet{
 				nat.Port("4723"):                     struct{}{},
 				nat.Port(device.ContainerServerPort): struct{}{},
+				nat.Port("1313"):                     struct{}{},
 			},
 			Env: environmentVars,
 		}
@@ -392,6 +393,12 @@ func (device *Device) createAndroidContainer() {
 					{
 						HostIP:   "0.0.0.0",
 						HostPort: device.ContainerServerPort,
+					},
+				},
+				nat.Port("1313"): []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: device.StreamPort,
 					},
 				},
 			},
