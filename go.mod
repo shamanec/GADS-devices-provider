@@ -13,10 +13,21 @@ require (
 )
 
 require (
+	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0 // indirect
+	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa // indirect
+	github.com/google/uuid v1.1.2 // indirect
+	howett.net/plist v0.0.0-20200419221736-3b63eb3a43b5 // indirect
+)
+
+require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/bytedance/sonic v1.8.0 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
+	github.com/codeskyblue/go-sh v0.0.0-20200712050446-30169cf553fe
+	github.com/danielpaulus/go-ios v1.0.115
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gin-contrib/cors v1.4.0 // indirect

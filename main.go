@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"runtime"
 
 	"github.com/shamanec/GADS-devices-provider/device"
 	_ "github.com/shamanec/GADS-devices-provider/docs"
@@ -39,9 +38,7 @@ func main() {
 	}
 
 	// Start a goroutine that will update devices on provider start and when there are events in /dev(device connected/disconnected)
-	if runtime.GOOS == "linux" {
-		go device.UpdateDevices()
-	}
+	go device.UpdateDevices()
 
 	// Handle the endpoints
 	r := router.HandleRequests()

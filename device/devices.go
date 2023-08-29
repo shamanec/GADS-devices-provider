@@ -2,6 +2,7 @@ package device
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
@@ -9,15 +10,20 @@ import (
 )
 
 func UpdateDevices() {
-	fmt.Println("Initial device update")
-	updateDevicesConnectedStatus()
-	updateDevices()
+	SetupConfig()
+	if runtime.GOOS == "linux" {
+		fmt.Println("Initial device update")
+		updateDevicesConnectedStatus()
+		updateDevices()
 
-	fmt.Println("Starting devices healthcheck")
-	go devicesHealthCheck()
+		fmt.Println("Starting devices healthcheck")
+		go devicesHealthCheck()
 
-	fmt.Println("Starting /dev watcher")
-	go devicesWatcher()
+		fmt.Println("Starting /dev watcher")
+		go devicesWatcher()
+	} else if runtime.GOOS == "darwin" {
+		Test()
+	}
 }
 
 // Update the Connected status of the devices both locally and in DB each second
