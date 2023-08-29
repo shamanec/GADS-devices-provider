@@ -19,6 +19,7 @@ import (
 	"github.com/danielpaulus/go-ios/ios/forward"
 	"github.com/danielpaulus/go-ios/ios/imagemounter"
 	"github.com/danielpaulus/go-ios/ios/zipconduit"
+	"github.com/shamanec/GADS-devices-provider/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -30,43 +31,39 @@ var netClient = &http.Client{
 
 func Test() {
 	go updateDevicesOSX()
-	time.Sleep(5 * time.Second)
-	go setupDevices()
 }
 
 func updateDevicesOSX() {
-	log.WithFields(log.Fields{
-		"event": "update_devices_connected_state",
-	}).Info("Updating iOS devices connection state")
-
-	connectedDevices, err := getConnectedDevicesIOS()
-	if err != nil {
-		panic("Could not get devices: " + err.Error())
-	}
-
 	for {
+		log.WithFields(log.Fields{
+			"event": "update_devices_connected_state",
+		}).Info("Updating iOS devices connection state")
+
+		connectedDevices, err := getConnectedDevicesIOS()
+		if err != nil {
+			panic("Could not get devices: " + err.Error())
+		}
+
 		for _, device := range Config.Devices {
 			device.Mu.Lock()
-			device.Connected = false
 			for _, connectedDevice := range connectedDevices {
 				if connectedDevice == device.UDID {
 					device.Connected = true
+					if device.ProviderState != "setup" && device.ProviderState != "live" {
+						device.Ctx = context.Background()
+						go device.setupIOSDevice()
+					}
+					break
 				}
+				device.Connected = false
+				device.Ctx.Done()
 			}
 			device.Mu.Unlock()
 		}
+
 		time.Sleep(15 * time.Second)
 	}
-}
 
-func setupDevices() {
-	for _, device := range Config.Devices {
-		if device.Connected && device.ProviderState != "setup" && device.ProviderState != "live" {
-			go device.setupIOSDevice()
-		} else if !device.Connected && device.ProviderState == "setup" || device.ProviderState == "live" {
-			fmt.Println("TEST")
-		}
-	}
 }
 
 func getConnectedDevicesIOS() ([]string, error) {
@@ -82,21 +79,69 @@ func getConnectedDevicesIOS() ([]string, error) {
 	return connDevices, nil
 }
 
-func (device *Device) setupIOSDevice() error {
+func (device *Device) setupIOSDevice() {
 	device.ProviderState = "setup"
 
-	goIOSDevice, _ := getGoIOSDevice(device.UDID)
+	goIOSDevice, err := getGoIOSDevice(device.UDID)
+	if err != nil {
+		device.ProviderState = "init"
+		return
+	}
+
 	device.GoIOSDevice = goIOSDevice
 
-	device.pairIOS()
-	device.mountDeveloperImageIOS()
-	device.forwardIOS(8100, 8100)
-	device.forwardIOS(9100, 9100)
-	device.installAndStartWebDriverAgent()
-	time.Sleep(3 * time.Second)
-	updateWebDriverAgent()
+	err = device.pairIOS()
+	if err != nil {
+		device.ProviderState = "init"
+		return
+	}
 
-	return nil
+	err = device.mountDeveloperImageIOS()
+	if err != nil {
+		device.ProviderState = "init"
+		return
+	}
+
+	wdaPort, err := util.GetFreePort()
+	if err != nil {
+		device.ProviderState = "init"
+		return
+	}
+	device.WDAPort = fmt.Sprint(wdaPort)
+
+	err = device.forwardIOS(wdaPort, 8100)
+	if err != nil {
+		device.ProviderState = "init"
+		return
+	}
+
+	streamPort, err := util.GetFreePort()
+	if err != nil {
+		device.ProviderState = "init"
+		return
+	}
+	device.StreamPort = fmt.Sprint(streamPort)
+
+	err = device.forwardIOS(streamPort, 9100)
+	if err != nil {
+		device.ProviderState = "init"
+		return
+	}
+
+	err = device.installAndStartWebDriverAgent()
+	if err != nil {
+		device.ProviderState = "init"
+		return
+	}
+
+	time.Sleep(3 * time.Second)
+	err = device.updateWebDriverAgent()
+	if err != nil {
+		device.ProviderState = "init"
+		return
+	}
+
+	device.ProviderState = "live"
 }
 
 func (device *Device) pairIOS() error {
@@ -203,15 +248,15 @@ func startWebDriverAgent(udid string) {
 }
 
 // Create a new WebDriverAgent session and update stream settings
-func updateWebDriverAgent() error {
+func (device *Device) updateWebDriverAgent() error {
 	fmt.Println("INFO: Updating WebDriverAgent session and mjpeg stream settings")
 
-	sessionID, err := createWebDriverAgentSession()
+	err := device.createWebDriverAgentSession()
 	if err != nil {
 		return err
 	}
 
-	err = updateWebDriverAgentStreamSettings(sessionID)
+	err = device.updateWebDriverAgentStreamSettings()
 	if err != nil {
 		return err
 	}
@@ -219,13 +264,13 @@ func updateWebDriverAgent() error {
 	return nil
 }
 
-func updateWebDriverAgentStreamSettings(sessionID string) error {
+func (device *Device) updateWebDriverAgentStreamSettings() error {
 	// Set 30 frames per second, without any scaling, half the original screenshot quality
 	// TODO should make this configurable in some way, although can be easily updated the same way
 	requestString := `{"settings": {"mjpegServerFramerate": 30, "mjpegServerScreenshotQuality": 50, "mjpegScalingFactor": 100}}`
 
 	// Post the mjpeg server settings
-	response, err := http.Post("http://localhost:8100/session/"+sessionID+"/appium/settings", "application/json", strings.NewReader(requestString))
+	response, err := http.Post("http://localhost:"+device.WDAPort+"/session/"+device.WDASessionID+"/appium/settings", "application/json", strings.NewReader(requestString))
 	if err != nil {
 		return err
 	}
@@ -238,7 +283,7 @@ func updateWebDriverAgentStreamSettings(sessionID string) error {
 }
 
 // Create a new WebDriverAgent session
-func createWebDriverAgentSession() (string, error) {
+func (device *Device) createWebDriverAgentSession() error {
 	// TODO see if this JSON can be simplified
 	requestString := `{
 		"capabilities": {
@@ -249,24 +294,15 @@ func createWebDriverAgentSession() (string, error) {
 		}
 	}`
 
-	req, err := http.NewRequest(http.MethodPost, "http://localhost:8100/session", strings.NewReader(requestString))
+	req, err := http.NewRequest(http.MethodPost, "http://localhost:"+device.WDAPort+"/session", strings.NewReader(requestString))
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	response, err := netClient.Do(req)
 	if err != nil {
-		return "", err
+		return err
 	}
-
-	fmt.Println("UPDATED SETTINGS")
-	fmt.Println(time.Now())
-
-	// Post to create new session
-	// response, err := http.Post("http://localhost:8100/session", "application/json", strings.NewReader(requestString))
-	// if err != nil {
-	// 	return "", err
-	// }
 
 	// Get the response into a byte slice
 	responseBody, _ := io.ReadAll(response.Body)
@@ -275,17 +311,18 @@ func createWebDriverAgentSession() (string, error) {
 	var responseJson map[string]interface{}
 	err = json.Unmarshal(responseBody, &responseJson)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// Check the session ID from the map
 	if responseJson["sessionId"] == "" {
 		if err != nil {
-			return "", errors.New("Could not get `sessionId` while creating a new WebDriverAgent session")
+			return errors.New("Could not get `sessionId` while creating a new WebDriverAgent session")
 		}
 	}
 
-	return fmt.Sprintf("%v", responseJson["sessionId"]), nil
+	device.WDASessionID = fmt.Sprintf("%v", responseJson["sessionId"])
+	return nil
 }
 
 func runShellCommand(ctx context.Context, command string, args ...string) {
@@ -303,14 +340,14 @@ func runShellCommand(ctx context.Context, command string, args ...string) {
 }
 
 // Forward with context
-func (device *Device) forwardIOS(hostPort uint16, phonePort uint16) error {
+func (device *Device) forwardIOS(hostPort int, phonePort int) error {
 	log.Infof("Start listening on port %d forwarding to port %d on device", hostPort, phonePort)
 	l, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", hostPort))
 	if err != nil {
 		return err
 	}
 
-	go connectionAcceptIOS(device.Ctx, l, device.GoIOSDevice.DeviceID, phonePort)
+	go connectionAcceptIOS(device.Ctx, l, device.GoIOSDevice.DeviceID, uint16(phonePort))
 
 	return nil
 }

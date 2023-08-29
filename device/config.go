@@ -130,6 +130,7 @@ func updateDevicesFromConfig() error {
 		device.WDAPort = wdaPort
 		device.Host = Config.EnvConfig.DevicesHost
 		device.Ctx = context.Background()
+		device.ProviderState = "init"
 	}
 
 	// Insert the devices to the DB if they are not already inserted
