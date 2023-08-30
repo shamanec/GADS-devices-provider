@@ -22,7 +22,8 @@ func UpdateDevices() {
 		fmt.Println("Starting /dev watcher")
 		go devicesWatcher()
 	} else if runtime.GOOS == "darwin" {
-		Test()
+		Config.AppiumConfig.UseAppium = false
+		go updateDevicesOSX()
 	}
 }
 
@@ -154,10 +155,6 @@ func devicesWatcher() {
 					}
 				}
 
-				// If we have a Remove event in /dev (device was disconnected)
-				if event.Has(fsnotify.Remove) {
-
-				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return

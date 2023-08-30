@@ -97,6 +97,7 @@ func (device *Device) updateHealthStatusDB() {
 	wdaGood := true
 
 	appiumGood, _ = device.appiumHealthy()
+	appiumGood = true
 
 	if appiumGood && device.OS == "ios" {
 		wdaGood, _ = device.wdaHealthy()

@@ -23,6 +23,7 @@ type AppiumConfig struct {
 	SeleniumHubHost         string `json:"selenium_hub_host"`
 	SeleniumHubPort         string `json:"selenium_hub_port"`
 	SeleniumHubProtocolType string `json:"selenium_hub_protocol_type"`
+	UseAppium               bool   `json:"useAppium"`
 }
 
 type EnvConfig struct {
@@ -32,6 +33,8 @@ type EnvConfig struct {
 	WDABundleID         string `json:"wda_bundle_id"`
 	RethinkDB           string `json:"rethink_db"`
 }
+
+type cancelFunc func()
 
 type Device struct {
 	Container            *DeviceContainer `json:"container,omitempty"`
@@ -53,9 +56,9 @@ type Device struct {
 	AppiumSessionID      string           `json:"appiumSessionID,omitempty"`
 	WDASessionID         string           `json:"wdaSessionID,omitempty"`
 	ProviderState        string           `json:"provider_state,omitempty"`
-	Mu                   sync.Mutex       `json:"Mu,omit"`
-	Ctx                  context.Context  `json:"Ctx,omit"`
-	GoIOSDevice          ios.DeviceEntry  `json:"goIOSDevice,omit"`
+	Mu                   sync.Mutex       `json:"-"`
+	Ctx                  context.Context  `json:"-"`
+	GoIOSDevice          ios.DeviceEntry  `json:"-"`
 }
 
 type DeviceContainer struct {

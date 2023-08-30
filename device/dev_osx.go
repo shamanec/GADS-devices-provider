@@ -10,8 +10,10 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/codeskyblue/go-sh"
@@ -19,51 +21,74 @@ import (
 	"github.com/danielpaulus/go-ios/ios/forward"
 	"github.com/danielpaulus/go-ios/ios/imagemounter"
 	"github.com/danielpaulus/go-ios/ios/zipconduit"
-	"github.com/shamanec/GADS-devices-provider/util"
 	log "github.com/sirupsen/logrus"
 )
 
 var usedPorts map[int]bool
+var cancelMap = make(map[string]context.CancelFunc)
+var cancelMapMu sync.Mutex
 
-var netClient = &http.Client{
-	Timeout: time.Second * 120,
+var tr = &http.Transport{
+	MaxIdleConns:        20,
+	MaxIdleConnsPerHost: 20,
+	MaxConnsPerHost:     20,
 }
 
-func Test() {
-	go updateDevicesOSX()
+var netClient = &http.Client{
+	Timeout:   time.Second * 120,
+	Transport: tr,
+}
+
+func (device *Device) getCtx() context.Context {
+	cancelMapMu.Lock()
+	defer cancelMapMu.Unlock()
+
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	cancelMap[device.UDID] = cancelFunc
+	return ctx
 }
 
 func updateDevicesOSX() {
 	for {
 		log.WithFields(log.Fields{
-			"event": "update_devices_connected_state",
+			"event": "update_devices",
 		}).Info("Updating iOS devices connection state")
 
 		connectedDevices, err := getConnectedDevicesIOS()
 		if err != nil {
 			panic("Could not get devices: " + err.Error())
 		}
+		fmt.Printf("Connected devices:%v\n", connectedDevices)
 
-		for _, device := range Config.Devices {
-			device.Mu.Lock()
-			for _, connectedDevice := range connectedDevices {
-				if connectedDevice == device.UDID {
+		if len(connectedDevices) == 0 {
+			log.WithFields(log.Fields{
+				"event": "update_devices",
+			}).Info("No devices connected")
+			for _, device := range Config.Devices {
+				device.Connected = false
+				device.ProviderState = "init"
+				if _, ok := cancelMap[device.UDID]; ok {
+					cancelMap[device.UDID]()
+				}
+			}
+		} else {
+			for _, device := range Config.Devices {
+				if slices.Contains(connectedDevices, device.UDID) {
 					device.Connected = true
-					if device.ProviderState != "setup" && device.ProviderState != "live" {
-						device.Ctx = context.Background()
+					fmt.Println("Device state is: " + device.ProviderState)
+					if device.ProviderState != "preparing" && device.ProviderState != "live" {
+						device.Ctx = device.getCtx()
 						go device.setupIOSDevice()
 					}
-					break
+				} else {
+					fmt.Println("Device not connected " + device.UDID)
+					device.Connected = false
 				}
-				device.Connected = false
-				device.Ctx.Done()
 			}
-			device.Mu.Unlock()
 		}
 
 		time.Sleep(15 * time.Second)
 	}
-
 }
 
 func getConnectedDevicesIOS() ([]string, error) {
@@ -80,7 +105,7 @@ func getConnectedDevicesIOS() ([]string, error) {
 }
 
 func (device *Device) setupIOSDevice() {
-	device.ProviderState = "setup"
+	device.ProviderState = "preparing"
 
 	goIOSDevice, err := getGoIOSDevice(device.UDID)
 	if err != nil {
@@ -92,18 +117,23 @@ func (device *Device) setupIOSDevice() {
 
 	err = device.pairIOS()
 	if err != nil {
+		fmt.Println("PAIR FAILED")
 		device.ProviderState = "init"
 		return
 	}
+	fmt.Println("Device paired")
 
 	err = device.mountDeveloperImageIOS()
 	if err != nil {
+		fmt.Println("MOUNT FAILED")
 		device.ProviderState = "init"
 		return
 	}
+	fmt.Println("Images mounted")
 
-	wdaPort, err := util.GetFreePort()
+	wdaPort, err := getFreePort()
 	if err != nil {
+		fmt.Println("GET FREE PORT FAILED")
 		device.ProviderState = "init"
 		return
 	}
@@ -111,12 +141,15 @@ func (device *Device) setupIOSDevice() {
 
 	err = device.forwardIOS(wdaPort, 8100)
 	if err != nil {
+		fmt.Println("FORWARD FAILED")
 		device.ProviderState = "init"
 		return
 	}
+	fmt.Println("WDA Forwarded")
 
-	streamPort, err := util.GetFreePort()
+	streamPort, err := getFreePort()
 	if err != nil {
+		fmt.Println("GET FREE PORT FAILED")
 		device.ProviderState = "init"
 		return
 	}
@@ -124,24 +157,34 @@ func (device *Device) setupIOSDevice() {
 
 	err = device.forwardIOS(streamPort, 9100)
 	if err != nil {
+		fmt.Println("FORWARD FAILED")
 		device.ProviderState = "init"
 		return
 	}
+	fmt.Println("Stream forwarded")
 
 	err = device.installAndStartWebDriverAgent()
 	if err != nil {
+		fmt.Println("INSTALL AND START FAILED")
 		device.ProviderState = "init"
 		return
 	}
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(20 * time.Second)
 	err = device.updateWebDriverAgent()
 	if err != nil {
+		fmt.Println("UPDATE FAILED")
+		fmt.Println(err)
 		device.ProviderState = "init"
 		return
 	}
+	fmt.Println("Stream updated")
+	fmt.Println(device.WDAPort)
+	fmt.Println(device.StreamPort)
 
 	device.ProviderState = "live"
+	device.updateDB()
+	go device.updateDeviceHealthStatus()
 }
 
 func (device *Device) pairIOS() error {
@@ -267,7 +310,7 @@ func (device *Device) updateWebDriverAgent() error {
 func (device *Device) updateWebDriverAgentStreamSettings() error {
 	// Set 30 frames per second, without any scaling, half the original screenshot quality
 	// TODO should make this configurable in some way, although can be easily updated the same way
-	requestString := `{"settings": {"mjpegServerFramerate": 30, "mjpegServerScreenshotQuality": 50, "mjpegScalingFactor": 100}}`
+	requestString := `{"settings": {"mjpegServerFramerate": 30, "mjpegServerScreenshotQuality": 30, "mjpegScalingFactor": 100}}`
 
 	// Post the mjpeg server settings
 	response, err := http.Post("http://localhost:"+device.WDAPort+"/session/"+device.WDASessionID+"/appium/settings", "application/json", strings.NewReader(requestString))
@@ -317,7 +360,7 @@ func (device *Device) createWebDriverAgentSession() error {
 	// Check the session ID from the map
 	if responseJson["sessionId"] == "" {
 		if err != nil {
-			return errors.New("Could not get `sessionId` while creating a new WebDriverAgent session")
+			return errors.New("could not get `sessionId` while creating a new WebDriverAgent session")
 		}
 	}
 
@@ -362,4 +405,59 @@ func connectionAcceptIOS(ctx context.Context, l net.Listener, deviceID int, phon
 		log.WithFields(log.Fields{"conn": fmt.Sprintf("%#v", clientConn)}).Info("new client connected")
 		go forward.StartNewProxyConnection(ctx, clientConn, deviceID, phonePort)
 	}
+}
+
+func (device *Device) updateDeviceHealthStatus() {
+	for {
+		select {
+		case <-time.After(1 * time.Second):
+			device.checkDeviceHealthStatus()
+		case <-device.Ctx.Done():
+			fmt.Println("Stopping device health check")
+			return
+		}
+	}
+}
+
+func (device *Device) checkDeviceHealthStatus() {
+	allGood := false
+	appiumGood := true
+	wdaGood := true
+
+	if Config.AppiumConfig.UseAppium {
+		appiumGood = false
+		appiumGood, _ = device.appiumHealthy()
+	}
+
+	if appiumGood && device.OS == "ios" {
+		wdaGood, _ = device.wdaHealthy()
+	}
+
+	allGood = appiumGood && wdaGood
+
+	if allGood {
+		device.LastHealthyTimestamp = time.Now().UnixMilli()
+		device.Healthy = true
+		device.updateDB()
+		return
+	}
+
+	device.Healthy = false
+	device.updateDB()
+}
+
+func getFreePort() (port int, err error) {
+	var a *net.TCPAddr
+	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
+		var l *net.TCPListener
+		if l, err = net.ListenTCP("tcp", a); err == nil {
+			defer l.Close()
+			port = l.Addr().(*net.TCPAddr).Port
+			if _, ok := usedPorts[port]; ok {
+				return getFreePort()
+			}
+			return port, nil
+		}
+	}
+	return
 }

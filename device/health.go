@@ -16,18 +16,22 @@ func GetDeviceHealth(udid string) (bool, error) {
 	device := GetDeviceByUDID(udid)
 
 	allGood := false
-	allGood, err := device.appiumHealthy()
-	if err != nil {
-		return false, err
-	}
 
-	if allGood {
-		err = device.checkAppiumSession()
+	if Config.AppiumConfig.UseAppium {
+		allGood, err := device.appiumHealthy()
 		if err != nil {
 			return false, err
 		}
+
+		if allGood {
+			err = device.checkAppiumSession()
+			if err != nil {
+				return false, err
+			}
+		}
 	}
 
+	var err error
 	if device.OS == "ios" {
 		allGood, err = device.wdaHealthy()
 		if err != nil {

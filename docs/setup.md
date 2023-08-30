@@ -6,7 +6,7 @@ The provider itself has minimum dependencies:
 1. Install Docker.  
 2. Install Go 1.17 or higher  
 
-## RethinkDB
+## RethinkDB - needed on all platforms
 The project uses RethinkDB for syncing devices availability between providers and GADS UI. You need to have RethinkDB running and set up as explained in the [GADS](https://github.com/shamanec/GADS) readme before running the provider.  
 1. Open `config.json`  
 2. Update the `rethink_db` value in `env-config` with the IP address of the machine running the RethinkDB instance and the port on which it is accepting connections. The default port if you followed the setup would be `32771`. Example: `192.168.1.2:32771`  
@@ -20,7 +20,13 @@ The project uses RethinkDB for syncing devices availability between providers an
 
 You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.html`  
 
-## Setup  
+## Common setup
+### Update the Appium config  
+1. Open `config.json` 
+3. Update your Selenium Grid values in `appium-config` - Grid not working atm    
+3. Update the bundle ID of the used WebDriverAgent (if running iOS) in `env-config`  
+
+## Setup - Linux  
 ### Build iOS Docker image
 1. Cd into the project folder  
 2. Execute `docker build -f Dockerfile-iOS -t ios-appium .`  
@@ -37,13 +43,13 @@ You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.h
 
 **NB** You need to perform this step each time you add a new device to `config.json` so that the symlink for that respective device is properly created in `/dev`  
 
-### Update the Appium config  
-1. Open `config.json` 
-3. Update your Selenium Grid values in `appium-config` - Grid not working atm    
-3. Update the bundle ID of the used WebDriverAgent (if running iOS) in `env-config`  
-
 ### Spin up containers  
 If you have followed all the steps, set up and registered the devices and configured the provider just connect all your devices. Container should be automatically created for each of them.  
+
+## Setup - MacOS
+### Set up go-ios
+1. Download the latest release of [go-ios](https://github.com/danielpaulus/go-ios) and unzip it
+2. Add it to `/usr/local/bin` with `sudo cp ios /usr/local/bin`
 
 # Devices setup  
 ## Android setup
