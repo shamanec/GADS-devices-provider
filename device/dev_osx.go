@@ -25,83 +25,81 @@ import (
 )
 
 var usedPorts map[int]bool
+var connectedDevices []string
 var cancelMap = make(map[string]context.CancelFunc)
 var cancelMapMu sync.Mutex
 
-var tr = &http.Transport{
-	MaxIdleConns:        20,
-	MaxIdleConnsPerHost: 20,
-	MaxConnsPerHost:     20,
-}
+// var tr = &http.Transport{
+// 	MaxIdleConns:        20,
+// 	MaxIdleConnsPerHost: 20,
+// 	MaxConnsPerHost:     20,
+// }
 
 var netClient = &http.Client{
-	Timeout:   time.Second * 120,
-	Transport: tr,
+	Timeout: time.Second * 120,
+	// Transport: tr,
 }
 
-func (device *Device) getCtx() context.Context {
+// COMMON
+
+// Set a context for a device to enable cancelling running goroutines related to that device when its disconnected
+func (device *Device) setContext() {
 	cancelMapMu.Lock()
 	defer cancelMapMu.Unlock()
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	cancelMap[device.UDID] = cancelFunc
-	return ctx
+	device.Ctx = ctx
 }
+
+// IOS DEVICES
 
 func updateDevicesOSX() {
 	for {
-		log.WithFields(log.Fields{
-			"event": "update_devices",
-		}).Info("Updating iOS devices connection state")
-
-		connectedDevices, err := getConnectedDevicesIOS()
-		if err != nil {
-			panic("Could not get devices: " + err.Error())
-		}
-		fmt.Printf("Connected devices:%v\n", connectedDevices)
+		getConnectedDevicesIOS()
 
 		if len(connectedDevices) == 0 {
 			log.WithFields(log.Fields{
 				"event": "update_devices",
 			}).Info("No devices connected")
+
 			for _, device := range Config.Devices {
 				device.Connected = false
 				device.ProviderState = "init"
 				if _, ok := cancelMap[device.UDID]; ok {
 					cancelMap[device.UDID]()
+					delete(cancelMap, device.UDID)
 				}
 			}
 		} else {
 			for _, device := range Config.Devices {
 				if slices.Contains(connectedDevices, device.UDID) {
 					device.Connected = true
-					fmt.Println("Device state is: " + device.ProviderState)
 					if device.ProviderState != "preparing" && device.ProviderState != "live" {
-						device.Ctx = device.getCtx()
+						device.setContext()
 						go device.setupIOSDevice()
 					}
 				} else {
-					fmt.Println("Device not connected " + device.UDID)
 					device.Connected = false
 				}
 			}
 		}
-
-		time.Sleep(15 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }
 
-func getConnectedDevicesIOS() ([]string, error) {
+func getConnectedDevicesIOS() {
 	deviceList, err := ios.ListDevices()
 	if err != nil {
-		return nil, err
-	}
-	var connDevices []string
-	for _, connDevice := range deviceList.DeviceList {
-		connDevices = append(connDevices, connDevice.Properties.SerialNumber)
+		connectedDevices = []string{}
+		return
 	}
 
-	return connDevices, nil
+	for _, connDevice := range deviceList.DeviceList {
+		if !slices.Contains(connectedDevices, connDevice.Properties.SerialNumber) {
+			connectedDevices = append(connectedDevices, connDevice.Properties.SerialNumber)
+		}
+	}
 }
 
 func (device *Device) setupIOSDevice() {
@@ -109,6 +107,9 @@ func (device *Device) setupIOSDevice() {
 
 	goIOSDevice, err := getGoIOSDevice(device.UDID)
 	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "ios_device_setup",
+		}).Error("Could not get go-ios device - " + err.Error())
 		device.ProviderState = "init"
 		return
 	}
@@ -117,23 +118,18 @@ func (device *Device) setupIOSDevice() {
 
 	err = device.pairIOS()
 	if err != nil {
-		fmt.Println("PAIR FAILED")
 		device.ProviderState = "init"
 		return
 	}
-	fmt.Println("Device paired")
 
 	err = device.mountDeveloperImageIOS()
 	if err != nil {
-		fmt.Println("MOUNT FAILED")
 		device.ProviderState = "init"
 		return
 	}
-	fmt.Println("Images mounted")
 
 	wdaPort, err := getFreePort()
 	if err != nil {
-		fmt.Println("GET FREE PORT FAILED")
 		device.ProviderState = "init"
 		return
 	}
@@ -141,15 +137,12 @@ func (device *Device) setupIOSDevice() {
 
 	err = device.forwardIOS(wdaPort, 8100)
 	if err != nil {
-		fmt.Println("FORWARD FAILED")
 		device.ProviderState = "init"
 		return
 	}
-	fmt.Println("WDA Forwarded")
 
 	streamPort, err := getFreePort()
 	if err != nil {
-		fmt.Println("GET FREE PORT FAILED")
 		device.ProviderState = "init"
 		return
 	}
@@ -157,15 +150,12 @@ func (device *Device) setupIOSDevice() {
 
 	err = device.forwardIOS(streamPort, 9100)
 	if err != nil {
-		fmt.Println("FORWARD FAILED")
 		device.ProviderState = "init"
 		return
 	}
-	fmt.Println("Stream forwarded")
 
 	err = device.installAndStartWebDriverAgent()
 	if err != nil {
-		fmt.Println("INSTALL AND START FAILED")
 		device.ProviderState = "init"
 		return
 	}
@@ -173,12 +163,9 @@ func (device *Device) setupIOSDevice() {
 	time.Sleep(20 * time.Second)
 	err = device.updateWebDriverAgent()
 	if err != nil {
-		fmt.Println("UPDATE FAILED")
-		fmt.Println(err)
 		device.ProviderState = "init"
 		return
 	}
-	fmt.Println("Stream updated")
 	fmt.Println(device.WDAPort)
 	fmt.Println(device.StreamPort)
 

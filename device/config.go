@@ -132,7 +132,6 @@ func updateDevicesFromConfig() error {
 		device.ContainerServerPort = strconv.Itoa(20201 + index)
 		device.WDAPort = wdaPort
 		device.Host = Config.EnvConfig.DevicesHost
-		device.Ctx = context.Background()
 		device.ProviderState = "init"
 	}
 
