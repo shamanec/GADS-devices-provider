@@ -32,9 +32,9 @@ type EnvConfig struct {
 	SupervisionPassword string `json:"supervision_password"`
 	WDABundleID         string `json:"wda_bundle_id"`
 	RethinkDB           string `json:"rethink_db"`
+	WDAPath             string `json:"ios_17_wda_path"`
+	WDAScheme           string `json:"ios_17_wda_scheme"`
 }
-
-type cancelFunc func()
 
 type Device struct {
 	Container            *DeviceContainer `json:"container,omitempty"`
@@ -56,9 +56,11 @@ type Device struct {
 	AppiumSessionID      string           `json:"appiumSessionID,omitempty"`
 	WDASessionID         string           `json:"wdaSessionID,omitempty"`
 	ProviderState        string           `json:"provider_state,omitempty"`
+	Ios17UDID            string           `json:"ios_17_udid,omitempty"`
 	Mu                   sync.Mutex       `json:"-"`
 	Ctx                  context.Context  `json:"-"`
 	GoIOSDevice          ios.DeviceEntry  `json:"-"`
+	DeviceIP             string           `json:"device_ip,omitempty"`
 }
 
 type DeviceContainer struct {

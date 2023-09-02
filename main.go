@@ -21,6 +21,7 @@ func setLogging() {
 	if err != nil {
 		panic("Could not set log output: " + err.Error())
 	}
+	log.SetLevel(log.DebugLevel)
 	log.SetOutput(projectLogFile)
 }
 

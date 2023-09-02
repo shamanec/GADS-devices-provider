@@ -1,6 +1,7 @@
 package device
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -29,15 +30,8 @@ var connectedDevices []string
 var cancelMap = make(map[string]context.CancelFunc)
 var cancelMapMu sync.Mutex
 
-// var tr = &http.Transport{
-// 	MaxIdleConns:        20,
-// 	MaxIdleConnsPerHost: 20,
-// 	MaxConnsPerHost:     20,
-// }
-
 var netClient = &http.Client{
 	Timeout: time.Second * 120,
-	// Transport: tr,
 }
 
 // COMMON
@@ -54,7 +48,26 @@ func (device *Device) setContext() {
 
 // IOS DEVICES
 
-func updateDevicesOSX() {
+func updateIOSDevicesOSX() {
+	if ios17DevicesPresent() {
+		if !isXcodebuildAvailable() {
+			fmt.Println("You have iOS >= 17 devices registered in config.json but xcodebuild is not available. You need to set up the host as explained in the readme")
+			os.Exit(1)
+		}
+		// Use os.Stat to check if the directory exists
+		_, err := os.Stat(Config.EnvConfig.WDAPath)
+		if err != nil {
+			fmt.Println(Config.EnvConfig.WDAPath + " does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
+			os.Exit(1)
+		}
+
+		err = buildWDA()
+		if err != nil {
+			fmt.Println("Could not successfully build WebDriverAgent for testing - " + err.Error())
+			os.Exit(1)
+		}
+	}
+
 	for {
 		getConnectedDevicesIOS()
 
@@ -73,6 +86,17 @@ func updateDevicesOSX() {
 			}
 		} else {
 			for _, device := range Config.Devices {
+				if strings.Contains(device.OSVersion, "17") {
+					fmt.Println("CHECKING IOS 17 DEVICE")
+					if device.isIOS17DeviceConnected() {
+						if device.ProviderState != "preparing" && device.ProviderState != "live" {
+							device.setContext()
+							go device.setupIOS17Device()
+						}
+					}
+					continue
+				}
+
 				if slices.Contains(connectedDevices, device.UDID) {
 					device.Connected = true
 					if device.ProviderState != "preparing" && device.ProviderState != "live" {
@@ -88,6 +112,25 @@ func updateDevicesOSX() {
 	}
 }
 
+func ios17DevicesPresent() bool {
+	for _, device := range Config.Devices {
+		if strings.Contains(device.OSVersion, "17") {
+			return true
+		}
+	}
+	return false
+}
+
+func (device *Device) setupIOS17Device() {
+	device.ProviderState = "preparing"
+	if !isXcodebuildAvailable() {
+		device.ProviderState = "init"
+		return
+	}
+
+	go device.buildAndStartWDAXcodebuild()
+}
+
 func getConnectedDevicesIOS() {
 	deviceList, err := ios.ListDevices()
 	if err != nil {
@@ -100,6 +143,144 @@ func getConnectedDevicesIOS() {
 			connectedDevices = append(connectedDevices, connDevice.Properties.SerialNumber)
 		}
 	}
+}
+
+// Check if xcodebuild is available on the host by checking its version
+func isXcodebuildAvailable() bool {
+	cmd := exec.Command("xcodebuild", "-version")
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
+}
+
+func (device *Device) isIOS17DeviceConnected() bool {
+	// Command to execute (replace with your desired command)
+	cmd := exec.Command("xcrun", "devicectl", "list", "devices")
+
+	// Create a pipe to capture the command's output
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Printf("Error creating stdout pipe: %v\n", err)
+		return false
+	}
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		fmt.Printf("Error starting command: %v\n", err)
+		return false
+	}
+
+	// Create a scanner to read the command's output line by line
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "coredevice") {
+			if strings.Split(line, "   ")[2] == device.Ios17UDID {
+				if strings.Contains(line, "connected") {
+					device.Connected = true
+					return true
+				}
+			}
+		}
+	}
+
+	// Check for any errors while reading lines
+	if err := scanner.Err(); err != nil {
+		fmt.Printf("Error reading command output: %v\n", err)
+		return false
+	}
+
+	return false
+}
+
+func buildWDA() error {
+	// Command to run continuously (replace with your command)
+	cmd := exec.Command("xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "generic/platform=iOS", "build-for-testing")
+	cmd.Dir = Config.EnvConfig.WDAPath
+
+	cmd.Stderr = os.Stderr
+	// Create a pipe to capture the command's output
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Println("Error creating stdout pipe:", err)
+		return err
+	}
+
+	fmt.Println("Starting WebDriverAgent xcodebuild with command - " + cmd.String())
+	if err := cmd.Start(); err != nil {
+		fmt.Println("Error starting command:", err)
+		return err
+	}
+
+	// Create a scanner to read the command's output line by line
+	scanner := bufio.NewScanner(stdout)
+
+	// Define the specific line to look for
+	targetLine := "Target Line"
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		log.Debug()
+		fmt.Println(line)
+
+		// Check if the target line is encountered
+		if strings.Contains(line, targetLine) {
+			fmt.Println("Target line encountered. Stopping...")
+			break
+		}
+	}
+
+	// Wait for the command to finish
+	if err := cmd.Wait(); err != nil {
+		fmt.Println("Error waiting for command to finish:", err)
+		fmt.Println("Building WebDriverAgent for testing was unsuccessful")
+		os.Exit(1)
+	}
+	return nil
+}
+
+func (device *Device) buildAndStartWDAXcodebuild() {
+	// Command to run continuously (replace with your command)
+	cmd := exec.CommandContext(device.Ctx, "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.UDID, "test-without-building")
+	cmd.Dir = Config.EnvConfig.WDAPath
+
+	cmd.Stderr = os.Stderr
+	// Create a pipe to capture the command's output
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Println("Error creating stdout pipe:", err)
+		return
+	}
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		fmt.Println("Error starting command:", err)
+		return
+	}
+
+	// Create a scanner to read the command's output line by line
+	scanner := bufio.NewScanner(stdout)
+
+	// Define the specific line to look for
+	targetLine := "Target Line"
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Println(line)
+
+		// Check if the target line is encountered
+		if strings.Contains(line, targetLine) {
+			fmt.Println("Target line encountered. Stopping...")
+			break
+		}
+	}
+
+	// Wait for the command to finish
+	if err := cmd.Wait(); err != nil {
+		fmt.Println("Error waiting for command to finish:", err)
+	}
+	fmt.Println("did it end")
 }
 
 func (device *Device) setupIOSDevice() {
