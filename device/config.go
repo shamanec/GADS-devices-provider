@@ -24,7 +24,6 @@ type AppiumConfig struct {
 	SeleniumHubHost         string `json:"selenium_hub_host"`
 	SeleniumHubPort         string `json:"selenium_hub_port"`
 	SeleniumHubProtocolType string `json:"selenium_hub_protocol_type"`
-	UseAppium               bool   `json:"useAppium"`
 }
 
 type EnvConfig struct {
@@ -76,6 +75,7 @@ type DeviceContainer struct {
 
 var projectDir string
 var Config ConfigJsonData
+var LocalDevices []*LocalDevice
 
 // Set up the configuration for the provider
 // Get the data from config.json, start a DB connection and update the devices

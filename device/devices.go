@@ -22,7 +22,6 @@ func UpdateDevices() {
 		fmt.Println("Starting /dev watcher")
 		go devicesWatcher()
 	} else if runtime.GOOS == "darwin" {
-		Config.AppiumConfig.UseAppium = false
 		go updateIOSDevicesOSX()
 	}
 }

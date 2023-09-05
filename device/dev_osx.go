@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/danielpaulus/go-ios/ios"
@@ -23,7 +24,7 @@ import (
 )
 
 var usedPorts map[int]bool
-var connectedDevices []string
+var connectedDevicesMu sync.Mutex
 
 var netClient = &http.Client{
 	Timeout: time.Second * 120,
@@ -41,6 +42,15 @@ func getLocalDevices() {
 	}
 }
 
+func androidDevicesInConfig() bool {
+	for _, device := range Config.Devices {
+		if device.OS == "android" {
+			return true
+		}
+	}
+	return false
+}
+
 // COMMON
 
 // Set a context for a device to enable cancelling running goroutines related to that device when its disconnected
@@ -53,18 +63,27 @@ func (device *LocalDevice) setContext() {
 // IOS DEVICES
 
 func updateIOSDevicesOSX() {
-	if !isXcodebuildAvailable() {
+	if !xcodebuildAvailable() {
 		fmt.Println("xcodebuild is not available, you need to set up the host as explained in the readme")
 		os.Exit(1)
 	}
-	// Use os.Stat to check if the directory exists
+
+	androidDevicesInConfig := androidDevicesInConfig()
+
+	if androidDevicesInConfig {
+		if !adbAvailable() {
+			fmt.Println("adb is not available, you need to set up the host as explained in the readme")
+			os.Exit(1)
+		}
+	}
+
 	_, err := os.Stat(Config.EnvConfig.WDAPath)
 	if err != nil {
 		fmt.Println(Config.EnvConfig.WDAPath + " does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
 		os.Exit(1)
 	}
 
-	err = buildWDA()
+	err = buildWebDriverAgent()
 	if err != nil {
 		fmt.Println("Could not successfully build WebDriverAgent for testing - " + err.Error())
 		os.Exit(1)
@@ -73,7 +92,7 @@ func updateIOSDevicesOSX() {
 	getLocalDevices()
 
 	for {
-		getConnectedDevicesIOS()
+		connectedDevices := getConnectedDevicesOSX(true, androidDevicesInConfig)
 
 		if len(connectedDevices) == 0 {
 			log.WithFields(log.Fields{
@@ -91,8 +110,10 @@ func updateIOSDevicesOSX() {
 					device.Device.Connected = true
 					if device.ProviderState != "preparing" && device.ProviderState != "live" {
 						device.setContext()
-						device.WdaReadyChan = make(chan bool, 1)
-						go device.setupIOSDevice()
+						if device.Device.OS == "ios" {
+							device.WdaReadyChan = make(chan bool, 1)
+							go device.setupIOSDevice()
+						}
 					}
 					continue
 				}
@@ -106,11 +127,15 @@ func updateIOSDevicesOSX() {
 func (device *LocalDevice) setupIOSDevice() {
 	device.ProviderState = "preparing"
 
+	log.WithFields(log.Fields{
+		"event": "ios_device_setup",
+	}).Info(fmt.Sprintf("Running setup for iOS device - %v", device.Device.UDID))
+
 	goIOSDevice, err := getGoIOSDevice(device.Device.UDID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_device_setup",
-		}).Error("Could not get go-ios device - " + err.Error())
+		}).Error(fmt.Sprintf("Could not get `go-ios` DeviceEntry for device - %v, err - %v", device.Device.UDID, err))
 		device.ProviderState = "init"
 		fmt.Println()
 		return
@@ -119,7 +144,9 @@ func (device *LocalDevice) setupIOSDevice() {
 
 	wdaPort, err := getFreePort()
 	if err != nil {
-		fmt.Println("PORT FAIL")
+		log.WithFields(log.Fields{
+			"event": "ios_device_setup",
+		}).Error(fmt.Sprintf("Could not allocate free WebDriverAgent port for device - %v, err - %v", device.Device.UDID, err))
 		device.ProviderState = "init"
 		return
 	}
@@ -127,7 +154,9 @@ func (device *LocalDevice) setupIOSDevice() {
 
 	streamPort, err := getFreePort()
 	if err != nil {
-		fmt.Println("PORT FAIL")
+		log.WithFields(log.Fields{
+			"event": "ios_device_setup",
+		}).Error(fmt.Sprintf("Could not allocate free WebDriverAgent stream port for device `%v`, err - %v", device.Device.UDID, err))
 		device.ProviderState = "init"
 		return
 	}
@@ -140,10 +169,14 @@ func (device *LocalDevice) setupIOSDevice() {
 
 	select {
 	case <-device.WdaReadyChan:
-		fmt.Println("WebDriverAgent was successfully started")
+		log.WithFields(log.Fields{
+			"event": "ios_device_setup",
+		}).Info(fmt.Sprintf("Successfully started WebDriverAgent for device `%v` forwarded on port %v", device.Device.UDID, device.Device.WDAPort))
 		break
 	case <-time.After(30 * time.Second):
-		fmt.Println("WebDriverAgent was not started in 30 seconds")
+		log.WithFields(log.Fields{
+			"event": "ios_device_setup",
+		}).Error(fmt.Sprintf("Did not successfully start WebDriverAgent on device `%v` in 30 seconds", device.Device.UDID))
 		device.CtxCancel()
 		device.ProviderState = "init"
 		return
@@ -151,6 +184,9 @@ func (device *LocalDevice) setupIOSDevice() {
 
 	err = device.updateWebDriverAgent()
 	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "ios_device_setup",
+		}).Error(fmt.Sprintf("Did not successfully update WebDriverAgent settings for device `%v`, err - %v", device.Device.UDID, err))
 		device.ProviderState = "init"
 		return
 	}
@@ -161,6 +197,7 @@ func (device *LocalDevice) setupIOSDevice() {
 	device.Device.updateDB()
 }
 
+// Forward iOS device ports using `go-ios` CLI, for some reason using the library doesn't work properly
 func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
 	cmd := exec.CommandContext(device.Context, "ios", "forward", hostPort, devicePort)
 
@@ -181,11 +218,33 @@ func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
 	}
 }
 
-func getConnectedDevicesIOS() {
+// Gets all connected iOS and Android devices to the host
+func getConnectedDevicesOSX(ios bool, android bool) []string {
+	androidDevices := []string{}
+	iosDevices := []string{}
+
+	if android {
+		androidDevices = getConnectedDevicesAndroid()
+	}
+
+	if ios {
+		iosDevices = getConnectedDevicesIOS()
+	}
+
+	connectedDevices := []string{}
+	connectedDevices = append(connectedDevices, iosDevices...)
+	connectedDevices = append(connectedDevices, androidDevices...)
+
+	return connectedDevices
+}
+
+// Gets the connected iOS devices using the `go-ios` library
+func getConnectedDevicesIOS() []string {
+	var connectedDevices []string
+
 	deviceList, err := ios.ListDevices()
 	if err != nil {
-		connectedDevices = []string{}
-		return
+		return connectedDevices
 	}
 
 	for _, connDevice := range deviceList.DeviceList {
@@ -193,10 +252,45 @@ func getConnectedDevicesIOS() {
 			connectedDevices = append(connectedDevices, connDevice.Properties.SerialNumber)
 		}
 	}
+	return connectedDevices
+}
+
+// Gets the connected android devices using `adb`
+func getConnectedDevicesAndroid() []string {
+	var connectedDevices []string
+
+	cmd := exec.Command("adb", "devices")
+	// Create a pipe to capture the command's output
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Println("Error creating stdout pipe when getting connected android devices - ", err)
+		return connectedDevices
+	}
+
+	if err := cmd.Start(); err != nil {
+		fmt.Println("Error starting command:", err)
+		return connectedDevices
+	}
+
+	// Create a scanner to read the command's output line by line
+	scanner := bufio.NewScanner(stdout)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.Contains(line, "List of devices") && line != "" && strings.Contains(line, "device") {
+			connectedDevices = append(connectedDevices, strings.Fields(line)[0])
+		}
+	}
+
+	// Wait for the command to finish
+	if err := cmd.Wait(); err != nil {
+		return []string{}
+	}
+	return connectedDevices
 }
 
 // Check if xcodebuild is available on the host by checking its version
-func isXcodebuildAvailable() bool {
+func xcodebuildAvailable() bool {
 	cmd := exec.Command("xcodebuild", "-version")
 	if err := cmd.Run(); err != nil {
 		return false
@@ -204,7 +298,16 @@ func isXcodebuildAvailable() bool {
 	return true
 }
 
-func buildWDA() error {
+// Check if adb is available on the host by starting the server
+func adbAvailable() bool {
+	cmd := exec.Command("adb", "start-server")
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
+}
+
+func buildWebDriverAgent() error {
 	// Command to run continuously (replace with your command)
 	cmd := exec.Command("xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "generic/platform=iOS", "build-for-testing")
 	cmd.Dir = Config.EnvConfig.WDAPath
@@ -406,7 +509,6 @@ func (device *LocalDevice) createWebDriverAgentSession() error {
 
 	// Get the response into a byte slice
 	responseBody, _ := io.ReadAll(response.Body)
-	fmt.Println(string(responseBody))
 	// Unmarshal response into a basic map
 	var responseJson map[string]interface{}
 	err = json.Unmarshal(responseBody, &responseJson)
