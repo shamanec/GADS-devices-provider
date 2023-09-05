@@ -149,12 +149,11 @@ func (device *LocalDevice) setupIOSDevice() {
 		return
 	}
 
-	// err = device.updateWebDriverAgent()
-	// if err != nil {
-	// 	fmt.Println("ERROR WDA UPDATE - " + err.Error())
-	// 	device.ProviderState = "init"
-	// 	return
-	// }
+	err = device.updateWebDriverAgent()
+	if err != nil {
+		device.ProviderState = "init"
+		return
+	}
 
 	go device.updateDeviceHealthStatus()
 
