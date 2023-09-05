@@ -1,7 +1,6 @@
 package device
 
 import (
-	"context"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -9,11 +8,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/danielpaulus/go-ios/ios"
 	log "github.com/sirupsen/logrus"
 )
 
 type ConfigJsonData struct {
+	mutex        sync.Mutex
 	AppiumConfig AppiumConfig `json:"appium-config"`
 	EnvConfig    EnvConfig    `json:"env-config"`
 	Devices      []*Device    `json:"devices-config"`
@@ -56,11 +55,6 @@ type Device struct {
 	AppiumSessionID      string           `json:"appiumSessionID,omitempty"`
 	WDASessionID         string           `json:"wdaSessionID,omitempty"`
 	ProviderState        string           `json:"provider_state,omitempty"`
-	Ios17UDID            string           `json:"ios_17_udid,omitempty"`
-	Mu                   sync.Mutex       `json:"-"`
-	Ctx                  context.Context  `json:"-"`
-	GoIOSDevice          ios.DeviceEntry  `json:"-"`
-	DeviceIP             string           `json:"device_ip,omitempty"`
 }
 
 type DeviceContainer struct {
