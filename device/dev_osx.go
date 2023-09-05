@@ -14,7 +14,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/danielpaulus/go-ios/ios"
@@ -26,32 +25,29 @@ import (
 var usedPorts map[int]bool
 var connectedDevices []string
 
-var deviceContexts = make(map[string]context.Context)
-var cancelMapMu sync.Mutex
-var deviceCtxCancels = make(map[string]context.CancelFunc)
-var goIosDeviceEntries = make(map[string]ios.DeviceEntry)
-var wdaReadyChans = make(map[string]chan bool)
-
 var netClient = &http.Client{
 	Timeout: time.Second * 120,
+}
+
+var localDevices []*LocalDevice
+
+func getLocalDevices() {
+	for _, device := range Config.Devices {
+		localDevice := LocalDevice{
+			Device:        device,
+			ProviderState: "init",
+		}
+		localDevices = append(localDevices, &localDevice)
+	}
 }
 
 // COMMON
 
 // Set a context for a device to enable cancelling running goroutines related to that device when its disconnected
-func (device *Device) setContext() {
-	cancelMapMu.Lock()
-	defer cancelMapMu.Unlock()
-
+func (device *LocalDevice) setContext() {
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	deviceCtxCancels[device.UDID] = cancelFunc
-	deviceContexts[device.UDID] = ctx
-}
-
-func (device *Device) setIOSWdaListenerChan() {
-	if _, ok := wdaReadyChans[device.UDID]; !ok {
-		wdaReadyChans[device.UDID] = make(chan bool, 1)
-	}
+	device.CtxCancel = cancelFunc
+	device.Context = ctx
 }
 
 // IOS DEVICES
@@ -74,6 +70,8 @@ func updateIOSDevicesOSX() {
 		os.Exit(1)
 	}
 
+	getLocalDevices()
+
 	for {
 		getConnectedDevicesIOS()
 
@@ -82,73 +80,71 @@ func updateIOSDevicesOSX() {
 				"event": "update_devices",
 			}).Info("No devices connected")
 
-			for _, device := range Config.Devices {
-				device.Connected = false
+			for _, device := range localDevices {
+				device.Device.Connected = false
 				device.ProviderState = "init"
-				if _, ok := deviceCtxCancels[device.UDID]; ok {
-					deviceCtxCancels[device.UDID]()
-					delete(deviceCtxCancels, device.UDID)
-					delete(deviceContexts, device.UDID)
-				}
+				device.CtxCancel()
 			}
 		} else {
-			for _, device := range Config.Devices {
-				if slices.Contains(connectedDevices, device.UDID) {
-					device.Connected = true
+			for _, device := range localDevices {
+				if slices.Contains(connectedDevices, device.Device.UDID) {
+					device.Device.Connected = true
 					if device.ProviderState != "preparing" && device.ProviderState != "live" {
 						device.setContext()
-						device.setIOSWdaListenerChan()
+						device.WdaReadyChan = make(chan bool, 1)
 						go device.setupIOSDevice()
 					}
 					continue
 				}
-				device.Connected = false
+				device.Device.Connected = false
 			}
 		}
 		time.Sleep(10 * time.Second)
 	}
 }
 
-func (device *Device) setupIOSDevice() {
+func (device *LocalDevice) setupIOSDevice() {
 	device.ProviderState = "preparing"
 
-	goIOSDevice, err := getGoIOSDevice(device.UDID)
+	goIOSDevice, err := getGoIOSDevice(device.Device.UDID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_device_setup",
 		}).Error("Could not get go-ios device - " + err.Error())
 		device.ProviderState = "init"
+		fmt.Println()
 		return
 	}
-	goIosDeviceEntries[device.UDID] = goIOSDevice
+	device.GoIOSDeviceEntry = goIOSDevice
 
 	wdaPort, err := getFreePort()
 	if err != nil {
+		fmt.Println("PORT FAIL")
 		device.ProviderState = "init"
 		return
 	}
-	device.WDAPort = fmt.Sprint(wdaPort)
+	device.Device.WDAPort = fmt.Sprint(wdaPort)
 
 	streamPort, err := getFreePort()
 	if err != nil {
+		fmt.Println("PORT FAIL")
 		device.ProviderState = "init"
 		return
 	}
-	device.StreamPort = fmt.Sprint(streamPort)
+	device.Device.StreamPort = fmt.Sprint(streamPort)
 
-	go device.goIOSForward(device.WDAPort, "8100")
-	go device.goIOSForward(device.StreamPort, "9100")
+	go device.goIOSForward(device.Device.WDAPort, "8100")
+	go device.goIOSForward(device.Device.StreamPort, "9100")
 
 	go device.startWdaXcodebuild()
 
 	select {
-	case <-wdaReadyChans[device.UDID]:
+	case <-device.WdaReadyChan:
 		fmt.Println("WebDriverAgent was successfully started")
 		break
 	case <-time.After(30 * time.Second):
 		fmt.Println("WebDriverAgent was not started in 30 seconds")
-		deviceCtxCancels[device.UDID]()
-		delete(deviceCtxCancels, device.UDID)
+		device.CtxCancel()
 		device.ProviderState = "init"
 		return
 	}
@@ -163,11 +159,11 @@ func (device *Device) setupIOSDevice() {
 	go device.updateDeviceHealthStatus()
 
 	device.ProviderState = "live"
-	device.updateDB()
+	device.Device.updateDB()
 }
 
-func (device *Device) goIOSForward(hostPort string, devicePort string) {
-	cmd := exec.CommandContext(deviceContexts[device.UDID], "ios", "forward", hostPort, devicePort)
+func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
+	cmd := exec.CommandContext(device.Context, "ios", "forward", hostPort, devicePort)
 
 	// Create a pipe to capture the command's output
 	_, err := cmd.StdoutPipe()
@@ -245,9 +241,9 @@ func buildWDA() error {
 	return nil
 }
 
-func (device *Device) startWdaXcodebuild() {
+func (device *LocalDevice) startWdaXcodebuild() {
 	// Command to run continuously (replace with your command)
-	cmd := exec.CommandContext(deviceContexts[device.UDID], "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.UDID, "test-without-building")
+	cmd := exec.CommandContext(device.Context, "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.Device.UDID, "test-without-building")
 	cmd.Dir = Config.EnvConfig.WDAPath
 
 	// Create a pipe to capture the command's output
@@ -271,7 +267,7 @@ func (device *Device) startWdaXcodebuild() {
 
 		if strings.Contains(line, "ServerURLHere") {
 			// device.DeviceIP = strings.Split(strings.Split(line, "//")[1], ":")[0]
-			wdaReadyChans[device.UDID] <- true
+			device.WdaReadyChan <- true
 		}
 	}
 
@@ -280,24 +276,24 @@ func (device *Device) startWdaXcodebuild() {
 	}
 }
 
-func (device *Device) pairIOS() error {
+func (device *LocalDevice) pairIOS() error {
 	log.WithFields(log.Fields{
 		"event": "pair_ios_device",
-	}).Info("Pairing iOS device - " + device.UDID)
+	}).Info("Pairing iOS device - " + device.Device.UDID)
 
 	p12, err := os.ReadFile("../configs/supervision.p12")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "pair_ios_device",
-		}).Warn(fmt.Sprintf("Could not read /opt/supervision.p12 file when pairing device with UDID: %s, falling back to unsupervised pairing, err:%s", device.UDID, err))
-		err = ios.Pair(goIosDeviceEntries[device.UDID])
+		}).Warn(fmt.Sprintf("Could not read /opt/supervision.p12 file when pairing device with UDID: %s, falling back to unsupervised pairing, err:%s", device.Device.UDID, err))
+		err = ios.Pair(device.GoIOSDeviceEntry)
 		if err != nil {
 			return errors.New("Could not pair successfully, err:" + err.Error())
 		}
 		return nil
 	}
 
-	err = ios.PairSupervised(goIosDeviceEntries[device.UDID], p12, Config.EnvConfig.SupervisionPassword)
+	err = ios.PairSupervised(device.GoIOSDeviceEntry, p12, Config.EnvConfig.SupervisionPassword)
 	if err != nil {
 		return errors.New("Could not pair successfully, err:" + err.Error())
 	}
@@ -314,16 +310,16 @@ func getGoIOSDevice(udid string) (ios.DeviceEntry, error) {
 }
 
 // Mount the developer disk images downloading them automatically in /opt/DeveloperDiskImages
-func (device *Device) mountDeveloperImageIOS() error {
+func (device *LocalDevice) mountDeveloperImageIOS() error {
 	basedir := "./devimages"
 
 	var err error
-	path, err := imagemounter.DownloadImageFor(goIosDeviceEntries[device.UDID], basedir)
+	path, err := imagemounter.DownloadImageFor(device.GoIOSDeviceEntry, basedir)
 	if err != nil {
 		return err
 	}
 
-	err = imagemounter.MountImage(goIosDeviceEntries[device.UDID], path)
+	err = imagemounter.MountImage(device.GoIOSDeviceEntry, path)
 	if err != nil {
 		return err
 	}
@@ -353,7 +349,7 @@ func InstallAppWithDevice(device ios.DeviceEntry, fileName string) error {
 }
 
 // Create a new WebDriverAgent session and update stream settings
-func (device *Device) updateWebDriverAgent() error {
+func (device *LocalDevice) updateWebDriverAgent() error {
 	fmt.Println("INFO: Updating WebDriverAgent session and mjpeg stream settings")
 
 	err := device.createWebDriverAgentSession()
@@ -369,13 +365,13 @@ func (device *Device) updateWebDriverAgent() error {
 	return nil
 }
 
-func (device *Device) updateWebDriverAgentStreamSettings() error {
+func (device *LocalDevice) updateWebDriverAgentStreamSettings() error {
 	// Set 30 frames per second, without any scaling, half the original screenshot quality
 	// TODO should make this configurable in some way, although can be easily updated the same way
 	requestString := `{"settings": {"mjpegServerFramerate": 30, "mjpegServerScreenshotQuality": 30, "mjpegScalingFactor": 100}}`
 
 	// Post the mjpeg server settings
-	response, err := http.Post("http://localhost:"+device.WDAPort+"/session/"+device.WDASessionID+"/appium/settings", "application/json", strings.NewReader(requestString))
+	response, err := http.Post("http://localhost:"+device.Device.WDAPort+"/session/"+device.Device.WDASessionID+"/appium/settings", "application/json", strings.NewReader(requestString))
 	if err != nil {
 		return err
 	}
@@ -388,7 +384,7 @@ func (device *Device) updateWebDriverAgentStreamSettings() error {
 }
 
 // Create a new WebDriverAgent session
-func (device *Device) createWebDriverAgentSession() error {
+func (device *LocalDevice) createWebDriverAgentSession() error {
 	// TODO see if this JSON can be simplified
 	requestString := `{
 		"capabilities": {
@@ -399,7 +395,7 @@ func (device *Device) createWebDriverAgentSession() error {
 		}
 	}`
 
-	req, err := http.NewRequest(http.MethodPost, "http://localhost:"+device.WDAPort+"/session", strings.NewReader(requestString))
+	req, err := http.NewRequest(http.MethodPost, "http://localhost:"+device.Device.WDAPort+"/session", strings.NewReader(requestString))
 	if err != nil {
 		return err
 	}
@@ -426,7 +422,7 @@ func (device *Device) createWebDriverAgentSession() error {
 		}
 	}
 
-	device.WDASessionID = fmt.Sprintf("%v", responseJson["sessionId"])
+	device.Device.WDASessionID = fmt.Sprintf("%v", responseJson["sessionId"])
 	return nil
 }
 
@@ -444,19 +440,19 @@ func runShellCommand(ctx context.Context, command string, args ...string) {
 	cmd.Wait()
 }
 
-func (device *Device) updateDeviceHealthStatus() {
+func (device *LocalDevice) updateDeviceHealthStatus() {
 	for {
 		select {
 		case <-time.After(1 * time.Second):
 			device.checkDeviceHealthStatus()
-		case <-deviceContexts[device.UDID].Done():
+		case <-device.Context.Done():
 			fmt.Println("STOPPING DEVICE HEALTH CHECK")
 			return
 		}
 	}
 }
 
-func (device *Device) checkDeviceHealthStatus() {
+func (device *LocalDevice) checkDeviceHealthStatus() {
 	wdaGood := false
 	wdaGood, err := device.isWdaHealthy()
 	if err != nil {
@@ -464,14 +460,14 @@ func (device *Device) checkDeviceHealthStatus() {
 	}
 
 	if wdaGood {
-		device.LastHealthyTimestamp = time.Now().UnixMilli()
-		device.Healthy = true
-		device.updateDB()
+		device.Device.LastHealthyTimestamp = time.Now().UnixMilli()
+		device.Device.Healthy = true
+		device.Device.updateDB()
 		return
 	}
 
-	device.Healthy = false
-	device.updateDB()
+	device.Device.Healthy = false
+	device.Device.updateDB()
 }
 
 func getFreePort() (port int, err error) {
@@ -491,8 +487,8 @@ func getFreePort() (port int, err error) {
 }
 
 // Check if the WebDriverAgent server for an iOS device is up
-func (device *Device) isWdaHealthy() (bool, error) {
-	req, err := http.NewRequest(http.MethodGet, "http://localhost:"+device.WDAPort+"/status", nil)
+func (device *LocalDevice) isWdaHealthy() (bool, error) {
+	req, err := http.NewRequest(http.MethodGet, "http://localhost:"+device.Device.WDAPort+"/status", nil)
 	if err != nil {
 		return false, err
 	}

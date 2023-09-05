@@ -1,6 +1,7 @@
 package device
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/danielpaulus/go-ios/ios"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -54,7 +56,15 @@ type Device struct {
 	Host                 string           `json:"host"`
 	AppiumSessionID      string           `json:"appiumSessionID,omitempty"`
 	WDASessionID         string           `json:"wdaSessionID,omitempty"`
-	ProviderState        string           `json:"provider_state,omitempty"`
+}
+
+type LocalDevice struct {
+	Device           *Device
+	ProviderState    string
+	WdaReadyChan     chan bool
+	Context          context.Context
+	CtxCancel        context.CancelFunc
+	GoIOSDeviceEntry ios.DeviceEntry
 }
 
 type DeviceContainer struct {
@@ -128,7 +138,6 @@ func updateDevicesFromConfig() error {
 		device.ContainerServerPort = strconv.Itoa(20201 + index)
 		device.WDAPort = wdaPort
 		device.Host = Config.EnvConfig.DevicesHost
-		device.ProviderState = "init"
 	}
 
 	// Insert the devices to the DB if they are not already inserted
