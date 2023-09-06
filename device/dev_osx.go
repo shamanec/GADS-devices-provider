@@ -75,6 +75,113 @@ func (device *LocalDevice) setContext() {
 	device.Context = ctx
 }
 
+// ANDROID DEVICES
+func (device *LocalDevice) setupAndroidDevice() {
+	device.ProviderState = "preparing"
+
+	log.WithFields(log.Fields{
+		"event": "android_device_setup",
+	}).Info(fmt.Sprintf("Running setup for Android device - %v", device.Device.UDID))
+
+	isStreamAvailable, err := device.isGadsStreamServiceRunning()
+	if err != nil {
+		device.resetLocalDevice()
+	}
+
+	// Get a free port on the host for WebDriverAgent server
+	streamPort, err := getFreePort()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "android_device_setup",
+		}).Error(fmt.Sprintf("Could not allocate free GADS-stream port for device - %v, err - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
+	device.Device.StreamPort = fmt.Sprint(streamPort)
+
+	if !isStreamAvailable {
+		device.installGadsStream()
+		device.addGadsStreamRecordingPermissions()
+		device.startGadsStreamApp()
+		device.pressHomeButton()
+	}
+
+	device.forwardGadsStream()
+	fmt.Println("DEVICE PORT " + device.Device.StreamPort)
+}
+
+func removeAdbForwardedPorts() {
+	cmd := exec.Command("adb", "forward", "--remove-all")
+	err := cmd.Run()
+	if err != nil {
+		fmt.Println("Could not remove adb forwarded ports")
+	}
+}
+
+func (device *LocalDevice) isGadsStreamServiceRunning() (bool, error) {
+	fmt.Println("INFO: Checking if gads-stream is installed and service is running")
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "dumpsys", "activity", "services", "com.shamanec.stream/.ScreenCaptureService")
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("Error running command:", err)
+		return false, err
+	}
+
+	// If command returned "(nothing)" then the service is not running
+	if strings.Contains(string(output), "(nothing)") {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// Install gads-stream.apk on the device
+func (device *LocalDevice) installGadsStream() {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "install", "-r", "./apps/gads-stream.apk")
+
+	err := cmd.Run()
+	if err != nil {
+		device.resetLocalDevice()
+	}
+}
+
+// Add recording permissions to gads-stream app to avoid popup on start
+func (device *LocalDevice) addGadsStreamRecordingPermissions() {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "appops", "set", "com.shamanec.stream", "PROJECT_MEDIA", "allow")
+	err := cmd.Run()
+	if err != nil {
+		device.resetLocalDevice()
+	}
+}
+
+// Start the gads-stream app using adb
+func (device *LocalDevice) startGadsStreamApp() {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "am", "start", "-n", "com.shamanec.stream/com.shamanec.stream.ScreenCaptureActivity")
+	err := cmd.Run()
+	if err != nil {
+		device.resetLocalDevice()
+	}
+}
+
+// Press the Home button using adb to hide the transparent gads-stream activity
+func (device *LocalDevice) pressHomeButton() {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "input", "keyevent", "KEYCODE_HOME")
+	err := cmd.Run()
+	if err != nil {
+		device.resetLocalDevice()
+	}
+}
+
+// Forward gads-stream socket to the host container
+func (device *LocalDevice) forwardGadsStream() {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "forward", "tcp:"+device.Device.StreamPort, "tcp:1991")
+	err := cmd.Run()
+	if err != nil {
+		device.resetLocalDevice()
+	}
+}
+
 // IOS DEVICES
 
 func updateIOSDevicesOSX() {
@@ -103,13 +210,14 @@ func updateIOSDevicesOSX() {
 		os.Exit(1)
 	}
 
-	err = buildWebDriverAgent()
-	if err != nil {
-		fmt.Println("Could not successfully build WebDriverAgent for testing - " + err.Error())
-		os.Exit(1)
-	}
+	// err = buildWebDriverAgent()
+	// if err != nil {
+	// 	fmt.Println("Could not successfully build WebDriverAgent for testing - " + err.Error())
+	// 	os.Exit(1)
+	// }
 
 	getLocalDevices()
+	removeAdbForwardedPorts()
 
 	for {
 		connectedDevices := getConnectedDevicesOSX(true, androidDevicesInConfig)
@@ -121,8 +229,7 @@ func updateIOSDevicesOSX() {
 
 			for _, device := range localDevices {
 				device.Device.Connected = false
-				device.ProviderState = "init"
-				device.CtxCancel()
+				device.resetLocalDevice()
 			}
 		} else {
 			for _, device := range localDevices {
@@ -133,6 +240,10 @@ func updateIOSDevicesOSX() {
 						if device.Device.OS == "ios" {
 							device.WdaReadyChan = make(chan bool, 1)
 							go device.setupIOSDevice()
+						}
+
+						if device.Device.OS == "android" {
+							go device.setupAndroidDevice()
 						}
 					}
 					continue
@@ -240,6 +351,7 @@ func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
 		return
 	}
 
+	// Start the port forward command
 	err = cmd.Start()
 	if err != nil {
 		log.WithFields(log.Fields{
