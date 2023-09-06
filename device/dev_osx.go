@@ -56,6 +56,16 @@ func androidDevicesInConfig() bool {
 	return false
 }
 
+func (device *LocalDevice) resetLocalDevice() {
+	mu.Lock()
+	defer mu.Unlock()
+
+	device.CtxCancel()
+	device.ProviderState = "init"
+	device.Device.Healthy = false
+	device.Device.updateDB()
+}
+
 // COMMON
 
 // Set a context for a device to enable cancelling running goroutines related to that device when its disconnected
@@ -141,42 +151,49 @@ func (device *LocalDevice) setupIOSDevice() {
 		"event": "ios_device_setup",
 	}).Info(fmt.Sprintf("Running setup for iOS device - %v", device.Device.UDID))
 
+	// Get go-ios device entry for pairing/mounting images
+	// Mounting currently unused, images are mounted automatically through Xcode device setup
+	// Pairing currently unused, TODO after go-ios supports iOS >=17
 	goIOSDevice, err := getGoIOSDevice(device.Device.UDID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_device_setup",
 		}).Error(fmt.Sprintf("Could not get `go-ios` DeviceEntry for device - %v, err - %v", device.Device.UDID, err))
-		device.ProviderState = "init"
-		fmt.Println()
+		device.resetLocalDevice()
 		return
 	}
 	device.GoIOSDeviceEntry = goIOSDevice
 
+	// Get a free port on the host for WebDriverAgent server
 	wdaPort, err := getFreePort()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_device_setup",
 		}).Error(fmt.Sprintf("Could not allocate free WebDriverAgent port for device - %v, err - %v", device.Device.UDID, err))
-		device.ProviderState = "init"
+		device.resetLocalDevice()
 		return
 	}
 	device.Device.WDAPort = fmt.Sprint(wdaPort)
 
+	// Get a free port on the host for WebDriverAgent stream
 	streamPort, err := getFreePort()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_device_setup",
 		}).Error(fmt.Sprintf("Could not allocate free WebDriverAgent stream port for device `%v`, err - %v", device.Device.UDID, err))
-		device.ProviderState = "init"
+		device.resetLocalDevice()
 		return
 	}
 	device.Device.StreamPort = fmt.Sprint(streamPort)
 
+	// Forward the WebDriverAgent server and stream to the host
 	go device.goIOSForward(device.Device.WDAPort, "8100")
 	go device.goIOSForward(device.Device.StreamPort, "9100")
 
-	go device.startWdaXcodebuild()
+	// Start WebDriverAgent with `xcodebuild`
+	go device.startWdaWithXcodebuild()
 
+	// Wait until WebDriverAgent successfully starts
 	select {
 	case <-device.WdaReadyChan:
 		log.WithFields(log.Fields{
@@ -187,22 +204,24 @@ func (device *LocalDevice) setupIOSDevice() {
 		log.WithFields(log.Fields{
 			"event": "ios_device_setup",
 		}).Error(fmt.Sprintf("Did not successfully start WebDriverAgent on device `%v` in 30 seconds", device.Device.UDID))
-		device.CtxCancel()
-		device.ProviderState = "init"
+		device.resetLocalDevice()
 		return
 	}
 
+	// Create a WebDriverAgent session and update the MJPEG stream settings
 	err = device.updateWebDriverAgent()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_device_setup",
 		}).Error(fmt.Sprintf("Did not successfully update WebDriverAgent settings for device `%v`, err - %v", device.Device.UDID, err))
-		device.ProviderState = "init"
+		device.resetLocalDevice()
 		return
 	}
 
+	// Start a goroutine that periodically checks if the WebDriverAgent server is up
 	go device.updateDeviceHealthStatus()
 
+	// Mark the device as 'live' and update it in RethinkDB
 	device.ProviderState = "live"
 	device.Device.updateDB()
 }
@@ -214,16 +233,27 @@ func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
 	// Create a pipe to capture the command's output
 	_, err := cmd.StdoutPipe()
 	if err != nil {
-		fmt.Printf("Error creating stdout pipe: %v\n", err)
+		log.WithFields(log.Fields{
+			"event": "ios_device_setup",
+		}).Error(fmt.Sprintf("Could not create stdoutpipe executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
 		return
 	}
 
 	err = cmd.Start()
 	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "ios_device_setup",
+		}).Error(fmt.Sprintf("Error executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
 		return
 	}
 
 	if err := cmd.Wait(); err != nil {
+		log.WithFields(log.Fields{
+			"event": "ios_device_setup",
+		}).Error(fmt.Sprintf("Error waiting `ios forward` to finish for device `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
 		return
 	}
 }
@@ -353,7 +383,7 @@ func buildWebDriverAgent() error {
 	return nil
 }
 
-func (device *LocalDevice) startWdaXcodebuild() {
+func (device *LocalDevice) startWdaWithXcodebuild() {
 	// Create a usbmuxd.log file for Stderr
 	wdaLog, err := os.Create("./logs/device_" + device.Device.UDID + "/wda.log")
 	if err != nil {
@@ -364,7 +394,7 @@ func (device *LocalDevice) startWdaXcodebuild() {
 	defer wdaLog.Close()
 
 	// Command to run continuously (replace with your command)
-	cmd := exec.CommandContext(device.Context, "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.Device.UDID, "test-without-building")
+	cmd := exec.CommandContext(device.Context, "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.Device.UDID, "test-without-building", "-allowProvisioningUpdates")
 	cmd.Dir = Config.EnvConfig.WDAPath
 
 	// Create a pipe to capture the command's output
@@ -384,6 +414,11 @@ func (device *LocalDevice) startWdaXcodebuild() {
 
 	for scanner.Scan() {
 		line := scanner.Text()
+
+		if strings.Contains(line, "Restarting after") {
+			return
+		}
+
 		_, err := fmt.Fprintln(wdaLog, line)
 		if err != nil {
 			fmt.Println("Could not write to device wda.log file")
