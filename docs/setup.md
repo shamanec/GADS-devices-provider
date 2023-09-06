@@ -51,11 +51,24 @@ If you have followed all the steps, set up and registered the devices and config
 1. Download the latest release of [go-ios](https://github.com/danielpaulus/go-ios) and unzip it
 2. Add it to `/usr/local/bin` with `sudo cp ios /usr/local/bin`
 
+### Set up Xcode
+1. Download and install latest Xcode release  
+2. Install Xcode Command Line tools with `xcode-select --install`  
+
+### Set up WebDriverAgent
+1. Download the latest release of WebDriverAgent from the Appium [repo](https://github.com/appium/WebDriverAgent)  
+2. Open the project in Xcode  
+3. Set up `Automatically manage signing` for WebDriverAgentLib and WebDriverAgentRunner targets.  
+4. Build the project and run WebDriverAgentRunner test successfully at least once through Xcode.  
+5. Open `config.json` and in `env-config` set the `wda_repo_path` value to the folder where `WebDriverAgent.xcodeproj` is located. Example: `"wda_repo_path": "/Users/shamanec/Downloads/WebDriverAgent-5.8.3/"`  
+
+**Note** When the provider is started it will use this path to build WebDriverAgent with `xcodebuild build-for-testing` once and then will run WebDriverAgent on each device with `xcodebuild test-without-building`. When `go-ios` starts supporting iOS >= 17 then the approach will be changed with prebuilt WebDriverAgent to spend less resources than with `xcodebuild`
+
 # Devices setup  
 ## Android setup
 ### Dependencies  
 
-1. Install `adb`  with `sudo apt install adb`  
+1. Install `adb` depending on your current OS, it should be available in Terminal  
 2. Enable `USB Debugging` for each Android device through the developer tools.  
 3. Connect the devices to the host and authorize the USB debugging - this will create pairing keys that are mounted to the containers so you don't have to authorize the debugging each time a container is created.  
 

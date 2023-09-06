@@ -32,8 +32,7 @@ type EnvConfig struct {
 	SupervisionPassword string `json:"supervision_password"`
 	WDABundleID         string `json:"wda_bundle_id"`
 	RethinkDB           string `json:"rethink_db"`
-	WDAPath             string `json:"ios_17_wda_path"`
-	WDAScheme           string `json:"ios_17_wda_scheme"`
+	WDAPath             string `json:"wda_repo_path"`
 }
 
 type Device struct {

@@ -23,8 +23,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var usedPorts map[int]bool
-var connectedDevicesMu sync.Mutex
+var usedPorts = make(map[int]bool)
+var mu sync.Mutex
 
 var netClient = &http.Client{
 	Timeout: time.Second * 120,
@@ -39,6 +39,11 @@ func getLocalDevices() {
 			ProviderState: "init",
 		}
 		localDevices = append(localDevices, &localDevice)
+
+		// Create logs directory for each device if it doesn't already exist
+		if _, err := os.Stat("./logs/device_" + device.UDID); os.IsNotExist(err) {
+			os.Mkdir("./logs/device_"+device.UDID, os.ModePerm)
+		}
 	}
 }
 
@@ -63,6 +68,11 @@ func (device *LocalDevice) setContext() {
 // IOS DEVICES
 
 func updateIOSDevicesOSX() {
+	// Create common logs directory if it doesn't already exist
+	if _, err := os.Stat("./logs"); os.IsNotExist(err) {
+		os.Mkdir("./logs", os.ModePerm)
+	}
+
 	if !xcodebuildAvailable() {
 		fmt.Println("xcodebuild is not available, you need to set up the host as explained in the readme")
 		os.Exit(1)
@@ -199,7 +209,7 @@ func (device *LocalDevice) setupIOSDevice() {
 
 // Forward iOS device ports using `go-ios` CLI, for some reason using the library doesn't work properly
 func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
-	cmd := exec.CommandContext(device.Context, "ios", "forward", hostPort, devicePort)
+	cmd := exec.CommandContext(device.Context, "ios", "forward", hostPort, devicePort, "--udid="+device.Device.UDID)
 
 	// Create a pipe to capture the command's output
 	_, err := cmd.StdoutPipe()
@@ -344,6 +354,15 @@ func buildWebDriverAgent() error {
 }
 
 func (device *LocalDevice) startWdaXcodebuild() {
+	// Create a usbmuxd.log file for Stderr
+	wdaLog, err := os.Create("./logs/device_" + device.Device.UDID + "/wda.log")
+	if err != nil {
+		device.ProviderState = "init"
+		device.CtxCancel()
+		return
+	}
+	defer wdaLog.Close()
+
 	// Command to run continuously (replace with your command)
 	cmd := exec.CommandContext(device.Context, "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.Device.UDID, "test-without-building")
 	cmd.Dir = Config.EnvConfig.WDAPath
@@ -365,7 +384,10 @@ func (device *LocalDevice) startWdaXcodebuild() {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Println(line)
+		_, err := fmt.Fprintln(wdaLog, line)
+		if err != nil {
+			fmt.Println("Could not write to device wda.log file")
+		}
 
 		if strings.Contains(line, "ServerURLHere") {
 			// device.DeviceIP = strings.Split(strings.Split(line, "//")[1], ":")[0]
@@ -578,9 +600,12 @@ func getFreePort() (port int, err error) {
 		if l, err = net.ListenTCP("tcp", a); err == nil {
 			defer l.Close()
 			port = l.Addr().(*net.TCPAddr).Port
+			mu.Lock()
+			defer mu.Unlock()
 			if _, ok := usedPorts[port]; ok {
 				return getFreePort()
 			}
+			usedPorts[port] = true
 			return port, nil
 		}
 	}
