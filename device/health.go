@@ -40,6 +40,8 @@ func GetDeviceHealth(udid string) (bool, error) {
 		// 		return false, err
 		// 	}
 		// }
+	} else {
+		allGood = true
 	}
 
 	return allGood, nil

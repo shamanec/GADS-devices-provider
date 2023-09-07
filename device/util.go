@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"path/filepath"
 	"strings"
 
@@ -102,4 +103,23 @@ func GetDeviceByUDID(udid string) *Device {
 	}
 
 	return nil
+}
+
+func getFreePort() (port int, err error) {
+	var a *net.TCPAddr
+	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
+		var l *net.TCPListener
+		if l, err = net.ListenTCP("tcp", a); err == nil {
+			defer l.Close()
+			port = l.Addr().(*net.TCPAddr).Port
+			mu.Lock()
+			defer mu.Unlock()
+			if _, ok := usedPorts[port]; ok {
+				return getFreePort()
+			}
+			usedPorts[port] = true
+			return port, nil
+		}
+	}
+	return
 }

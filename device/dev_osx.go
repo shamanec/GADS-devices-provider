@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -108,6 +107,9 @@ func (device *LocalDevice) setupAndroidDevice() {
 
 	device.forwardGadsStream()
 	fmt.Println("DEVICE PORT " + device.Device.StreamPort)
+
+	go device.startAppium()
+	go device.updateDeviceHealthStatus()
 }
 
 func removeAdbForwardedPorts() {
@@ -210,11 +212,11 @@ func updateIOSDevicesOSX() {
 		os.Exit(1)
 	}
 
-	// err = buildWebDriverAgent()
-	// if err != nil {
-	// 	fmt.Println("Could not successfully build WebDriverAgent for testing - " + err.Error())
-	// 	os.Exit(1)
-	// }
+	err = buildWebDriverAgent()
+	if err != nil {
+		fmt.Println("Could not successfully build WebDriverAgent for testing - " + err.Error())
+		os.Exit(1)
+	}
 
 	getLocalDevices()
 	removeAdbForwardedPorts()
@@ -328,6 +330,8 @@ func (device *LocalDevice) setupIOSDevice() {
 		device.resetLocalDevice()
 		return
 	}
+
+	go device.startAppium()
 
 	// Start a goroutine that periodically checks if the WebDriverAgent server is up
 	go device.updateDeviceHealthStatus()
@@ -499,8 +503,7 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	// Create a usbmuxd.log file for Stderr
 	wdaLog, err := os.Create("./logs/device_" + device.Device.UDID + "/wda.log")
 	if err != nil {
-		device.ProviderState = "init"
-		device.CtxCancel()
+		device.resetLocalDevice()
 		return
 	}
 	defer wdaLog.Close()
@@ -696,40 +699,33 @@ func (device *LocalDevice) createWebDriverAgentSession() error {
 	return nil
 }
 
-func runShellCommand(ctx context.Context, command string, args ...string) {
-	cmd := exec.CommandContext(ctx, command, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
-	if err != nil {
-		fmt.Println("Error starting command:", err)
-		return
-	}
-
-	cmd.Wait()
-}
-
 func (device *LocalDevice) updateDeviceHealthStatus() {
 	for {
 		select {
 		case <-time.After(1 * time.Second):
 			device.checkDeviceHealthStatus()
 		case <-device.Context.Done():
-			fmt.Println("STOPPING DEVICE HEALTH CHECK")
 			return
 		}
 	}
 }
 
 func (device *LocalDevice) checkDeviceHealthStatus() {
-	wdaGood := false
-	wdaGood, err := device.isWdaHealthy()
-	if err != nil {
-		fmt.Println(err)
-	}
 
-	if wdaGood {
+	if device.Device.OS == "ios" {
+		wdaGood := false
+		wdaGood, err := device.isWdaHealthy()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		if wdaGood {
+			device.Device.LastHealthyTimestamp = time.Now().UnixMilli()
+			device.Device.Healthy = true
+			device.Device.updateDB()
+			return
+		}
+	} else {
 		device.Device.LastHealthyTimestamp = time.Now().UnixMilli()
 		device.Device.Healthy = true
 		device.Device.updateDB()
@@ -738,25 +734,6 @@ func (device *LocalDevice) checkDeviceHealthStatus() {
 
 	device.Device.Healthy = false
 	device.Device.updateDB()
-}
-
-func getFreePort() (port int, err error) {
-	var a *net.TCPAddr
-	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
-		var l *net.TCPListener
-		if l, err = net.ListenTCP("tcp", a); err == nil {
-			defer l.Close()
-			port = l.Addr().(*net.TCPAddr).Port
-			mu.Lock()
-			defer mu.Unlock()
-			if _, ok := usedPorts[port]; ok {
-				return getFreePort()
-			}
-			usedPorts[port] = true
-			return port, nil
-		}
-	}
-	return
 }
 
 // Check if the WebDriverAgent server for an iOS device is up
@@ -778,4 +755,101 @@ func (device *LocalDevice) isWdaHealthy() (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (device *LocalDevice) isAppiumHealthy() (bool, error) {
+	response, err := http.Get("http://localhost:" + device.Device.AppiumPort + "/status")
+	if err != nil {
+		return false, err
+	}
+	defer response.Body.Close()
+
+	responseCode := response.StatusCode
+
+	if responseCode != 200 {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// APPIUM
+
+type appiumCapabilities struct {
+	UDID                  string `json:"appium:udid"`
+	WdaMjpegPort          string `json:"appium:mjpegServerPort,omitempty"`
+	ClearSystemFiles      string `json:"appium:clearSystemFiles,omitempty"`
+	WdaURL                string `json:"appium:webDriverAgentUrl,omitempty"`
+	PreventWdaAttachments string `json:"appium:preventWDAAttachments,omitempty"`
+	SimpleIsVisibleCheck  string `json:"appium:simpleIsVisibleCheck,omitempty"`
+	WdaLocalPort          string `json:"appium:wdaLocalPort,omitempty"`
+	PlatformVersion       string `json:"appium:platformVersion,omitempty"`
+	AutomationName        string `json:"appium:automationName"`
+	PlatformName          string `json:"platformName"`
+	DeviceName            string `json:"appium:deviceName"`
+	WdaLaunchTimeout      string `json:"appium:wdaLaunchTimeout,omitempty"`
+	WdaConnectionTimeout  string `json:"appium:wdaConnectionTimeout,omitempty"`
+}
+
+func (device *LocalDevice) startAppium() {
+	var capabilities appiumCapabilities
+
+	if device.Device.OS == "ios" {
+		capabilities = appiumCapabilities{
+			UDID:                  device.Device.UDID,
+			WdaURL:                "http://localhost:" + device.Device.WDAPort,
+			WdaMjpegPort:          device.Device.StreamPort,
+			WdaLocalPort:          device.Device.WDAPort,
+			WdaLaunchTimeout:      "120000",
+			WdaConnectionTimeout:  "240000",
+			ClearSystemFiles:      "false",
+			PreventWdaAttachments: "true",
+			SimpleIsVisibleCheck:  "false",
+			AutomationName:        "XCUITest",
+			PlatformName:          "iOS",
+			DeviceName:            device.Device.Name,
+		}
+	} else if device.Device.OS == "android" {
+		capabilities = appiumCapabilities{
+			UDID:           device.Device.UDID,
+			AutomationName: "UiAutomator2",
+			PlatformName:   "Android",
+			DeviceName:     device.Device.Name,
+		}
+	}
+
+	capabilitiesJson, _ := json.Marshal(capabilities)
+
+	// Create a usbmuxd.log file for Stderr
+	appiumLog, err := os.Create("./logs/device_" + device.Device.UDID + "/appium.log")
+	if err != nil {
+		device.resetLocalDevice()
+		return
+	}
+	defer appiumLog.Close()
+
+	// Get a free port on the host for Appium server
+	appiumPort, err := getFreePort()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "ios_device_setup",
+		}).Error(fmt.Sprintf("Could not allocate free Appium port for device - %v, err - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
+	device.Device.AppiumPort = fmt.Sprint(appiumPort)
+
+	cmd := exec.CommandContext(device.Context, "appium", "-p", device.Device.AppiumPort, "--log-timestamp", "--allow-cors", "--default-capabilities", string(capabilitiesJson))
+
+	cmd.Stdout = appiumLog
+	cmd.Stderr = appiumLog
+
+	if err := cmd.Start(); err != nil {
+		device.resetLocalDevice()
+		return
+	}
+
+	if err := cmd.Wait(); err != nil {
+		device.resetLocalDevice()
+	}
 }
