@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +30,7 @@ func DeviceHealth(c *gin.Context) {
 // Call the respective Appium/WDA endpoint to go to Homescreen
 func DeviceHome(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
+	device := device.DeviceMap[udid]
 
 	// Send the request
 	homeResponse, err := appiumHome(device)
@@ -42,7 +41,7 @@ func DeviceHome(c *gin.Context) {
 	defer homeResponse.Body.Close()
 
 	// Read the response body
-	homeResponseBody, err := ioutil.ReadAll(homeResponse.Body)
+	homeResponseBody, err := io.ReadAll(homeResponse.Body)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -56,7 +55,7 @@ func DeviceHome(c *gin.Context) {
 // Call respective Appium/WDA endpoint to lock the device
 func DeviceLock(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
+	device := device.DeviceMap[udid]
 
 	lockResponse, err := appiumLockUnlock(device, "lock")
 	if err != nil {
@@ -66,7 +65,7 @@ func DeviceLock(c *gin.Context) {
 	defer lockResponse.Body.Close()
 
 	// Read the response body
-	lockResponseBody, err := ioutil.ReadAll(lockResponse.Body)
+	lockResponseBody, err := io.ReadAll(lockResponse.Body)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -80,7 +79,7 @@ func DeviceLock(c *gin.Context) {
 // Call the respective Appium/WDA endpoint to unlock the device
 func DeviceUnlock(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
+	device := device.DeviceMap[udid]
 
 	lockResponse, err := appiumLockUnlock(device, "unlock")
 	if err != nil {
@@ -90,7 +89,7 @@ func DeviceUnlock(c *gin.Context) {
 	defer lockResponse.Body.Close()
 
 	// Read the response body
-	lockResponseBody, err := ioutil.ReadAll(lockResponse.Body)
+	lockResponseBody, err := io.ReadAll(lockResponse.Body)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -104,13 +103,13 @@ func DeviceUnlock(c *gin.Context) {
 // Call the respective Appium/WDA endpoint to take a screenshot of the device screen
 func DeviceScreenshot(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
+	device := device.DeviceMap[udid]
 
 	screenshotResp, err := appiumScreenshot(device)
 	defer screenshotResp.Body.Close()
 
 	// Read the response body
-	screenshotRespBody, err := ioutil.ReadAll(screenshotResp.Body)
+	screenshotRespBody, err := io.ReadAll(screenshotResp.Body)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -127,7 +126,7 @@ func DeviceScreenshot(c *gin.Context) {
 // Call the device stream endpoint and proxy it to the respective provider stream endpoint
 func DeviceStream(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
+	device := device.DeviceMap[udid]
 
 	deviceStreamURL := ""
 	if device.OS == "android" {
@@ -168,7 +167,7 @@ func copyHeaders(destination, source http.Header) {
 
 func DeviceAppiumSource(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
+	device := device.DeviceMap[udid]
 
 	sourceResp, err := appiumSource(device)
 	if err != nil {
@@ -177,7 +176,7 @@ func DeviceAppiumSource(c *gin.Context) {
 	}
 
 	// Read the response body
-	body, err := ioutil.ReadAll(sourceResp.Body)
+	body, err := io.ReadAll(sourceResp.Body)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -226,7 +225,7 @@ type devicePointerActions struct {
 
 func DeviceTypeText(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
+	device := device.DeviceMap[udid]
 
 	var requestBody actionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
@@ -240,7 +239,7 @@ func DeviceTypeText(c *gin.Context) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(typeResp.Body)
+	body, err := io.ReadAll(typeResp.Body)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -254,7 +253,7 @@ func DeviceTypeText(c *gin.Context) {
 
 func DeviceClearText(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
+	device := device.DeviceMap[udid]
 
 	clearResp, err := appiumClearText(device)
 	if err != nil {
@@ -262,7 +261,7 @@ func DeviceClearText(c *gin.Context) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(clearResp.Body)
+	body, err := io.ReadAll(clearResp.Body)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -276,7 +275,7 @@ func DeviceClearText(c *gin.Context) {
 
 func DeviceTap(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
+	device := device.DeviceMap[udid]
 
 	var requestBody actionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
@@ -292,7 +291,7 @@ func DeviceTap(c *gin.Context) {
 	defer tapResp.Body.Close()
 
 	// Read the response body
-	body, err := ioutil.ReadAll(tapResp.Body)
+	body, err := io.ReadAll(tapResp.Body)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -305,7 +304,7 @@ func DeviceTap(c *gin.Context) {
 
 func DeviceSwipe(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
+	device := device.DeviceMap[udid]
 
 	var requestBody actionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
@@ -321,7 +320,7 @@ func DeviceSwipe(c *gin.Context) {
 	defer swipeResp.Body.Close()
 
 	// Read the response body
-	body, err := ioutil.ReadAll(swipeResp.Body)
+	body, err := io.ReadAll(swipeResp.Body)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return

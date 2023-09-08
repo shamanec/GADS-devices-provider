@@ -74,7 +74,7 @@ type DeviceContainer struct {
 
 var projectDir string
 var Config ConfigJsonData
-var LocalDevices []*LocalDevice
+var DeviceMap = make(map[string]*Device)
 
 // Set up the configuration for the provider
 // Get the data from config.json, start a DB connection and update the devices
@@ -137,6 +137,8 @@ func updateDevicesFromConfig() error {
 		device.ContainerServerPort = strconv.Itoa(20201 + index)
 		device.WDAPort = wdaPort
 		device.Host = Config.EnvConfig.DevicesHost
+
+		DeviceMap[device.UDID] = device
 	}
 
 	// Insert the devices to the DB if they are not already inserted
