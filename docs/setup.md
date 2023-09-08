@@ -1,30 +1,92 @@
 # Provider setup  
 Currently the project assumes that GADS UI, RethinkDB and device providers are on the same network. They can all be on the same machine as well.  
+The provider supports Linux and MacOS. On Linux Android devices are fully supported and iOS <17 devices are fully supported. On MacOS also iOS >= 17 devices are supported.  
 
 ## Dependencies  
-The provider itself has minimum dependencies:  
+### Linux
+#### Docker
 1. Install Docker.  
-2. Install Go 1.17 or higher  
 
-## RethinkDB - needed on all platforms
+#### Go
+2. Install Go 1.21 or higher  
+
+#### Android debug bridge
+1. Install `adb` (Android debug bridge). It should be available in PATH so it can be directly accessed via Terminal  
+
+#### Usbmuxd
+1. Install usbmuxd - `sudo apt install usbmuxd` on the host if you want to see the device UDIDs with `go-ios` or similar tools
+
+### MacOS
+#### Xcode
+1. Install latest stable Xcode release - for iOS 17 install latest beta release
+2. Install command line tools with `xcode-select --install`
+
+#### Android debug bridge
+1. Install `adb` (Android debug bridge). It should be available in PATH so it can be directly accessed via Terminal
+
+#### Set up go-ios
+1. Download the latest release of [go-ios](https://github.com/danielpaulus/go-ios) and unzip it
+2. Add it to `/usr/local/bin` with `sudo cp ios /usr/local/bin`
+
+#### WebDriverAgent
+1. Download the latest release of [WebDriverAgent](https://github.com/appium/WebDriverAgent/releases)
+2. Unzip the source code in any folder.
+3. Open WebDriverAgent.xcodeproj in Xcode
+4. Select signing profiles for WebDriverAgentLib and WebDriverAgentRunner.
+5. Build the WebDriverAgent and run on a device at least once to validate it builds and runs as expected.
+
+#### GADS Android stream
+1. Download the latest release of [GADS-Android-stream](https://github.com/shamanec/GADS-Android-stream/releases)
+2. Unzip the `*.apk` file and put it in `apps` folder (in the GADS-devices-provider repo)
+
+### RethinkDB - Linux, MacOS
 The project uses RethinkDB for syncing devices availability between providers and GADS UI. You need to have RethinkDB running and set up as explained in the [GADS](https://github.com/shamanec/GADS) readme before running the provider.  
 1. Open `config.json`  
 2. Update the `rethink_db` value in `env-config` with the IP address of the machine running the RethinkDB instance and the port on which it is accepting connections. The default port if you followed the setup would be `32771`. Example: `192.168.1.2:32771`  
 
-## Update the environment in ./configs/config.json  
-~1. Set Selenium Grid connection - `true` or `false`. `true` attempts to connect each Appium server to the Selenium Grid instance defined in the same file~ At the moment Selenium Grid connection does not work!  
+## Configuration setup
+### Environment config
+#### Common config - Linux, MacOS
+~1. Set `connect_selenium_grid` in `env-config` to `false` or `true` - currently Selenium Grid connection not working~
+2. Set `devices_host` in `env-config` to the IP of the provider host, e.g. `192.168.1.16` or whatever it is on your network  
+3. Set `rethink_db` in `env-config` to the IP and port of the RethinkDB instance, eg.g `192.168.1.6:32771` if you followed the steps above.  
 
-## Run the provider server   
-1. Execute `go build .` and `./GADS-devices-provider` or `go run  main.go` 
-2. You can also use `./GADS-devices-provider -port={PORT}` to run the provider on a selected port, the default port without the flag is 10001.     
+#### MacOS specific config
+1. Set `supervision_password` in `env-config` to the password for your supervised devices certificate - supervision setup can be found below.  
+2. Set `wda_repo_path` in `env-config` to the folder where WebDriverAgent was downloaded from Github, e.g. `/Users/shamanec/Downloads/WebDriverAgent-5.8.3/` 
+  * When the provider is started it will use this path to build WebDriverAgent with `xcodebuild build-for-testing` once and then will run WebDriverAgent on each device with `xcodebuild test-without-building`. When `go-ios` starts supporting iOS >= 17 then the approach will be changed with prebuilt WebDriverAgent to spend less resources than with `xcodebuild`
 
-You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.html`  
+#### Linux specific config
+1. Set `wda_bundle_id` in `env-config` to the bundle ID used to prebuild WebDriverAgent.
 
-## Common setup
-### Update the Appium config  
-1. Open `config.json` 
-3. Update your Selenium Grid values in `appium-config` - Grid not working atm    
-3. Update the bundle ID of the used WebDriverAgent (if running iOS) in `env-config`  
+### Appium config - currently hosts only Selenium Grid related data and that does NOT work
+1. Set `selenium_hub_host` to the IP address of the Selenium Grid instance  
+2. Set `selenium_hub_port` to the port of the Selenium Grid instance  
+3. Set `selenium_hub_protocol_type` to `http` or `https` depending on the Selenium Grid instance  
+
+### Devices config
+Each device should have a JSON object in `devices-config` like:
+```
+{
+      "os": "ios",
+      "name": "iPhone_11",
+      "os_version": "17.0",
+      "udid": "00008030000418C136FB8022",
+      "screen_size": "375x667",
+      "model": "iPhone 11"
+}
+```
+For each device set: 
+  * `os` - should be `android` or `ios`
+  * `screen_size`- e.g. `375x667` where first value is width, second is height
+    * For Android - go to `https://whatismyandroidversion.com` and fill in the displayed `Screen size`, not `Viewport size`  
+    * For iOS - you can get it on https://whatismyviewport.com (ScreenSize: at the bottom)   
+  * `os_version` - `11` or `13.5.1` for example  
+  * `name` - avoid using special characters and spaces except '_'. Example: `Huawei_P20_Pro`, `iPhone_11`  
+  * `udid` - UDID of the Android or iOS device
+    * For Android can get it with `adb devices`
+    * For iOS can get it with Xcode through `Devices & Simulator` or using `go-ios` or a similar tool (tidevice, gidevice, pymobiledevice3)
+  * `model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
 
 ## Setup - Linux  
 ### Build iOS Docker image
@@ -43,51 +105,21 @@ You can access Swagger documentation on `http://localhost:{PORT}/swagger/index.h
 
 **NB** You need to perform this step each time you add a new device to `config.json` so that the symlink for that respective device is properly created in `/dev`  
 
-### Spin up containers  
-If you have followed all the steps, set up and registered the devices and configured the provider just connect all your devices. Container should be automatically created for each of them.  
-
-## Setup - MacOS
-### Set up go-ios
-1. Download the latest release of [go-ios](https://github.com/danielpaulus/go-ios) and unzip it
-2. Add it to `/usr/local/bin` with `sudo cp ios /usr/local/bin`
-
-### Set up Xcode
-1. Download and install latest Xcode release  
-2. Install Xcode Command Line tools with `xcode-select --install`  
-
-### Set up WebDriverAgent
-1. Download the latest release of WebDriverAgent from the Appium [repo](https://github.com/appium/WebDriverAgent)  
-2. Open the project in Xcode  
-3. Set up `Automatically manage signing` for WebDriverAgentLib and WebDriverAgentRunner targets.  
-4. Build the project and run WebDriverAgentRunner test successfully at least once through Xcode.  
-5. Open `config.json` and in `env-config` set the `wda_repo_path` value to the folder where `WebDriverAgent.xcodeproj` is located. Example: `"wda_repo_path": "/Users/shamanec/Downloads/WebDriverAgent-5.8.3/"`  
-
-**Note** When the provider is started it will use this path to build WebDriverAgent with `xcodebuild build-for-testing` once and then will run WebDriverAgent on each device with `xcodebuild test-without-building`. When `go-ios` starts supporting iOS >= 17 then the approach will be changed with prebuilt WebDriverAgent to spend less resources than with `xcodebuild`
-
-# Devices setup  
-## Android setup
-### Dependencies  
-
-1. Install `adb` depending on your current OS, it should be available in Terminal  
+## Additional setup
+### Android setup
+1. You should have `adb` already installed on the host
 2. Enable `USB Debugging` for each Android device through the developer tools.  
-3. Connect the devices to the host and authorize the USB debugging - this will create pairing keys that are mounted to the containers so you don't have to authorize the debugging each time a container is created.  
+3. Connect the devices to the host and authorize the USB debugging - this will create pairing keys. Also on Linux these pairing keys will be mounted to the containes so you don't have to authorize each time a container is created (since its essentially a new host)
 
-### Register devices in config.json
-1. Open the `config.json` file.  
-2. For each Android device add a new object inside the `devices-list` array in the json.  
-3. For each device provide (all values as strings):  
-  * `os` - should be `android`   
-  * `screen_size` - Go to `https://whatismyandroidversion.com` and fill in the displayed `Screen size`, not `Viewport size`  
-  * `os_version` - "11" for example  
-  * `name` - avoid using special characters and spaces except '_'. Example: "Huawei_P20_Pro"  
-  * `udid` - UDID of the Android device, can get it with `adb devices`   
-  * `model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
-
-### Kill adb-server
-1. You need to make sure that adb-server is not running on the host before you start devices containers.  
+### Kill adb-server - LINUX ONLY
+1. You need to make sure that adb-server is not running on the Linux host before you start devices containers.  
 2. Run `adb kill-server`.  
 
-## iOS setup
+## Running the provider
+1. Execute `go build .` and `./GADS-devices-provider`  
+2. You can also use `./GADS-devices-provider -port={PORT}` to run the provider on a selected port, the default port without the flag is 10001 - might not work, use at your own risk :D
+
+### iOS setup
 ### Dependencies
 1. Install usbmuxd - `sudo apt install usbmuxd`  
 
@@ -136,7 +168,7 @@ You need an Apple Developer account to build and sign `WebDriverAgent`
   * `screen_size` - this is needed to easily work with the stream and remote control. Example: "375x667". You can get it on https://whatismyviewport.com (ScreenSize: at the bottom)   
   * `model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection.  
 
-### Containerized usbmuxd - DO NOT SKIP
+### Containerized usbmuxd - LINUX ONLY, DO NOT SKIP
 The usual approach would be to mount `/var/run/usbmuxd` to each container. This in practice shares the socket for all iOS devices connected to the host with all the containers. This way a single `usbmuxd` host failure will reflect on all containers. We have a way for `usbmuxd` running inside each container without running on the host at all.  
 
 **Note1** `usbmuxd` HAS to be installed on the host even if we don't really use it. I could not make it work without it.  
@@ -150,7 +182,7 @@ The usual approach would be to mount `/var/run/usbmuxd` to each container. This 
 
 With this approach we mount the symlink of each device created by the udev rules to each separate container. This in turn makes only a specific device available to its respective container which gives us better isolation from host and more stability.
 
-### Access iOS devices from a Mac for remote development - just for info  
+### Access iOS devices from a Mac for remote development - LINUX ONLY, just for info  
 1. Execute `sudo socat TCP-LISTEN:10015,reuseaddr,fork UNIX-CONNECT:/var/run/usbmuxd` on the Linux host with the devices.  
 2. Execute `sudo socat UNIX-LISTEN:/var/run/usbmuxd,fork,reuseaddr,mode=777 TCP:192.168.1.8:10015` on a Mac machine on the same network as the Linux devices host.  
 3. Restart Xcode and you should see the devices available.  
@@ -166,7 +198,6 @@ This can be used for remote development of iOS apps or execution of native XCUIT
     "selenium_hub_host": "192.168.1.8",
     "selenium_hub_port": "4444",
     "selenium_hub_protocol_type": "http"
-    
   },
   "env-config": {
     "devices_host": "192.168.1.5",
