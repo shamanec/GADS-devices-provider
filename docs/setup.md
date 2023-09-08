@@ -190,38 +190,3 @@ With this approach we mount the symlink of each device created by the udev rules
 **NB** This is in the context when using host `usbmuxd` socket. It is not yet tested with containerized usbmuxd although in theory it should not have issues.  
 
 This can be used for remote development of iOS apps or execution of native XCUITests. It is not thoroughly tested, just tried it out.  
-
-### Example config.json
-```
-{
-  "appium-config": {
-    "selenium_hub_host": "192.168.1.8",
-    "selenium_hub_port": "4444",
-    "selenium_hub_protocol_type": "http"
-  },
-  "env-config": {
-    "devices_host": "192.168.1.5",
-    "connect_selenium_grid": "false",
-    "supervision_password": "patladjan1",
-    "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner"
-  },
-  "devices-config": [
-    {
-      "os": "ios",
-      "name": "iPhone_11",
-      "os_version": "13.5.1",
-      "udid": "00008030000418C136FB8022",
-      "screen_size": "375x667",
-      "model": "iPhone 11"
-    },
-    {
-      "os": "android",
-      "screen_size": "1080x2241",
-      "udid": "WCR7N18B14002300",
-      "name": "Huawei_P20_Pro",
-      "os_version": "10",
-      "model": "Huawei P20 Pro"
-    }
-  ]
-}
-```
