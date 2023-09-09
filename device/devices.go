@@ -2,11 +2,8 @@ package device
 
 import (
 	"fmt"
-	"os"
 	"runtime"
-	"slices"
 	"strings"
-	"time"
 
 	"github.com/fsnotify/fsnotify"
 	log "github.com/sirupsen/logrus"
@@ -25,54 +22,9 @@ func UpdateDevices() {
 		fmt.Println("Starting /dev watcher")
 		go devicesWatcher()
 	} else if runtime.GOOS == "darwin" {
-		go updateIOSDevicesOSX()
+		go updateDevicesOSX()
 	} else if runtime.GOOS == "windows" {
 		go updateDevicesWindows()
-	}
-}
-
-func updateDevicesWindows() {
-	androidDevicesInConfig := androidDevicesInConfig()
-
-	if androidDevicesInConfig {
-		if !adbAvailable() {
-			fmt.Println("adb is not available, you need to set up the host as explained in the readme")
-			os.Exit(1)
-		}
-	}
-
-	getLocalDevices()
-	removeAdbForwardedPorts()
-
-	for {
-		connectedDevices := getConnectedDevicesOSX(false, true)
-		fmt.Println(connectedDevices)
-
-		if len(connectedDevices) == 0 {
-			log.WithFields(log.Fields{
-				"event": "update_devices",
-			}).Info("No devices connected")
-
-			for _, device := range localDevices {
-				device.Device.Connected = false
-				device.resetLocalDevice()
-			}
-		} else {
-			for _, device := range localDevices {
-				if slices.Contains(connectedDevices, device.Device.UDID) {
-					device.Device.Connected = true
-					if device.ProviderState != "preparing" && device.ProviderState != "live" {
-						device.setContext()
-						if device.Device.OS == "android" {
-							go device.setupAndroidDevice()
-						}
-					}
-					continue
-				}
-				device.Device.Connected = false
-			}
-		}
-		time.Sleep(10 * time.Second)
 	}
 }
 

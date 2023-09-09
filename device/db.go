@@ -82,7 +82,7 @@ func (device *Device) updateDB() {
 func devicesHealthCheck() {
 	for {
 		for _, device := range Config.Devices {
-			if device.Connected == true {
+			if device.Connected {
 				go device.updateHealthStatusDB()
 			}
 		}

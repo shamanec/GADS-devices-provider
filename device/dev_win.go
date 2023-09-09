@@ -9,43 +9,29 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func updateDevicesOSX() {
-	// Create common logs directory if it doesn't already exist
-	if _, err := os.Stat("./logs"); os.IsNotExist(err) {
-		os.Mkdir("./logs", os.ModePerm)
-	}
-
-	if !xcodebuildAvailable() {
-		fmt.Println("xcodebuild is not available, you need to set up the host as explained in the readme")
-		os.Exit(1)
-	}
+func updateDevicesWindows() {
+	log.WithFields(log.Fields{
+		"event": "provider",
+	}).Info("Updating devices on a Windows host")
 
 	androidDevicesInConfig := androidDevicesInConfig()
 
 	if androidDevicesInConfig {
+		log.WithFields(log.Fields{
+			"event": "provider",
+		}).Info("There are Android devices in config, checking if adb is available on host")
+
 		if !adbAvailable() {
 			fmt.Println("adb is not available, you need to set up the host as explained in the readme")
 			os.Exit(1)
 		}
 	}
 
-	_, err := os.Stat(Config.EnvConfig.WDAPath)
-	if err != nil {
-		fmt.Println(Config.EnvConfig.WDAPath + " does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
-		os.Exit(1)
-	}
-
-	err = buildWebDriverAgent()
-	if err != nil {
-		fmt.Println("Could not successfully build WebDriverAgent for testing - " + err.Error())
-		os.Exit(1)
-	}
-
 	getLocalDevices()
 	removeAdbForwardedPorts()
 
 	for {
-		connectedDevices := getConnectedDevicesCommon(true, androidDevicesInConfig)
+		connectedDevices := getConnectedDevicesCommon(false, true)
 
 		if len(connectedDevices) == 0 {
 			log.WithFields(log.Fields{
@@ -62,11 +48,6 @@ func updateDevicesOSX() {
 					device.Device.Connected = true
 					if device.ProviderState != "preparing" && device.ProviderState != "live" {
 						device.setContext()
-						if device.Device.OS == "ios" {
-							device.WdaReadyChan = make(chan bool, 1)
-							go device.setupIOSDevice()
-						}
-
 						if device.Device.OS == "android" {
 							go device.setupAndroidDevice()
 						}

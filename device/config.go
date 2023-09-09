@@ -3,18 +3,16 @@ package device
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/danielpaulus/go-ios/ios"
 	log "github.com/sirupsen/logrus"
 )
 
 type ConfigJsonData struct {
-	mutex        sync.Mutex
 	AppiumConfig AppiumConfig `json:"appium-config"`
 	EnvConfig    EnvConfig    `json:"env-config"`
 	Devices      []*Device    `json:"devices-config"`
@@ -180,7 +178,7 @@ func getConfigJsonBytes() ([]byte, error) {
 	}
 	defer jsonFile.Close()
 
-	bs, err := ioutil.ReadAll(jsonFile)
+	bs, err := io.ReadAll(jsonFile)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_config_data",
