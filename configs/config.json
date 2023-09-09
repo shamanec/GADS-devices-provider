@@ -2,8 +2,7 @@
   "appium-config": {
     "selenium_hub_host": "192.168.1.6",
     "selenium_hub_port": "4444",
-    "selenium_hub_protocol_type": "http",
-    "useAppium": true
+    "selenium_hub_protocol_type": "http"
   },
   "env-config": {
     "connect_selenium_grid": "false",
