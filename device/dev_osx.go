@@ -37,6 +37,7 @@ func getLocalDevices() {
 			Device:        device,
 			ProviderState: "init",
 		}
+		localDevice.setContext()
 		localDevices = append(localDevices, &localDevice)
 
 		// Create logs directory for each device if it doesn't already exist
