@@ -1,28 +1,23 @@
 package device
 
 import (
-	"fmt"
 	"os"
 	"slices"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/shamanec/GADS-devices-provider/util"
 )
 
 func updateDevicesWindows() {
-	log.WithFields(log.Fields{
-		"event": "provider",
-	}).Info("Updating devices on a Windows host")
+	util.LogInfo("provider", "Providing devices on a Windows host")
 
 	androidDevicesInConfig := androidDevicesInConfig()
 
 	if androidDevicesInConfig {
-		log.WithFields(log.Fields{
-			"event": "provider",
-		}).Info("There are Android devices in config, checking if adb is available on host")
+		util.LogInfo("provider", "There are Android devices in config, checking if adb is available on host")
 
 		if !adbAvailable() {
-			fmt.Println("adb is not available, you need to set up the host as explained in the readme")
+			util.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
 			os.Exit(1)
 		}
 	}
@@ -34,13 +29,11 @@ func updateDevicesWindows() {
 		connectedDevices := getConnectedDevicesCommon(false, true)
 
 		if len(connectedDevices) == 0 {
-			log.WithFields(log.Fields{
-				"event": "update_devices",
-			}).Info("No devices connected")
+			util.LogDebug("provider", "No connected devices found when updating devices")
 
 			for _, device := range localDevices {
 				device.Device.Connected = false
-				device.resetLocalDevice()
+				// device.resetLocalDevice()
 			}
 		} else {
 			for _, device := range localDevices {

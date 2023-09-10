@@ -106,14 +106,15 @@ func GetDeviceByUDID(udid string) *Device {
 }
 
 func getFreePort() (port int, err error) {
+	mu.Lock()
+	defer mu.Unlock()
+
 	var a *net.TCPAddr
 	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
 		var l *net.TCPListener
 		if l, err = net.ListenTCP("tcp", a); err == nil {
 			defer l.Close()
 			port = l.Addr().(*net.TCPAddr).Port
-			mu.Lock()
-			defer mu.Unlock()
 			if _, ok := usedPorts[port]; ok {
 				return getFreePort()
 			}

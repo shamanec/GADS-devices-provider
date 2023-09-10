@@ -18,6 +18,7 @@ import (
 
 	"github.com/danielpaulus/go-ios/ios"
 	"github.com/danielpaulus/go-ios/ios/imagemounter"
+	"github.com/shamanec/GADS-devices-provider/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -50,24 +51,18 @@ func getLocalDevices() {
 func (device *LocalDevice) setupAndroidDevice() {
 	device.ProviderState = "preparing"
 
-	log.WithFields(log.Fields{
-		"event": "android_device_setup",
-	}).Info(fmt.Sprintf("Running setup for Android device - %v", device.Device.UDID))
+	util.LogInfo("android_device_setup", fmt.Sprintf("Running setup for device `%v`", device.Device.UDID))
 
 	isStreamAvailable, err := device.isGadsStreamServiceRunning()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "provider",
-		}).Error(fmt.Sprintf("Could not check if GADS-stream is running on Android device - %v:\n %v", device.Device.UDID, err))
+		util.LogError("provider", fmt.Sprintf("Could not check if GADS-stream is running on device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 
 	// Get a free port on the host for WebDriverAgent server
 	streamPort, err := getFreePort()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "android_device_setup",
-		}).Error(fmt.Sprintf("Could not allocate free GADS-stream port for Android device - %v:\n %v", device.Device.UDID, err))
+		util.LogError("provider", fmt.Sprintf("Could not allocate free host port for GADS-stream for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -81,7 +76,6 @@ func (device *LocalDevice) setupAndroidDevice() {
 	}
 
 	device.forwardGadsStream()
-	fmt.Println("DEVICE PORT " + device.Device.StreamPort)
 
 	go device.startAppium()
 	go device.updateDeviceHealthStatus()
@@ -89,10 +83,7 @@ func (device *LocalDevice) setupAndroidDevice() {
 
 func (device *LocalDevice) setupIOSDevice() {
 	device.ProviderState = "preparing"
-
-	log.WithFields(log.Fields{
-		"event": "ios_device_setup",
-	}).Info(fmt.Sprintf("Running setup for iOS device - %v", device.Device.UDID))
+	util.LogInfo("ios_device_setup", fmt.Sprintf("Running setup for device `%v`", device.Device.UDID))
 
 	// Get go-ios device entry for pairing/mounting images
 	// Mounting currently unused, images are mounted automatically through Xcode device setup
@@ -102,9 +93,7 @@ func (device *LocalDevice) setupIOSDevice() {
 	// Get a free port on the host for WebDriverAgent server
 	wdaPort, err := getFreePort()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Error(fmt.Sprintf("Could not allocate free WebDriverAgent port for device - %v, err - %v", device.Device.UDID, err))
+		util.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent port for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -113,9 +102,7 @@ func (device *LocalDevice) setupIOSDevice() {
 	// Get a free port on the host for WebDriverAgent stream
 	streamPort, err := getFreePort()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Error(fmt.Sprintf("Could not allocate free WebDriverAgent stream port for device `%v`, err - %v", device.Device.UDID, err))
+		util.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent stream port for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -131,14 +118,10 @@ func (device *LocalDevice) setupIOSDevice() {
 	// Wait until WebDriverAgent successfully starts
 	select {
 	case <-device.WdaReadyChan:
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Info(fmt.Sprintf("Successfully started WebDriverAgent for device `%v` forwarded on port %v", device.Device.UDID, device.Device.WDAPort))
+		util.LogInfo("ios_device_setup", fmt.Sprintf("Successfully started WebDriverAgent for device `%v` forwarded on port %v", device.Device.UDID, device.Device.WDAPort))
 		break
 	case <-time.After(30 * time.Second):
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Error(fmt.Sprintf("Did not successfully start WebDriverAgent on device `%v` in 30 seconds", device.Device.UDID))
+		util.LogError("ios_device_setup", fmt.Sprintf("Did not successfully start WebDriverAgent on device `%v` in 30 seconds", device.Device.UDID))
 		device.resetLocalDevice()
 		return
 	}
@@ -148,7 +131,7 @@ func (device *LocalDevice) setupIOSDevice() {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_device_setup",
-		}).Error(fmt.Sprintf("Did not successfully update WebDriverAgent settings for device `%v`, err - %v", device.Device.UDID, err))
+		}).Error(fmt.Sprintf("Did not successfully create WebDriverAgent session or update its stream settings for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -303,6 +286,8 @@ func (device *LocalDevice) resetLocalDevice() {
 	mu.Lock()
 	defer mu.Unlock()
 
+	util.LogDebug("provider", fmt.Sprintf("Resetting LocalDevice for device `%v` after error. Cancelling context, setting ProviderState to `init`, Healthy to `false` and updating the DB", device.Device.UDID))
+
 	device.CtxCancel()
 	device.ProviderState = "init"
 	device.Device.Healthy = false
@@ -411,7 +396,7 @@ func (device *LocalDevice) pressHomeButton() {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "android_device_setup",
-		}).Error(fmt.Sprintf("Could not 'press' Home button with `adb` on Android device - %v, you need to press it yourself to hide the transparent activity:\n %v", device.Device.UDID, err))
+		}).Error(fmt.Sprintf("Could not 'press' Home button with `adb` on Android device - %v, you need to press it yourself to hide the transparent activity og GADS-stream:\n %v", device.Device.UDID, err))
 	}
 }
 
@@ -420,13 +405,13 @@ func (device *LocalDevice) forwardGadsStream() {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "forward", "tcp:"+device.Device.StreamPort, "tcp:1991")
 	log.WithFields(log.Fields{
 		"event": "android_device_setup",
-	}).Debug(fmt.Sprintf("Forwarding GADS-stream port to host for Android device - %v", device.Device.UDID))
+	}).Debug(fmt.Sprintf("Forwarding GADS-stream port to host port %v for Android device - %v", device.Device.StreamPort, device.Device.UDID))
 
 	err := cmd.Run()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "android_device_setup",
-		}).Error(fmt.Sprintf("Could not forward GADS-stream port to host for Android device - %v:\n %v", device.Device.UDID, err))
+		}).Error(fmt.Sprintf("Could not forward GADS-stream port to host port %v for Android device - %v:\n %v", device.Device.StreamPort, device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }
@@ -616,11 +601,17 @@ func (device *LocalDevice) updateWebDriverAgent() error {
 
 	err := device.createWebDriverAgentSession()
 	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "ios_device_setup",
+		}).Error(fmt.Sprintf("Could not create WebDriverAgent session for device %v - %v", device.Device.UDID, err))
 		return err
 	}
 
 	err = device.updateWebDriverAgentStreamSettings()
 	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "ios_device_setup",
+		}).Error(fmt.Sprintf("Could not update WebDriverAgent stream settings for device %v - %v", device.Device.UDID, err))
 		return err
 	}
 
@@ -687,7 +678,11 @@ func (device *LocalDevice) createWebDriverAgentSession() error {
 	return nil
 }
 
+// Loops checking if the Appium/WebDriverAgent servers for the device are alive and updates the DB each time
 func (device *LocalDevice) updateDeviceHealthStatus() {
+	log.WithFields(log.Fields{
+		"event": "device_setup",
+	}).Info(fmt.Sprintf("Started health status check for device %v. Will poll Appium/WebDriverAgent servers respective to the device each second", device.Device.UDID))
 	for {
 		select {
 		case <-time.After(1 * time.Second):
@@ -698,13 +693,17 @@ func (device *LocalDevice) updateDeviceHealthStatus() {
 	}
 }
 
+// Checks Appium/WebDriverAgent servers are alive for the respective device
+// And updates the device health status in the DB
+// TODO - Currently unfinished, does not really check Appium for iOS/Android right now. Need to check if it can be unified with the health status endpoint code
 func (device *LocalDevice) checkDeviceHealthStatus() {
-
 	if device.Device.OS == "ios" {
 		wdaGood := false
 		wdaGood, err := device.isWdaHealthy()
 		if err != nil {
-			fmt.Println(err)
+			log.WithFields(log.Fields{
+				"event": "device_setup",
+			}).Warn(fmt.Sprintf("Failed checking WebDriverAgent status for device %v - %v", device.Device.UDID, err))
 		}
 
 		if wdaGood {
@@ -811,6 +810,9 @@ func (device *LocalDevice) startAppium() {
 	// Create a usbmuxd.log file for Stderr
 	appiumLog, err := os.Create("./logs/device_" + device.Device.UDID + "/appium.log")
 	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "device_setup",
+		}).Error(fmt.Sprintf("Could not create appium.log file for device - %v, err - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -820,8 +822,8 @@ func (device *LocalDevice) startAppium() {
 	appiumPort, err := getFreePort()
 	if err != nil {
 		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Error(fmt.Sprintf("Could not allocate free Appium port for device - %v, err - %v", device.Device.UDID, err))
+			"event": "device_setup",
+		}).Error(fmt.Sprintf("Could not allocate free Appium host port for device - %v, err - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -833,11 +835,17 @@ func (device *LocalDevice) startAppium() {
 	cmd.Stderr = appiumLog
 
 	if err := cmd.Start(); err != nil {
+		log.WithFields(log.Fields{
+			"event": "device_setup",
+		}).Error(fmt.Sprintf("Could not start Appium server with CLI for device - %v, err - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
 
 	if err := cmd.Wait(); err != nil {
+		log.WithFields(log.Fields{
+			"event": "device_setup",
+		}).Error(fmt.Sprintf("Failed waiting for Appium server CLI execution to finish for device - %v, err - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }
