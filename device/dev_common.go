@@ -305,24 +305,18 @@ func (device *LocalDevice) setContext() {
 
 // Remove all adb forwarded ports(if any) on provider start
 func removeAdbForwardedPorts() {
-	log.WithFields(log.Fields{
-		"event": "provider",
-	}).Debug("Attempting to remove all `adb` forwarded ports on provider start")
+	util.LogDebug("provider", "Attempting to remove all `adb` forwarded ports on provider start")
 
 	cmd := exec.Command("adb", "forward", "--remove-all")
 	err := cmd.Run()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "provider",
-		}).Warn("Could not remove `adb` forwarded ports, there was an error or no devices are connected")
+		util.LogWarn("provider", "Could not remove `adb` forwarded ports, there was an error or no devices are connected - "+err.Error())
 	}
 }
 
 func (device *LocalDevice) isGadsStreamServiceRunning() (bool, error) {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "dumpsys", "activity", "services", "com.shamanec.stream/.ScreenCaptureService")
-	log.WithFields(log.Fields{
-		"event": "android_device_setup",
-	}).Debug(fmt.Sprintf("Checking if GADS-stream is already running on Android device - %v", device.Device.UDID))
+	util.LogDebug("android_device_setup", fmt.Sprintf("Checking if GADS-stream is already running on Android device - %v", device.Device.UDID))
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -340,15 +334,11 @@ func (device *LocalDevice) isGadsStreamServiceRunning() (bool, error) {
 // Install gads-stream.apk on the device
 func (device *LocalDevice) installGadsStream() {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "install", "-r", "./apps/gads-stream.apk")
-	log.WithFields(log.Fields{
-		"event": "android_device_setup",
-	}).Debug(fmt.Sprintf("Installing GADS-stream apk on Android device - %v", device.Device.UDID))
+	util.LogDebug("android_device_setup", fmt.Sprintf("Installing GADS-stream apk on Android device - %v", device.Device.UDID))
 
 	err := cmd.Run()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "android_device_setup",
-		}).Error(fmt.Sprintf("Could not install GADS-stream on Android device - %v:\n %v", device.Device.UDID, err))
+		util.LogError("android_device_setup", fmt.Sprintf("Could not install GADS-stream on Android device - %v:\n %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }
@@ -356,15 +346,11 @@ func (device *LocalDevice) installGadsStream() {
 // Add recording permissions to gads-stream app to avoid popup on start
 func (device *LocalDevice) addGadsStreamRecordingPermissions() {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "appops", "set", "com.shamanec.stream", "PROJECT_MEDIA", "allow")
-	log.WithFields(log.Fields{
-		"event": "android_device_setup",
-	}).Debug(fmt.Sprintf("Adding GADS-stream recording permissions on Android device - %v", device.Device.UDID))
+	util.LogDebug("android_device_setup", fmt.Sprintf("Adding GADS-stream recording permissions on Android device - %v", device.Device.UDID))
 
 	err := cmd.Run()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "android_device_setup",
-		}).Error(fmt.Sprintf("Could not set GADS-stream recording permissions on Android device - %v:\n %v", device.Device.UDID, err))
+		util.LogError("android_device_setup", fmt.Sprintf("Could not set GADS-stream recording permissions on Android device - %v:\n %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }
@@ -372,15 +358,11 @@ func (device *LocalDevice) addGadsStreamRecordingPermissions() {
 // Start the gads-stream app using adb
 func (device *LocalDevice) startGadsStreamApp() {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "am", "start", "-n", "com.shamanec.stream/com.shamanec.stream.ScreenCaptureActivity")
-	log.WithFields(log.Fields{
-		"event": "android_device_setup",
-	}).Debug(fmt.Sprintf("Starting GADS-stream app on Android device - %v - with command - `%v`", device.Device.UDID, cmd.Path))
+	util.LogDebug("android_device_setup", fmt.Sprintf("Starting GADS-stream app on Android device - %v - with command - `%v`", device.Device.UDID, cmd.Path))
 
 	err := cmd.Run()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "android_device_setup",
-		}).Error(fmt.Sprintf("Could not start GADS-stream app on Android device - %v:\n %v", device.Device.UDID, err))
+		util.LogError("android_device_setup", fmt.Sprintf("Could not start GADS-stream app on Android device - %v:\n %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }
@@ -388,30 +370,22 @@ func (device *LocalDevice) startGadsStreamApp() {
 // Press the Home button using adb to hide the transparent gads-stream activity
 func (device *LocalDevice) pressHomeButton() {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "input", "keyevent", "KEYCODE_HOME")
-	log.WithFields(log.Fields{
-		"event": "android_device_setup",
-	}).Debug(fmt.Sprintf("Pressing Home button with adb on Android device - %v", device.Device.UDID))
+	util.LogDebug("android_device_setup", fmt.Sprintf("Pressing Home button with adb on Android device - %v", device.Device.UDID))
 
 	err := cmd.Run()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "android_device_setup",
-		}).Error(fmt.Sprintf("Could not 'press' Home button with `adb` on Android device - %v, you need to press it yourself to hide the transparent activity og GADS-stream:\n %v", device.Device.UDID, err))
+		util.LogError("android_device_setup", fmt.Sprintf("Could not 'press' Home button with `adb` on Android device - %v, you need to press it yourself to hide the transparent activity og GADS-stream:\n %v", device.Device.UDID, err))
 	}
 }
 
 // Forward gads-stream socket to the host container
 func (device *LocalDevice) forwardGadsStream() {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "forward", "tcp:"+device.Device.StreamPort, "tcp:1991")
-	log.WithFields(log.Fields{
-		"event": "android_device_setup",
-	}).Debug(fmt.Sprintf("Forwarding GADS-stream port to host port %v for Android device - %v", device.Device.StreamPort, device.Device.UDID))
+	util.LogDebug("android_device_setup", fmt.Sprintf("Forwarding GADS-stream port to host port %v for Android device - %v", device.Device.StreamPort, device.Device.UDID))
 
 	err := cmd.Run()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "android_device_setup",
-		}).Error(fmt.Sprintf("Could not forward GADS-stream port to host port %v for Android device - %v:\n %v", device.Device.StreamPort, device.Device.UDID, err))
+		util.LogError("android_device_setup", fmt.Sprintf("Could not forward GADS-stream port to host port %v for Android device - %v:\n %v", device.Device.StreamPort, device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }
@@ -425,9 +399,7 @@ func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
 	// Create a pipe to capture the command's output
 	_, err := cmd.StdoutPipe()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Error(fmt.Sprintf("Could not create stdoutpipe executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
+		util.LogError("ios_device_setup", fmt.Sprintf("Could not create stdoutpipe executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -435,17 +407,13 @@ func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
 	// Start the port forward command
 	err = cmd.Start()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Error(fmt.Sprintf("Error executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
+		util.LogError("ios_device_setup", fmt.Sprintf("Error executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
 
 	if err := cmd.Wait(); err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Error(fmt.Sprintf("Error waiting `ios forward` to finish for device `%v` - %v", device.Device.UDID, err))
+		util.LogError("ios_device_setup", fmt.Sprintf("Error waiting `ios forward` to finish for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
