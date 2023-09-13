@@ -13,7 +13,7 @@ import (
 
 // Check if a device is healthy by checking Appium and WebDriverAgent(for iOS) services
 func GetDeviceHealth(udid string) (bool, error) {
-	device := GetDeviceByUDID(udid)
+	device := DeviceMap[udid]
 
 	allGood := false
 	allGood, err := device.appiumHealthy()
@@ -107,27 +107,27 @@ func (device *Device) checkAppiumSession() error {
 }
 
 func (device *Device) createAppiumSession() (string, error) {
+	var automationName = "UiAutomator2"
+	var platformName = "Android"
+	if device.OS == "ios" {
+		automationName = "XCUITest"
+		platformName = "iOS"
+	}
 	requestString := `{
 		"capabilities": {
 			"alwaysMatch": {
-				"appium:automationName": "UiAutomator2",
-				"platformName": "Android",
-				"appium:ensureWebviewsHavePages": true,
-				"appium:nativeWebScreenshot": true,
-				"appium:newCommandTimeout": 0,
-				"appium:connectHardwareKeyboard": true
+				"appium:automationName": "` + automationName + `",
+				"platformName": "` + platformName + `",
+				"appium:newCommandTimeout": 0
 			},
 			"firstMatch": [
 				{}
 			]
 		},
 		"desiredCapabilities": {
-			"appium:automationName": "UiAutomator2",
-			"platformName": "Android",
-			"appium:ensureWebviewsHavePages": true,
-			"appium:nativeWebScreenshot": true,
-			"appium:newCommandTimeout": 0,
-			"appium:connectHardwareKeyboard": true
+			"appium:automationName": "` + automationName + `",
+			"platformName": "` + platformName + `",
+			"appium:newCommandTimeout": 0
 		}
 	}`
 

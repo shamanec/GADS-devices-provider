@@ -1,12 +1,14 @@
 package device
 
 import (
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/danielpaulus/go-ios/ios"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -28,6 +30,7 @@ type EnvConfig struct {
 	SupervisionPassword string `json:"supervision_password"`
 	WDABundleID         string `json:"wda_bundle_id"`
 	RethinkDB           string `json:"rethink_db"`
+	WDAPath             string `json:"wda_repo_path"`
 }
 
 type Device struct {
@@ -51,6 +54,15 @@ type Device struct {
 	WDASessionID         string           `json:"wdaSessionID,omitempty"`
 }
 
+type LocalDevice struct {
+	Device           *Device
+	ProviderState    string
+	WdaReadyChan     chan bool
+	Context          context.Context
+	CtxCancel        context.CancelFunc
+	GoIOSDeviceEntry ios.DeviceEntry
+}
+
 type DeviceContainer struct {
 	ContainerID     string `json:"id"`
 	ContainerStatus string `json:"status"`
@@ -60,6 +72,7 @@ type DeviceContainer struct {
 
 var projectDir string
 var Config ConfigJsonData
+var DeviceMap = make(map[string]*Device)
 
 // Set up the configuration for the provider
 // Get the data from config.json, start a DB connection and update the devices
@@ -122,6 +135,8 @@ func updateDevicesFromConfig() error {
 		device.ContainerServerPort = strconv.Itoa(20201 + index)
 		device.WDAPort = wdaPort
 		device.Host = Config.EnvConfig.DevicesHost
+
+		DeviceMap[device.UDID] = device
 	}
 
 	// Insert the devices to the DB if they are not already inserted
@@ -163,7 +178,7 @@ func getConfigJsonBytes() ([]byte, error) {
 	}
 	defer jsonFile.Close()
 
-	bs, err := ioutil.ReadAll(jsonFile)
+	bs, err := io.ReadAll(jsonFile)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_config_data",

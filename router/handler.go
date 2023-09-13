@@ -87,7 +87,8 @@ func HandleRequests() *gin.Engine {
 	router.POST("/device/:udid/clearText", DeviceClearText)
 	router.GET("/logs", GetLogs)
 	router.Any("/device/:udid/appium/*proxyPath", AppiumReverseProxy)
-	router.GET("/device/:udid/android-stream", StreamProxy)
+	router.GET("/device/:udid/android-stream", AndroidStreamProxy)
+	router.GET("/device/:udid/ios-stream", IosStreamProxy)
 
 	return router
 }

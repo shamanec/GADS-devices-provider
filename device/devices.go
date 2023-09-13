@@ -2,6 +2,7 @@ package device
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
@@ -9,15 +10,22 @@ import (
 )
 
 func UpdateDevices() {
-	fmt.Println("Initial device update")
-	updateDevicesConnectedStatus()
-	updateDevices()
+	SetupConfig()
+	if runtime.GOOS == "linux" {
+		fmt.Println("Initial device update")
+		updateDevicesConnectedStatus()
+		updateDevices()
 
-	fmt.Println("Starting devices healthcheck")
-	go devicesHealthCheck()
+		fmt.Println("Starting devices healthcheck")
+		go devicesHealthCheck()
 
-	fmt.Println("Starting /dev watcher")
-	go devicesWatcher()
+		fmt.Println("Starting /dev watcher")
+		go devicesWatcher()
+	} else if runtime.GOOS == "darwin" {
+		go updateDevicesOSX()
+	} else if runtime.GOOS == "windows" {
+		go updateDevicesWindows()
+	}
 }
 
 // Update the Connected status of the devices both locally and in DB each second
@@ -148,10 +156,6 @@ func devicesWatcher() {
 					}
 				}
 
-				// If we have a Remove event in /dev (device was disconnected)
-				if event.Has(fsnotify.Remove) {
-
-				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return

@@ -1,8 +1,10 @@
 package device
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/shamanec/GADS-devices-provider/util"
 	log "github.com/sirupsen/logrus"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
@@ -72,9 +74,7 @@ func insertDevicesDB() error {
 func (device *Device) updateDB() {
 	err := r.Table("devices").Update(device).Exec(session)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "update_db",
-		}).Error("Updating device in DB failed: " + err.Error())
+		util.LogError("update_db", fmt.Sprintf("Updating device `%v` in DB failed - %v", device.UDID, err))
 	}
 }
 
@@ -82,7 +82,7 @@ func (device *Device) updateDB() {
 func devicesHealthCheck() {
 	for {
 		for _, device := range Config.Devices {
-			if device.Connected == true {
+			if device.Connected {
 				go device.updateHealthStatusDB()
 			}
 		}

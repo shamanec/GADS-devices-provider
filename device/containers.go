@@ -180,9 +180,8 @@ func (device *Device) createIOSContainer() {
 		}
 
 		var mounts []mount.Mount
-		var resources container.Resources
 
-		resources = container.Resources{
+		resources := container.Resources{
 			Devices: []container.DeviceMapping{
 				{
 					PathOnHost:        "/dev/device_ios_" + device.UDID,

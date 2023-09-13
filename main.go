@@ -3,30 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
-	"runtime"
 
 	"github.com/shamanec/GADS-devices-provider/device"
 	_ "github.com/shamanec/GADS-devices-provider/docs"
 	"github.com/shamanec/GADS-devices-provider/router"
-
-	log "github.com/sirupsen/logrus"
+	"github.com/shamanec/GADS-devices-provider/util"
 )
 
-var projectLogFile *os.File
-
-// Configure logrus format and output file
-func setLogging() {
-	log.SetFormatter(&log.JSONFormatter{})
-	projectLogFile, err := os.OpenFile("./logs/provider.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
-	if err != nil {
-		panic("Could not set log output: " + err.Error())
-	}
-	log.SetOutput(projectLogFile)
-}
-
 func main() {
-	setLogging()
+	util.SetLogging()
 
 	port_flag := flag.String("port", "10001", "The port to run the server on")
 	flag.Parse()
@@ -39,9 +24,7 @@ func main() {
 	}
 
 	// Start a goroutine that will update devices on provider start and when there are events in /dev(device connected/disconnected)
-	if runtime.GOOS == "linux" {
-		go device.UpdateDevices()
-	}
+	go device.UpdateDevices()
 
 	// Handle the endpoints
 	r := router.HandleRequests()
