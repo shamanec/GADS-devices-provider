@@ -459,6 +459,7 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	// Create a usbmuxd.log file for Stderr
 	wdaLog, err := os.Create("./logs/device_" + device.Device.UDID + "/wda.log")
 	if err != nil {
+		util.LogError("ios_device_setup", fmt.Sprintf("Could not create wda.log file for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -471,12 +472,14 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		fmt.Println("Error creating stdout pipe:", err)
+		util.LogError("ios_device_setup", fmt.Sprintf("Error creating stdoutpipe while running WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
 		return
 	}
 
 	if err := cmd.Start(); err != nil {
-		fmt.Println("Error starting command:", err)
+		util.LogError("ios_device_setup", fmt.Sprintf("Could not start WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
 		return
 	}
 
@@ -492,7 +495,7 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 
 		_, err := fmt.Fprintln(wdaLog, line)
 		if err != nil {
-			fmt.Println("Could not write to device wda.log file")
+			util.LogDebug("ios_device_setup", fmt.Sprintf("Could not write to wda.log file for device `%v` while running WebDriverAgent with xcodebuild - %v", device.Device.UDID, err))
 		}
 
 		if strings.Contains(line, "ServerURLHere") {
@@ -502,7 +505,8 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	}
 
 	if err := cmd.Wait(); err != nil {
-		fmt.Println("Error waiting for command to finish:", err)
+		util.LogError("ios_device_setup", fmt.Sprintf("Error waiting for WebDriverAgent xcodebuild command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
 	}
 }
 
@@ -656,6 +660,7 @@ func (device *LocalDevice) updateDeviceHealthStatus() {
 		case <-time.After(1 * time.Second):
 			device.checkDeviceHealthStatus()
 		case <-device.Context.Done():
+			fmt.Println("Context done checking device health - " + device.Device.UDID)
 			return
 		}
 	}

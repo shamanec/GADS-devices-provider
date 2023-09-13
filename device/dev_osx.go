@@ -54,7 +54,7 @@ func updateDevicesOSX() {
 
 			for _, device := range localDevices {
 				device.Device.Connected = false
-				// device.resetLocalDevice()
+				device.resetLocalDevice()
 			}
 		} else {
 			for _, device := range localDevices {

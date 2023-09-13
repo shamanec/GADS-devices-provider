@@ -24,20 +24,26 @@ The RethinkDB instance does not have to be on the same host as the provider or G
 1. Install Docker.
 2. [Prepare](https://docs.docker.com/engine/install/linux-postinstall/) Docker usage without root privileges
 
-#### Golang
+### Golang
 * Install Go 1.21 or higher
 
-#### Android debug bridge
+### Android debug bridge
 * Install `adb` (Android debug bridge). It should be available in PATH so it can be directly accessed via Terminal
+
+### Trust devices to use adb - Android only
+* On each device activate `Developer options`, open them and enable `Enable USB debugging`
+* Connect each device to the host without the provider running - a popup will appear on the device to pair - allow it.
 
 ### Usbmuxd
 * Install usbmuxd - `sudo apt install usbmuxd` on the host if you want to see the device UDIDs with `go-ios` or similar tools
 
 ### WebDriverAgent - iOS only
+**NB** You need a Mac machine to do this!
 1. [Create](#prepare-webdriveragent-file---linux) a `WebDriverAgent.ipa` file
 2. Copy the newly created `ipa` file in the `./apps` folder with name `WebDriverAgent.ipa` (exact name is important for the scripts)
 
 ### Supervise devices - iOS only
+**NB** You need a Mac machine to do this!
 1. Supervise your iOS devices as explained [here](#supervise-devices--ios-only)
 2. Copy your supervision certificate and add your supervision password as explained [here](#supervise-devices---ios-only)
 

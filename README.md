@@ -30,6 +30,7 @@
 Developed and tested on `Ubuntu 18.04 LTS`, `macOS Ventura 13.5.1`, `Windows 10`
 
 ## Setup  
+Read the setup very carefully before starting, I've tried to give as much information as I can - in case something is wrong or missed raise an issue, contact me or contribute :P  
 [Provider setup](./docs/setup.md)  
 
 ## Thanks
