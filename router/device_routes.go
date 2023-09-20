@@ -185,7 +185,7 @@ func DeviceAppiumSource(c *gin.Context) {
 
 	c.Writer.WriteHeader(sourceResp.StatusCode)
 	copyHeaders(c.Writer.Header(), sourceResp.Header)
-	fmt.Fprintf(c.Writer, string(body))
+	fmt.Fprint(c.Writer, string(body))
 }
 
 //=======================================

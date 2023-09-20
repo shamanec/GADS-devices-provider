@@ -184,12 +184,18 @@ func appiumSource(device *device.Device) (*http.Response, error) {
 		return nil, fmt.Errorf("Unsupported device OS: %s", device.OS)
 	}
 
-	resp, err := http.Get(sourceURL)
+	client := http.DefaultClient
+	req, err := http.NewRequest(http.MethodGet, sourceURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not generate http request to Appium /source endpoint: %s", err)
 	}
 
-	return resp, nil
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Failed calling Appium /source endpoint: %s", err)
+	}
+
+	return res, nil
 }
 
 func appiumScreenshot(device *device.Device) (*http.Response, error) {
