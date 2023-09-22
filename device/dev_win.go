@@ -9,15 +9,15 @@ import (
 )
 
 func updateDevicesWindows() {
-	util.LogInfo("provider", "Providing devices on a Windows host")
+	util.ProviderLogger.LogInfo("provider", "Providing devices on a Windows host")
 
 	androidDevicesInConfig := androidDevicesInConfig()
 
 	if androidDevicesInConfig {
-		util.LogInfo("provider", "There are Android devices in config, checking if adb is available on host")
+		util.ProviderLogger.LogInfo("provider", "There are Android devices in config, checking if adb is available on host")
 
 		if !adbAvailable() {
-			util.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
+			util.ProviderLogger.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
 			os.Exit(1)
 		}
 	}
@@ -29,7 +29,7 @@ func updateDevicesWindows() {
 		connectedDevices := getConnectedDevicesCommon(false, true)
 
 		if len(connectedDevices) == 0 {
-			util.LogDebug("provider", "No connected devices found when updating devices")
+			util.ProviderLogger.LogDebug("provider", "No connected devices found when updating devices")
 
 			for _, device := range localDevices {
 				device.Device.Connected = false

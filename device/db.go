@@ -74,7 +74,7 @@ func insertDevicesDB() error {
 func (device *Device) updateDB() {
 	err := r.Table("devices").Update(device).Exec(session)
 	if err != nil {
-		util.LogError("update_db", fmt.Sprintf("Updating device `%v` in DB failed - %v", device.UDID, err))
+		util.ProviderLogger.LogError("update_db", fmt.Sprintf("Updating device `%v` in DB failed - %v", device.UDID, err))
 	}
 }
 

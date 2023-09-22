@@ -51,18 +51,18 @@ func getLocalDevices() {
 func (device *LocalDevice) setupAndroidDevice() {
 	device.ProviderState = "preparing"
 
-	util.LogInfo("android_device_setup", fmt.Sprintf("Running setup for device `%v`", device.Device.UDID))
+	util.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Running setup for device `%v`", device.Device.UDID))
 
 	isStreamAvailable, err := device.isGadsStreamServiceRunning()
 	if err != nil {
-		util.LogError("provider", fmt.Sprintf("Could not check if GADS-stream is running on device `%v` - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("provider", fmt.Sprintf("Could not check if GADS-stream is running on device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 
 	// Get a free port on the host for WebDriverAgent server
 	streamPort, err := getFreePort()
 	if err != nil {
-		util.LogError("provider", fmt.Sprintf("Could not allocate free host port for GADS-stream for device `%v` - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("provider", fmt.Sprintf("Could not allocate free host port for GADS-stream for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -83,7 +83,7 @@ func (device *LocalDevice) setupAndroidDevice() {
 
 func (device *LocalDevice) setupIOSDevice() {
 	device.ProviderState = "preparing"
-	util.LogInfo("ios_device_setup", fmt.Sprintf("Running setup for device `%v`", device.Device.UDID))
+	util.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Running setup for device `%v`", device.Device.UDID))
 
 	// Get go-ios device entry for pairing/mounting images
 	// Mounting currently unused, images are mounted automatically through Xcode device setup
@@ -93,7 +93,7 @@ func (device *LocalDevice) setupIOSDevice() {
 	// Get a free port on the host for WebDriverAgent server
 	wdaPort, err := getFreePort()
 	if err != nil {
-		util.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent port for device `%v` - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent port for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -102,7 +102,7 @@ func (device *LocalDevice) setupIOSDevice() {
 	// Get a free port on the host for WebDriverAgent stream
 	streamPort, err := getFreePort()
 	if err != nil {
-		util.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent stream port for device `%v` - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent stream port for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -118,10 +118,10 @@ func (device *LocalDevice) setupIOSDevice() {
 	// Wait until WebDriverAgent successfully starts
 	select {
 	case <-device.WdaReadyChan:
-		util.LogInfo("ios_device_setup", fmt.Sprintf("Successfully started WebDriverAgent for device `%v` forwarded on port %v", device.Device.UDID, device.Device.WDAPort))
+		util.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Successfully started WebDriverAgent for device `%v` forwarded on port %v", device.Device.UDID, device.Device.WDAPort))
 		break
 	case <-time.After(30 * time.Second):
-		util.LogError("ios_device_setup", fmt.Sprintf("Did not successfully start WebDriverAgent on device `%v` in 30 seconds", device.Device.UDID))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Did not successfully start WebDriverAgent on device `%v` in 30 seconds", device.Device.UDID))
 		device.resetLocalDevice()
 		return
 	}
@@ -174,10 +174,6 @@ func getConnectedDevicesCommon(ios bool, android bool) []string {
 
 // Gets the connected iOS devices using the `go-ios` library
 func getConnectedDevicesIOS() []string {
-	log.WithFields(log.Fields{
-		"event": "provider",
-	}).Debug("Getting connected iOS devices to host")
-
 	var connectedDevices []string
 
 	deviceList, err := ios.ListDevices()
@@ -198,10 +194,6 @@ func getConnectedDevicesIOS() []string {
 
 // Gets the connected android devices using `adb`
 func getConnectedDevicesAndroid() []string {
-	log.WithFields(log.Fields{
-		"event": "provider",
-	}).Debug("Getting connected Android devices to host")
-
 	var connectedDevices []string
 
 	cmd := exec.Command("adb", "devices")
@@ -286,7 +278,7 @@ func (device *LocalDevice) resetLocalDevice() {
 	mu.Lock()
 	defer mu.Unlock()
 
-	util.LogDebug("provider", fmt.Sprintf("Resetting LocalDevice for device `%v` after error. Cancelling context, setting ProviderState to `init`, Healthy to `false` and updating the DB", device.Device.UDID))
+	util.ProviderLogger.LogDebug("provider", fmt.Sprintf("Resetting LocalDevice for device `%v` after error. Cancelling context, setting ProviderState to `init`, Healthy to `false` and updating the DB", device.Device.UDID))
 
 	device.CtxCancel()
 	device.ProviderState = "init"
@@ -305,18 +297,18 @@ func (device *LocalDevice) setContext() {
 
 // Remove all adb forwarded ports(if any) on provider start
 func removeAdbForwardedPorts() {
-	util.LogDebug("provider", "Attempting to remove all `adb` forwarded ports on provider start")
+	util.ProviderLogger.LogDebug("provider", "Attempting to remove all `adb` forwarded ports on provider start")
 
 	cmd := exec.Command("adb", "forward", "--remove-all")
 	err := cmd.Run()
 	if err != nil {
-		util.LogWarn("provider", "Could not remove `adb` forwarded ports, there was an error or no devices are connected - "+err.Error())
+		util.ProviderLogger.LogWarn("provider", "Could not remove `adb` forwarded ports, there was an error or no devices are connected - "+err.Error())
 	}
 }
 
 func (device *LocalDevice) isGadsStreamServiceRunning() (bool, error) {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "dumpsys", "activity", "services", "com.shamanec.stream/.ScreenCaptureService")
-	util.LogDebug("android_device_setup", fmt.Sprintf("Checking if GADS-stream is already running on Android device - %v", device.Device.UDID))
+	util.ProviderLogger.LogDebug("android_device_setup", fmt.Sprintf("Checking if GADS-stream is already running on Android device - %v", device.Device.UDID))
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -334,11 +326,11 @@ func (device *LocalDevice) isGadsStreamServiceRunning() (bool, error) {
 // Install gads-stream.apk on the device
 func (device *LocalDevice) installGadsStream() {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "install", "-r", "./apps/gads-stream.apk")
-	util.LogDebug("android_device_setup", fmt.Sprintf("Installing GADS-stream apk on Android device - %v", device.Device.UDID))
+	util.ProviderLogger.LogDebug("android_device_setup", fmt.Sprintf("Installing GADS-stream apk on Android device - %v", device.Device.UDID))
 
 	err := cmd.Run()
 	if err != nil {
-		util.LogError("android_device_setup", fmt.Sprintf("Could not install GADS-stream on Android device - %v:\n %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not install GADS-stream on Android device - %v:\n %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }
@@ -346,11 +338,11 @@ func (device *LocalDevice) installGadsStream() {
 // Add recording permissions to gads-stream app to avoid popup on start
 func (device *LocalDevice) addGadsStreamRecordingPermissions() {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "appops", "set", "com.shamanec.stream", "PROJECT_MEDIA", "allow")
-	util.LogDebug("android_device_setup", fmt.Sprintf("Adding GADS-stream recording permissions on Android device - %v", device.Device.UDID))
+	util.ProviderLogger.LogDebug("android_device_setup", fmt.Sprintf("Adding GADS-stream recording permissions on Android device - %v", device.Device.UDID))
 
 	err := cmd.Run()
 	if err != nil {
-		util.LogError("android_device_setup", fmt.Sprintf("Could not set GADS-stream recording permissions on Android device - %v:\n %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not set GADS-stream recording permissions on Android device - %v:\n %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }
@@ -358,11 +350,11 @@ func (device *LocalDevice) addGadsStreamRecordingPermissions() {
 // Start the gads-stream app using adb
 func (device *LocalDevice) startGadsStreamApp() {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "am", "start", "-n", "com.shamanec.stream/com.shamanec.stream.ScreenCaptureActivity")
-	util.LogDebug("android_device_setup", fmt.Sprintf("Starting GADS-stream app on Android device - %v - with command - `%v`", device.Device.UDID, cmd.Path))
+	util.ProviderLogger.LogDebug("android_device_setup", fmt.Sprintf("Starting GADS-stream app on Android device - %v - with command - `%v`", device.Device.UDID, cmd.Path))
 
 	err := cmd.Run()
 	if err != nil {
-		util.LogError("android_device_setup", fmt.Sprintf("Could not start GADS-stream app on Android device - %v:\n %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not start GADS-stream app on Android device - %v:\n %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }
@@ -370,22 +362,22 @@ func (device *LocalDevice) startGadsStreamApp() {
 // Press the Home button using adb to hide the transparent gads-stream activity
 func (device *LocalDevice) pressHomeButton() {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "input", "keyevent", "KEYCODE_HOME")
-	util.LogDebug("android_device_setup", fmt.Sprintf("Pressing Home button with adb on Android device - %v", device.Device.UDID))
+	util.ProviderLogger.LogDebug("android_device_setup", fmt.Sprintf("Pressing Home button with adb on Android device - %v", device.Device.UDID))
 
 	err := cmd.Run()
 	if err != nil {
-		util.LogError("android_device_setup", fmt.Sprintf("Could not 'press' Home button with `adb` on Android device - %v, you need to press it yourself to hide the transparent activity og GADS-stream:\n %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not 'press' Home button with `adb` on Android device - %v, you need to press it yourself to hide the transparent activity og GADS-stream:\n %v", device.Device.UDID, err))
 	}
 }
 
 // Forward gads-stream socket to the host container
 func (device *LocalDevice) forwardGadsStream() {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "forward", "tcp:"+device.Device.StreamPort, "tcp:1991")
-	util.LogDebug("android_device_setup", fmt.Sprintf("Forwarding GADS-stream port to host port %v for Android device - %v", device.Device.StreamPort, device.Device.UDID))
+	util.ProviderLogger.LogDebug("android_device_setup", fmt.Sprintf("Forwarding GADS-stream port to host port %v for Android device - %v", device.Device.StreamPort, device.Device.UDID))
 
 	err := cmd.Run()
 	if err != nil {
-		util.LogError("android_device_setup", fmt.Sprintf("Could not forward GADS-stream port to host port %v for Android device - %v:\n %v", device.Device.StreamPort, device.Device.UDID, err))
+		util.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not forward GADS-stream port to host port %v for Android device - %v:\n %v", device.Device.StreamPort, device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }
@@ -399,7 +391,7 @@ func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
 	// Create a pipe to capture the command's output
 	_, err := cmd.StdoutPipe()
 	if err != nil {
-		util.LogError("ios_device_setup", fmt.Sprintf("Could not create stdoutpipe executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not create stdoutpipe executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -407,13 +399,13 @@ func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
 	// Start the port forward command
 	err = cmd.Start()
 	if err != nil {
-		util.LogError("ios_device_setup", fmt.Sprintf("Error executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Error executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
 
 	if err := cmd.Wait(); err != nil {
-		util.LogError("ios_device_setup", fmt.Sprintf("Error waiting `ios forward` to finish for device `%v` - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Error waiting `ios forward` to finish for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -443,7 +435,7 @@ func buildWebDriverAgent() error {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Println(line)
+		util.ProviderLogger.LogDebug("webdriveragent_xcodebuild", line)
 	}
 
 	// Wait for the command to finish
@@ -457,13 +449,7 @@ func buildWebDriverAgent() error {
 
 func (device *LocalDevice) startWdaWithXcodebuild() {
 	// Create a usbmuxd.log file for Stderr
-	wdaLog, err := os.Create("./logs/device_" + device.Device.UDID + "/wda.log")
-	if err != nil {
-		util.LogError("ios_device_setup", fmt.Sprintf("Could not create wda.log file for device `%v` - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
-		return
-	}
-	defer wdaLog.Close()
+	logger, _ := util.CreateCustomLogger("./logs/device_"+device.Device.UDID+"/wda.log", device.Device.UDID)
 
 	// Command to run continuously (replace with your command)
 	cmd := exec.CommandContext(device.Context, "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.Device.UDID, "test-without-building", "-allowProvisioningUpdates")
@@ -472,13 +458,13 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		util.LogError("ios_device_setup", fmt.Sprintf("Error creating stdoutpipe while running WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
+		logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Error creating stdoutpipe while running WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
 
 	if err := cmd.Start(); err != nil {
-		util.LogError("ios_device_setup", fmt.Sprintf("Could not start WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
+		logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Could not start WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -489,13 +475,10 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	for scanner.Scan() {
 		line := scanner.Text()
 
+		logger.LogInfo("webdriveragent_xcodebuild", line)
+
 		if strings.Contains(line, "Restarting after") {
 			return
-		}
-
-		_, err := fmt.Fprintln(wdaLog, line)
-		if err != nil {
-			util.LogDebug("ios_device_setup", fmt.Sprintf("Could not write to wda.log file for device `%v` while running WebDriverAgent with xcodebuild - %v", device.Device.UDID, err))
 		}
 
 		if strings.Contains(line, "ServerURLHere") {
@@ -505,7 +488,7 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	}
 
 	if err := cmd.Wait(); err != nil {
-		util.LogError("ios_device_setup", fmt.Sprintf("Error waiting for WebDriverAgent xcodebuild command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
+		logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Error waiting for WebDriverAgent xcodebuild command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }

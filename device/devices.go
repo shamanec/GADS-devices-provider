@@ -6,20 +6,24 @@ import (
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/shamanec/GADS-devices-provider/util"
 	log "github.com/sirupsen/logrus"
 )
 
 func UpdateDevices() {
-	SetupConfig()
+	err := SetupConfig()
+	if err != nil {
+		util.ProviderLogger.LogError("provider", fmt.Sprintf("Failed to setup config after starting devices update - %s", err))
+	}
 	if runtime.GOOS == "linux" {
-		fmt.Println("Initial device update")
+		util.ProviderLogger.LogInfo("provider", "Initial devices update")
 		updateDevicesConnectedStatus()
 		updateDevices()
 
-		fmt.Println("Starting devices healthcheck")
+		util.ProviderLogger.LogInfo("provider", "Starting devices healthcheck in a goroutine")
 		go devicesHealthCheck()
 
-		fmt.Println("Starting /dev watcher")
+		util.ProviderLogger.LogInfo("provider", "Starting /dev watcher on host to listen for devices connecting/disconnecting")
 		go devicesWatcher()
 	} else if runtime.GOOS == "darwin" {
 		go updateDevicesOSX()
