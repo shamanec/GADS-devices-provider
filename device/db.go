@@ -1,11 +1,12 @@
 package device
 
 import (
-	"fmt"
+	"sync"
 	"time"
 
 	"github.com/shamanec/GADS-devices-provider/util"
-	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
@@ -39,42 +40,30 @@ func checkDBConnection() {
 	}
 }
 
-// Insert/update the registered devices from config.json to the DB
-// when starting the provider
-func insertDevicesDB() error {
+func insertDevicesMongo() {
+	var mu sync.Mutex
+	mu.Lock()
+	defer mu.Unlock()
+
 	for _, device := range Config.Devices {
-		// Check if data for the device by UDID already exists in the table
-		cursor, err := r.Table("devices").Get(device.UDID).Run(session)
+		filter := bson.M{"_id": device.UDID}
+		update := bson.M{
+			"$set": device,
+		}
+		opts := options.Update().SetUpsert(true)
+
+		_, err := util.MongoClient().Database("gads").Collection("devices").UpdateOne(util.MongoCtx(), filter, update, opts)
+
 		if err != nil {
-			return err
+			util.ProviderLogger.LogError("provider", "Failed inserting device data in Mongo - "+err.Error())
 		}
-
-		// If there is no data for the device with this UDID
-		// Insert the data into the table
-		if cursor.IsNil() {
-			err = r.Table("devices").Insert(device).Exec(session)
-			if err != nil {
-				log.WithFields(log.Fields{
-					"event": "insert_db",
-				}).Error("Inserting device in DB failed: " + err.Error())
-			}
-			continue
-		}
-		cursor.Close()
-
-		// If data for the device with this UDID exists in the DB
-		// Update it with the latest info
-		device.updateDB()
 	}
-
-	return nil
 }
 
-// Update the respective device document in the DB
-func (device *Device) updateDB() {
-	err := r.Table("devices").Update(device).Exec(session)
-	if err != nil {
-		util.ProviderLogger.LogError("update_db", fmt.Sprintf("Updating device `%v` in DB failed - %v", device.UDID, err))
+func updateDevicesMongo() {
+	for {
+		insertDevicesMongo()
+		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -107,10 +96,8 @@ func (device *Device) updateHealthStatusDB() {
 	if allGood {
 		device.LastHealthyTimestamp = time.Now().UnixMilli()
 		device.Healthy = true
-		device.updateDB()
 
 	} else {
 		device.Healthy = false
-		device.updateDB()
 	}
 }

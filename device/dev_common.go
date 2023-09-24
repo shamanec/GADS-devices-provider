@@ -143,7 +143,6 @@ func (device *LocalDevice) setupIOSDevice() {
 
 	// Mark the device as 'live' and update it in RethinkDB
 	device.ProviderState = "live"
-	device.Device.updateDB()
 }
 
 // COMMON
@@ -283,7 +282,6 @@ func (device *LocalDevice) resetLocalDevice() {
 	device.CtxCancel()
 	device.ProviderState = "init"
 	device.Device.Healthy = false
-	device.Device.updateDB()
 }
 
 // Set a context for a device to enable cancelling running goroutines related to that device when its disconnected
@@ -665,18 +663,15 @@ func (device *LocalDevice) checkDeviceHealthStatus() {
 		if wdaGood {
 			device.Device.LastHealthyTimestamp = time.Now().UnixMilli()
 			device.Device.Healthy = true
-			device.Device.updateDB()
 			return
 		}
 	} else {
 		device.Device.LastHealthyTimestamp = time.Now().UnixMilli()
 		device.Device.Healthy = true
-		device.Device.updateDB()
 		return
 	}
 
 	device.Device.Healthy = false
-	device.Device.updateDB()
 }
 
 // Check if the WebDriverAgent server for an iOS device is up

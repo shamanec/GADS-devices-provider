@@ -23,10 +23,18 @@ func NewMongoClient() {
 	clientOptions := options.Client().ApplyURI(connectionString)
 	mongoClient, err = mongo.Connect(mongoClientCtx, clientOptions)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Could not connect to Mongo server at `%s` - %s", connectionString, err))
 	}
 
 	go checkDBConnection()
+}
+
+func MongoClient() *mongo.Client {
+	return mongoClient
+}
+
+func MongoCtx() context.Context {
+	return mongoClientCtx
 }
 
 func checkDBConnection() {
@@ -35,11 +43,8 @@ func checkDBConnection() {
 		if err != nil {
 			fmt.Println("Lost connection to MongoDB server, attempting to create a new client - " + err.Error())
 			NewMongoClient()
+			break
 		}
 		time.Sleep(1 * time.Second)
 	}
-}
-
-func insertDB(db, collection string) {
-
 }

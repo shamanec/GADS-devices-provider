@@ -116,7 +116,6 @@ func (device *Device) removeContainer() {
 
 		// Remove the container from the device pointer and update the DB
 		device.Container = nil
-		device.updateDB()
 		log.WithFields(log.Fields{
 			"event": "docker_container_remove",
 		}).Info("Successfully removed container with ID: " + containerID)

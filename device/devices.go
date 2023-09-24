@@ -49,7 +49,6 @@ func updateDevicesConnectedStatus() {
 				device.Connected = true
 			}
 		}
-		device.updateDB()
 	}
 }
 
@@ -67,7 +66,6 @@ func updateDevices() {
 	for _, device := range Config.Devices {
 
 		if device.Connected {
-			device.updateDB()
 
 			// Check if the device has an already created container
 			// Also append the container data to the device struct if it does
@@ -105,7 +103,6 @@ func updateDevices() {
 
 		// If the device is not connected
 		if !device.Connected {
-			device.updateDB()
 			// Check if it has an existing container
 			hasContainer, err := device.hasContainer(allContainers)
 			if err != nil {
