@@ -731,6 +731,9 @@ type appiumCapabilities struct {
 }
 
 func (device *LocalDevice) startAppium() {
+	// Create a usbmuxd.log file for Stderr
+	appiumLogger, _ := util.CreateCustomLogger("./logs/device_"+device.Device.UDID+"/appium.log", device.Device.UDID)
+
 	var capabilities appiumCapabilities
 
 	if device.Device.OS == "ios" {
@@ -762,9 +765,7 @@ func (device *LocalDevice) startAppium() {
 	// Create a usbmuxd.log file for Stderr
 	appiumLog, err := os.Create("./logs/device_" + device.Device.UDID + "/appium.log")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "device_setup",
-		}).Error(fmt.Sprintf("Could not create appium.log file for device - %v, err - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Could not create appium.log file for device - %v, err - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -773,9 +774,7 @@ func (device *LocalDevice) startAppium() {
 	// Get a free port on the host for Appium server
 	appiumPort, err := getFreePort()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "device_setup",
-		}).Error(fmt.Sprintf("Could not allocate free Appium host port for device - %v, err - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Could not allocate free Appium host port for device - %v, err - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -783,21 +782,30 @@ func (device *LocalDevice) startAppium() {
 
 	cmd := exec.CommandContext(device.Context, "appium", "-p", device.Device.AppiumPort, "--log-timestamp", "--allow-cors", "--default-capabilities", string(capabilitiesJson))
 
-	cmd.Stdout = appiumLog
-	cmd.Stderr = appiumLog
-
-	if err := cmd.Start(); err != nil {
-		log.WithFields(log.Fields{
-			"event": "device_setup",
-		}).Error(fmt.Sprintf("Could not start Appium server with CLI for device - %v, err - %v", device.Device.UDID, err))
+	// Create a pipe to capture the command's output
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error creating stdoutpipe while running WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
 
+	if err := cmd.Start(); err != nil {
+		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Could not start WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
+
+	// Create a scanner to read the command's output line by line
+	scanner := bufio.NewScanner(stdout)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		appiumLogger.LogInfo("appium", strings.TrimSpace(line))
+	}
+
 	if err := cmd.Wait(); err != nil {
-		log.WithFields(log.Fields{
-			"event": "device_setup",
-		}).Error(fmt.Sprintf("Failed waiting for Appium server CLI execution to finish for device - %v, err - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error waiting for Appium command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }

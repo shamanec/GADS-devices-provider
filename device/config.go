@@ -100,6 +100,8 @@ func SetupConfig() error {
 		return err
 	}
 
+	createMongoLogCollectionsForAllDevices()
+
 	return nil
 }
 
