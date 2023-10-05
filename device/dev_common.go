@@ -473,7 +473,7 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		logger.LogInfo("webdriveragent_xcodebuild", line)
+		logger.LogInfo("webdriveragent", strings.TrimSpace(line))
 
 		if strings.Contains(line, "Restarting after") {
 			device.resetLocalDevice()
