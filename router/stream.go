@@ -26,7 +26,7 @@ func AndroidStreamProxy(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	u := url.URL{Scheme: "ws", Host: "localhost:" + device.StreamPort, Path: ""}
+	u := url.URL{Scheme: "ws", Host: "localhost:" + device.Device.StreamPort, Path: ""}
 	destConn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		log.Println("Destination WebSocket connection error:", err)
@@ -76,7 +76,7 @@ func IosStreamProxy(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	url := "http://localhost:" + device.StreamPort
+	url := "http://localhost:" + device.Device.StreamPort
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {

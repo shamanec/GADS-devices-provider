@@ -25,9 +25,9 @@ func CreateUdevRules() error {
 	defer rulesFile.Close()
 
 	// For each device in Config generate the respective rule lines
-	for _, device := range Config.Devices {
+	for _, device := range localDevices {
 		// Create a symlink when device is connected
-		symlink_line := `SUBSYSTEM=="usb", ENV{ID_SERIAL_SHORT}=="` + device.UDID + `", MODE="0666", SYMLINK+="device_` + device.OS + `_` + device.UDID + `"`
+		symlink_line := `SUBSYSTEM=="usb", ENV{ID_SERIAL_SHORT}=="` + device.Device.UDID + `", MODE="0666", SYMLINK+="device_` + device.Device.OS + `_` + device.Device.UDID + `"`
 
 		// Write the rule line for each device in the udev rules file
 		if _, err := rulesFile.WriteString(symlink_line + "\n"); err != nil {

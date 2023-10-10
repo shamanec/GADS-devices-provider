@@ -28,7 +28,7 @@ func GetDeviceHealth(udid string) (bool, error) {
 		}
 	}
 
-	if device.OS == "ios" {
+	if device.Device.OS == "ios" {
 		allGood, err = device.wdaHealthy()
 		if err != nil {
 			return false, err
@@ -45,8 +45,8 @@ func GetDeviceHealth(udid string) (bool, error) {
 }
 
 // Check if the Appium server for a device is up
-func (device *Device) appiumHealthy() (bool, error) {
-	response, err := http.Get("http://localhost:" + device.AppiumPort + "/status")
+func (device *LocalDevice) appiumHealthy() (bool, error) {
+	response, err := http.Get("http://localhost:" + device.Device.AppiumPort + "/status")
 	if err != nil {
 		return false, err
 	}
@@ -62,8 +62,8 @@ func (device *Device) appiumHealthy() (bool, error) {
 }
 
 // Check if the WebDriverAgent server for an iOS device is up
-func (device *Device) wdaHealthy() (bool, error) {
-	response, err := http.Get("http://localhost:" + device.WDAPort + "/status")
+func (device *LocalDevice) wdaHealthy() (bool, error) {
+	response, err := http.Get("http://localhost:" + device.Device.WDAPort + "/status")
 	if err != nil {
 		return false, err
 	}
@@ -77,10 +77,10 @@ func (device *Device) wdaHealthy() (bool, error) {
 	return true, nil
 }
 
-func (device *Device) checkAppiumSession() error {
-	response, err := http.Get("http://localhost:" + device.AppiumPort + "/sessions")
+func (device *LocalDevice) checkAppiumSession() error {
+	response, err := http.Get("http://localhost:" + device.Device.AppiumPort + "/sessions")
 	if err != nil {
-		device.AppiumSessionID = ""
+		device.Device.AppiumSessionID = ""
 		return err
 	}
 	responseBody, _ := io.ReadAll(response.Body)
@@ -88,28 +88,28 @@ func (device *Device) checkAppiumSession() error {
 	var responseJson AppiumGetSessionsResponse
 	err = util.UnmarshalJSONString(string(responseBody), &responseJson)
 	if err != nil {
-		device.AppiumSessionID = ""
+		device.Device.AppiumSessionID = ""
 		return err
 	}
 
 	if len(responseJson.Value) == 0 {
 		sessionID, err := device.createAppiumSession()
 		if err != nil {
-			device.AppiumSessionID = ""
+			device.Device.AppiumSessionID = ""
 			return err
 		}
-		device.AppiumSessionID = sessionID
+		device.Device.AppiumSessionID = sessionID
 		return nil
 	}
 
-	device.AppiumSessionID = responseJson.Value[0].ID
+	device.Device.AppiumSessionID = responseJson.Value[0].ID
 	return nil
 }
 
-func (device *Device) createAppiumSession() (string, error) {
+func (device *LocalDevice) createAppiumSession() (string, error) {
 	var automationName = "UiAutomator2"
 	var platformName = "Android"
-	if device.OS == "ios" {
+	if device.Device.OS == "ios" {
 		automationName = "XCUITest"
 		platformName = "iOS"
 	}
@@ -131,7 +131,7 @@ func (device *Device) createAppiumSession() (string, error) {
 		}
 	}`
 
-	response, err := http.Post("http://localhost:"+device.AppiumPort+"/session", "application/json", strings.NewReader(requestString))
+	response, err := http.Post("http://localhost:"+device.Device.AppiumPort+"/session", "application/json", strings.NewReader(requestString))
 	if err != nil {
 		return "", err
 	}
@@ -146,8 +146,8 @@ func (device *Device) createAppiumSession() (string, error) {
 	return responseJson.Value.SessionID, nil
 }
 
-func (device *Device) checkWDASession() error {
-	response, err := http.Get("http://localhost:" + device.WDAPort + "/status")
+func (device *LocalDevice) checkWDASession() error {
+	response, err := http.Get("http://localhost:" + device.Device.WDAPort + "/status")
 	if err != nil {
 		return err
 	}
@@ -157,28 +157,28 @@ func (device *Device) checkWDASession() error {
 	var responseJson map[string]interface{}
 	err = json.Unmarshal(responseBody, &responseJson)
 	if err != nil {
-		device.WDASessionID = ""
+		device.Device.WDASessionID = ""
 		return err
 	}
 
 	if responseJson["sessionId"] == "" || responseJson["sessionId"] == nil {
 		sessionId, err := device.createWDASession()
 		if err != nil {
-			device.WDASessionID = ""
+			device.Device.WDASessionID = ""
 			return err
 		}
 
 		if sessionId == "" {
-			device.WDASessionID = ""
+			device.Device.WDASessionID = ""
 			return err
 		}
 	}
 
-	device.WDASessionID = fmt.Sprintf("%v", responseJson["sessionId"])
+	device.Device.WDASessionID = fmt.Sprintf("%v", responseJson["sessionId"])
 	return nil
 }
 
-func (device *Device) createWDASession() (string, error) {
+func (device *LocalDevice) createWDASession() (string, error) {
 	requestString := `{
 		"capabilities": {
 			"firstMatch": [
@@ -200,7 +200,7 @@ func (device *Device) createWDASession() (string, error) {
 		}
 	}`
 
-	response, err := http.Post("http://localhost:"+device.WDAPort+"/session", "application/json", strings.NewReader(requestString))
+	response, err := http.Post("http://localhost:"+device.Device.WDAPort+"/session", "application/json", strings.NewReader(requestString))
 	if err != nil {
 		return "", err
 	}

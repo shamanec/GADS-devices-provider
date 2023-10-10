@@ -11,15 +11,15 @@ import (
 	"github.com/shamanec/GADS-devices-provider/util"
 )
 
-func appiumLockUnlock(device *device.Device, lock string) (*http.Response, error) {
+func appiumLockUnlock(device *device.LocalDevice, lock string) (*http.Response, error) {
 	var deviceHomeURL string
-	switch device.OS {
+	switch device.Device.OS {
 	case "android":
-		deviceHomeURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/appium/device/" + lock
+		deviceHomeURL = "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/appium/device/" + lock
 	case "ios":
-		deviceHomeURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/wda/" + lock
+		deviceHomeURL = "http://localhost:" + device.Device.WDAPort + "/session/" + device.Device.WDASessionID + "/wda/" + lock
 	default:
-		return nil, fmt.Errorf("Unsupported device OS: %s", device.OS)
+		return nil, fmt.Errorf("Unsupported device OS: %s", device.Device.OS)
 	}
 
 	lockResponse, err := http.Post(deviceHomeURL, "", nil)
@@ -30,17 +30,17 @@ func appiumLockUnlock(device *device.Device, lock string) (*http.Response, error
 	return lockResponse, nil
 }
 
-func appiumTap(device *device.Device, x float64, y float64) (*http.Response, error) {
+func appiumTap(device *device.LocalDevice, x float64, y float64) (*http.Response, error) {
 	var appiumRequestURL string
 
 	// Generate the respective Appium server request url
-	switch device.OS {
+	switch device.Device.OS {
 	case "android":
-		appiumRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/actions"
+		appiumRequestURL = "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/actions"
 	case "ios":
-		appiumRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/actions"
+		appiumRequestURL = "http://localhost:" + device.Device.WDAPort + "/session/" + device.Device.WDASessionID + "/actions"
 	default:
-		return nil, fmt.Errorf("Unsupported device OS: %s", device.OS)
+		return nil, fmt.Errorf("Unsupported device OS: %s", device.Device.OS)
 	}
 
 	// Generate the struct object for the Appium actions JSON request
@@ -100,17 +100,17 @@ func appiumTap(device *device.Device, x float64, y float64) (*http.Response, err
 	return res, nil
 }
 
-func appiumSwipe(device *device.Device, x, y, endX, endY float64) (*http.Response, error) {
+func appiumSwipe(device *device.LocalDevice, x, y, endX, endY float64) (*http.Response, error) {
 	var appiumRequestURL string
 
 	// Generate the respective Appium server request url
-	switch device.OS {
+	switch device.Device.OS {
 	case "android":
-		appiumRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/actions"
+		appiumRequestURL = "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/actions"
 	case "ios":
-		appiumRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/actions"
+		appiumRequestURL = "http://localhost:" + device.Device.WDAPort + "/session/" + device.Device.WDASessionID + "/actions"
 	default:
-		return nil, fmt.Errorf("Unsupported device OS: %s", device.OS)
+		return nil, fmt.Errorf("Unsupported device OS: %s", device.Device.OS)
 	}
 
 	// Generate the struct object for the Appium actions JSON request
@@ -173,15 +173,15 @@ func appiumSwipe(device *device.Device, x, y, endX, endY float64) (*http.Respons
 	return res, nil
 }
 
-func appiumSource(device *device.Device) (*http.Response, error) {
+func appiumSource(device *device.LocalDevice) (*http.Response, error) {
 	sourceURL := ""
-	switch device.OS {
+	switch device.Device.OS {
 	case "android":
-		sourceURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/source"
+		sourceURL = "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/source"
 	case "ios":
-		sourceURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/source"
+		sourceURL = "http://localhost:" + device.Device.WDAPort + "/session/" + device.Device.WDASessionID + "/source"
 	default:
-		return nil, fmt.Errorf("Unsupported device OS: %s", device.OS)
+		return nil, fmt.Errorf("Unsupported device OS: %s", device.Device.OS)
 	}
 
 	client := http.DefaultClient
@@ -198,15 +198,15 @@ func appiumSource(device *device.Device) (*http.Response, error) {
 	return res, nil
 }
 
-func appiumScreenshot(device *device.Device) (*http.Response, error) {
+func appiumScreenshot(device *device.LocalDevice) (*http.Response, error) {
 	var screenshotURL string
-	switch device.OS {
+	switch device.Device.OS {
 	case "android":
-		screenshotURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/screenshot"
+		screenshotURL = "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/screenshot"
 	case "ios":
-		screenshotURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/screenshot"
+		screenshotURL = "http://localhost:" + device.Device.WDAPort + "/session/" + device.Device.WDASessionID + "/screenshot"
 	default:
-		return nil, fmt.Errorf("Unsupported device OS: %s", device.OS)
+		return nil, fmt.Errorf("Unsupported device OS: %s", device.Device.OS)
 	}
 
 	resp, err := http.Get(screenshotURL)
@@ -223,15 +223,15 @@ type ActiveElementData struct {
 	} `json:"value"`
 }
 
-func appiumTypeText(device *device.Device, text string) (*http.Response, error) {
+func appiumTypeText(device *device.LocalDevice, text string) (*http.Response, error) {
 	var activeElementRequestURL string
-	switch device.OS {
+	switch device.Device.OS {
 	case "android":
-		activeElementRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/active"
+		activeElementRequestURL = "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/element/active"
 	case "ios":
-		activeElementRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/active"
+		activeElementRequestURL = "http://localhost:" + device.Device.WDAPort + "/session/" + device.Device.WDASessionID + "/element/active"
 	default:
-		return nil, fmt.Errorf("Unsupported device OS: %s", device.OS)
+		return nil, fmt.Errorf("Unsupported device OS: %s", device.Device.OS)
 	}
 
 	activeElementResp, err := http.Get(activeElementRequestURL)
@@ -256,13 +256,13 @@ func appiumTypeText(device *device.Device, text string) (*http.Response, error) 
 	activeElementID := activeElementData.Value.Element
 
 	setValueRequestURL := ""
-	switch device.OS {
+	switch device.Device.OS {
 	case "android":
-		setValueRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/" + activeElementID + "/value"
+		setValueRequestURL = "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/element/" + activeElementID + "/value"
 	case "ios":
-		setValueRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/" + activeElementID + "/value"
+		setValueRequestURL = "http://localhost:" + device.Device.WDAPort + "/session/" + device.Device.WDASessionID + "/element/" + activeElementID + "/value"
 	default:
-		return nil, fmt.Errorf("Unsupported device OS: %s", device.OS)
+		return nil, fmt.Errorf("Unsupported device OS: %s", device.Device.OS)
 	}
 
 	setValueRequestBody := `{"text":"` + text + `"}`
@@ -274,15 +274,15 @@ func appiumTypeText(device *device.Device, text string) (*http.Response, error) 
 	return setValueResponse, nil
 }
 
-func appiumClearText(device *device.Device) (*http.Response, error) {
+func appiumClearText(device *device.LocalDevice) (*http.Response, error) {
 	var activeElementRequestURL string
-	switch device.OS {
+	switch device.Device.OS {
 	case "android":
-		activeElementRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/active"
+		activeElementRequestURL = "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/element/active"
 	case "ios":
-		activeElementRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/active"
+		activeElementRequestURL = "http://localhost:" + device.Device.WDAPort + "/session/" + device.Device.WDASessionID + "/element/active"
 	default:
-		return nil, fmt.Errorf("Unsupported device OS: %s", device.OS)
+		return nil, fmt.Errorf("Unsupported device OS: %s", device.Device.OS)
 	}
 
 	activeElementResp, err := http.Get(activeElementRequestURL)
@@ -305,13 +305,13 @@ func appiumClearText(device *device.Device) (*http.Response, error) {
 	activeElementID := activeElementData["value"].(map[string]interface{})["ELEMENT"].(string)
 
 	clearValueRequestURL := ""
-	switch device.OS {
+	switch device.Device.OS {
 	case "android":
-		clearValueRequestURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/" + activeElementID + "/clear"
+		clearValueRequestURL = "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/element/" + activeElementID + "/clear"
 	case "ios":
-		clearValueRequestURL = "http://localhost:" + device.WDAPort + "/session/" + device.WDASessionID + "/element/" + activeElementID + "/clear"
+		clearValueRequestURL = "http://localhost:" + device.Device.WDAPort + "/session/" + device.Device.WDASessionID + "/element/" + activeElementID + "/clear"
 	default:
-		return nil, fmt.Errorf("Unsupported device OS: %s", device.OS)
+		return nil, fmt.Errorf("Unsupported device OS: %s", device.Device.OS)
 	}
 
 	clearValueResponse, err := http.Post(clearValueRequestURL, "application/json", nil)
@@ -322,19 +322,19 @@ func appiumClearText(device *device.Device) (*http.Response, error) {
 	return clearValueResponse, nil
 }
 
-func appiumHome(device *device.Device) (*http.Response, error) {
+func appiumHome(device *device.LocalDevice) (*http.Response, error) {
 	var homeURL string
-	switch device.OS {
+	switch device.Device.OS {
 	case "android":
-		homeURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/appium/device/press_keycode"
+		homeURL = "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/appium/device/press_keycode"
 	case "ios":
-		homeURL = "http://localhost:" + device.WDAPort + "/wda/homescreen"
+		homeURL = "http://localhost:" + device.Device.WDAPort + "/wda/homescreen"
 	default:
-		return nil, fmt.Errorf("Unsupported device OS: %s", device.OS)
+		return nil, fmt.Errorf("Unsupported device OS: %s", device.Device.OS)
 	}
 
 	requestBody := ""
-	if device.OS == "android" {
+	if device.Device.OS == "android" {
 		requestBody = `{"keycode": 3}`
 	}
 

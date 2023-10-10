@@ -2,9 +2,15 @@ package util
 
 import (
 	"encoding/json"
+	"io"
+	"os"
 
+	"github.com/shamanec/GADS-devices-provider/models"
 	log "github.com/sirupsen/logrus"
 )
+
+var ProjectDir string
+var Config models.ConfigJsonData
 
 // Convert an interface{}(struct) into an indented JSON string
 func ConvertToJSONString(data interface{}) (string, error) {
@@ -28,4 +34,48 @@ func UnmarshalJSONString(jsonString string, v interface{}) error {
 	}
 
 	return nil
+}
+
+func GetConfigDevices() []*models.Device {
+	return Config.Devices
+}
+
+// Read the config.json file and initialize the configuration struct
+func GetConfigJsonData() error {
+	bs, err := getConfigJsonBytes()
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(bs, &Config)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "get_config_data",
+		}).Error("Could not unmarshal config file: " + err.Error())
+		return err
+	}
+
+	return nil
+}
+
+// Read the config.json file into a byte slice
+func getConfigJsonBytes() ([]byte, error) {
+	jsonFile, err := os.Open("./configs/config.json")
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "get_config_data",
+		}).Error("Could not open config file: " + err.Error())
+		return nil, err
+	}
+	defer jsonFile.Close()
+
+	bs, err := io.ReadAll(jsonFile)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "get_config_data",
+		}).Error("Could not read config file to byte slice: " + err.Error())
+		return nil, err
+	}
+
+	return bs, err
 }

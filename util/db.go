@@ -3,8 +3,10 @@ package util
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -46,5 +48,25 @@ func checkDBConnection() {
 			break
 		}
 		time.Sleep(1 * time.Second)
+	}
+}
+
+func insertDevicesMongo() {
+	var mu sync.Mutex
+	mu.Lock()
+	defer mu.Unlock()
+
+	for _, device := range Config.Devices {
+		filter := bson.M{"_id": device.UDID}
+		update := bson.M{
+			"$set": device,
+		}
+		opts := options.Update().SetUpsert(true)
+
+		_, err := MongoClient().Database("gads").Collection("devices").UpdateOne(MongoCtx(), filter, update, opts)
+
+		if err != nil {
+			ProviderLogger.LogError("provider", "Failed inserting device data in Mongo - "+err.Error())
+		}
 	}
 }

@@ -51,7 +51,7 @@ func SimpleJSONResponse(w http.ResponseWriter, responseMessage string, code int)
 }
 
 func GetProviderDevices(c *gin.Context) {
-	responseData, err := util.ConvertToJSONString(device.GetConfigDevices())
+	responseData, err := util.ConvertToJSONString(util.GetConfigDevices())
 	if err != nil {
 		JSONError(c.Writer, "get_available_devices", "Could not get available devices", 500)
 		return

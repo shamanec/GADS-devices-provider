@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -33,12 +35,13 @@ var localDevices []*LocalDevice
 
 // Read the devices from Config and create a new slice with "upgraded" LocalDevices that contain fields just for the local setup
 func getLocalDevices() {
-	for _, device := range Config.Devices {
+	for _, device := range util.Config.Devices {
 		localDevice := LocalDevice{
 			Device:        device,
 			ProviderState: "init",
 		}
 		localDevice.setContext()
+		localDevice.Device.Host = util.Config.EnvConfig.DevicesHost
 		localDevices = append(localDevices, &localDevice)
 
 		// Create logs directory for each device if it doesn't already exist
@@ -148,27 +151,62 @@ func (device *LocalDevice) setupIOSDevice() {
 // COMMON
 
 // Gets all connected iOS and Android devices to the host
+// Gets all connected iOS and Android devices to the host
 func getConnectedDevicesCommon(ios bool, android bool) []string {
 	log.WithFields(log.Fields{
 		"event": "provider",
 	}).Debug("Getting connected devices to host")
 
-	androidDevices := []string{}
-	iosDevices := []string{}
-
-	if android {
-		androidDevices = getConnectedDevicesAndroid()
-	}
-
-	if ios {
-		iosDevices = getConnectedDevicesIOS()
-	}
-
+	var err error
 	connectedDevices := []string{}
-	connectedDevices = append(connectedDevices, iosDevices...)
-	connectedDevices = append(connectedDevices, androidDevices...)
+
+	if runtime.GOOS == "linux" {
+		connectedDevices, err = getConnectedDevicesLinux()
+		if err != nil {
+			fmt.Println("error connected devices linux - " + err.Error())
+		}
+	}
+
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		androidDevices := []string{}
+		iosDevices := []string{}
+
+		if android {
+			androidDevices = getConnectedDevicesAndroid()
+		}
+
+		if ios {
+			iosDevices = getConnectedDevicesIOS()
+		}
+
+		connectedDevices = append(connectedDevices, iosDevices...)
+		connectedDevices = append(connectedDevices, androidDevices...)
+	}
 
 	return connectedDevices
+}
+
+// Get all the connected devices to the host by reading the symlinks in /dev
+func getConnectedDevicesLinux() ([]string, error) {
+	// Get all files/symlinks/folders in /dev
+	var connectedDevices []string = []string{}
+	devFiles, err := filepath.Glob("/dev/*")
+	if err != nil {
+		fmt.Println("Error listing files in /dev:", err)
+		return nil, err
+	}
+
+	for _, devFile := range devFiles {
+		// Split the devFile to get only the file name
+		_, fileName := filepath.Split(devFile)
+		// If the filename is a device symlink
+		// Add it to the connected devices list
+		if strings.Contains(fileName, "device") {
+			connectedDevices = append(connectedDevices, fileName)
+		}
+	}
+
+	return connectedDevices, nil
 }
 
 // Gets the connected iOS devices using the `go-ios` library
@@ -265,8 +303,8 @@ func adbAvailable() bool {
 }
 
 func androidDevicesInConfig() bool {
-	for _, device := range Config.Devices {
-		if device.OS == "android" {
+	for _, device := range localDevices {
+		if device.Device.OS == "android" {
 			return true
 		}
 	}
@@ -412,7 +450,7 @@ func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
 func buildWebDriverAgent() error {
 	// Command to run continuously (replace with your command)
 	cmd := exec.Command("xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "generic/platform=iOS", "build-for-testing")
-	cmd.Dir = Config.EnvConfig.WDAPath
+	cmd.Dir = util.Config.EnvConfig.WDAPath
 
 	cmd.Stderr = os.Stderr
 	// Create a pipe to capture the command's output
@@ -451,7 +489,7 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 
 	// Command to run continuously (replace with your command)
 	cmd := exec.CommandContext(device.Context, "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.Device.UDID, "test-without-building", "-allowProvisioningUpdates")
-	cmd.Dir = Config.EnvConfig.WDAPath
+	cmd.Dir = util.Config.EnvConfig.WDAPath
 
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
@@ -509,7 +547,7 @@ func (device *LocalDevice) pairIOS() error {
 		return nil
 	}
 
-	err = ios.PairSupervised(device.GoIOSDeviceEntry, p12, Config.EnvConfig.SupervisionPassword)
+	err = ios.PairSupervised(device.GoIOSDeviceEntry, p12, util.Config.EnvConfig.SupervisionPassword)
 	if err != nil {
 		return errors.New("Could not pair successfully, err:" + err.Error())
 	}

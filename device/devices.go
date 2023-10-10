@@ -30,6 +30,8 @@ func UpdateDevices() {
 	} else if runtime.GOOS == "windows" {
 		go updateDevicesWindows()
 	}
+
+	go updateDevicesMongo()
 }
 
 // Update the Connected status of the devices both locally and in DB each second
@@ -42,11 +44,11 @@ func updateDevicesConnectedStatus() {
 		panic("Could not get the devices from /dev: " + err.Error())
 	}
 
-	for _, device := range Config.Devices {
-		device.Connected = false
+	for _, device := range localDevices {
+		device.Device.Connected = false
 		for _, connectedDevice := range connectedDevices {
-			if strings.Contains(connectedDevice, device.UDID) {
-				device.Connected = true
+			if strings.Contains(connectedDevice, device.Device.UDID) {
+				device.Device.Connected = true
 			}
 		}
 	}
@@ -63,9 +65,9 @@ func updateDevices() {
 	}
 
 	// Loop through the devices registered from the config
-	for _, device := range Config.Devices {
+	for _, device := range localDevices {
 
-		if device.Connected {
+		if device.Device.Connected {
 
 			// Check if the device has an already created container
 			// Also append the container data to the device struct if it does
@@ -73,14 +75,14 @@ func updateDevices() {
 			if err != nil {
 				log.WithFields(log.Fields{
 					"event": "device_update",
-				}).Error("Could not check if device " + device.UDID + " has a container: " + err.Error())
+				}).Error("Could not check if device " + device.Device.UDID + " has a container: " + err.Error())
 				continue
 			}
 
 			// If the device has container
 			if hasContainer {
 				// If the container is not Up
-				if !strings.Contains(device.Container.ContainerStatus, "Up") {
+				if !strings.Contains(device.Device.Container.ContainerStatus, "Up") {
 					// Restart the container
 					go device.restartContainer()
 					continue
@@ -89,12 +91,12 @@ func updateDevices() {
 				continue
 			}
 
-			if device.OS == "ios" {
+			if device.Device.OS == "ios" {
 				go device.createIOSContainer()
 				continue
 			}
 
-			if device.OS == "android" {
+			if device.Device.OS == "android" {
 				go device.createAndroidContainer()
 				continue
 			}
@@ -102,13 +104,13 @@ func updateDevices() {
 		}
 
 		// If the device is not connected
-		if !device.Connected {
+		if !device.Device.Connected {
 			// Check if it has an existing container
 			hasContainer, err := device.hasContainer(allContainers)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"event": "device_update",
-				}).Error("Could not check if device " + device.UDID + " has a container: " + err.Error())
+				}).Error("Could not check if device " + device.Device.UDID + " has a container: " + err.Error())
 				continue
 			}
 			// If it has a container - remove it
@@ -117,10 +119,6 @@ func updateDevices() {
 			}
 		}
 	}
-}
-
-func GetConfigDevices() []*Device {
-	return Config.Devices
 }
 
 func devicesWatcher() {

@@ -23,6 +23,8 @@ func main() {
 		util.ProviderLogger.LogError("provider_setup", fmt.Sprintf("Initial config setup failed - %s", err))
 	}
 
+	util.GetConfigJsonData()
+
 	// Start a goroutine that will update devices on provider start and when there are events in /dev(device connected/disconnected)
 	go device.UpdateDevices()
 

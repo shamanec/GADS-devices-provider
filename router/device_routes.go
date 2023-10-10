@@ -129,12 +129,12 @@ func DeviceStream(c *gin.Context) {
 	device := device.DeviceMap[udid]
 
 	deviceStreamURL := ""
-	if device.OS == "android" {
-		deviceStreamURL = "http://localhost:" + device.ContainerServerPort + "/stream"
+	if device.Device.OS == "android" {
+		deviceStreamURL = "http://localhost:" + device.Device.ContainerServerPort + "/stream"
 	}
 
-	if device.OS == "ios" {
-		deviceStreamURL = "http://localhost:" + device.StreamPort
+	if device.Device.OS == "ios" {
+		deviceStreamURL = "http://localhost:" + device.Device.StreamPort
 	}
 	client := http.Client{}
 
