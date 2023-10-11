@@ -20,11 +20,10 @@ var DeviceMap = make(map[string]*LocalDevice)
 
 // Create Mongo collections for all devices for logging
 // Create a map of *device.LocalDevice for easier access across the code
-func Setup() error {
+func Setup() {
 	getLocalDevices()
 	createMongoLogCollectionsForAllDevices()
 	createDeviceMap()
-	return nil
 }
 
 func createDeviceMap() {

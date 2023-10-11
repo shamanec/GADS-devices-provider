@@ -13,7 +13,19 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func insertDevicesMongo() {
+// Update all devices data in Mongo each second
+func updateDevicesMongo() {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		<-ticker.C
+		upsertDevicesMongo()
+	}
+}
+
+// Upsert all devices data in Mongo
+func upsertDevicesMongo() {
 	var mu sync.Mutex
 	mu.Lock()
 	defer mu.Unlock()
@@ -30,48 +42,6 @@ func insertDevicesMongo() {
 		if err != nil {
 			util.ProviderLogger.LogError("provider", "Failed inserting device data in Mongo - "+err.Error())
 		}
-	}
-}
-
-func updateDevicesMongo() {
-	for {
-		insertDevicesMongo()
-		time.Sleep(1 * time.Second)
-	}
-}
-
-// Loop through the registered devices and update the health status in the DB for each device each second
-func devicesHealthCheck() {
-	for {
-		for _, device := range localDevices {
-			if device.Device.Connected {
-				go device.updateHealthStatusDB()
-			}
-		}
-		time.Sleep(1 * time.Second)
-	}
-}
-
-// Check Appium and WDA(for iOS) status and update the device health in DB
-func (device *LocalDevice) updateHealthStatusDB() {
-	allGood := false
-	appiumGood := false
-	wdaGood := true
-
-	appiumGood, _ = device.appiumHealthy()
-
-	if appiumGood && device.Device.OS == "ios" {
-		wdaGood, _ = device.wdaHealthy()
-	}
-
-	allGood = appiumGood && wdaGood
-
-	if allGood {
-		device.Device.LastHealthyTimestamp = time.Now().UnixMilli()
-		device.Device.Healthy = true
-
-	} else {
-		device.Device.Healthy = false
 	}
 }
 

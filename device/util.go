@@ -7,6 +7,7 @@ import (
 	"net"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -92,4 +93,42 @@ func getFreePort() (port int, err error) {
 		}
 	}
 	return
+}
+
+// Loop through the registered devices and update the health status in the DB for each device each second
+func devicesHealthCheck() {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		<-ticker.C
+		for _, device := range localDevices {
+			if device.Device.Connected {
+				go device.checkHealthStatus()
+			}
+		}
+	}
+}
+
+// Check Appium and WDA(for iOS) status and update the device health in DB
+func (device *LocalDevice) checkHealthStatus() {
+	allGood := false
+	appiumGood := false
+	wdaGood := true
+
+	appiumGood, _ = device.appiumHealthy()
+
+	if appiumGood && device.Device.OS == "ios" {
+		wdaGood, _ = device.wdaHealthy()
+	}
+
+	allGood = appiumGood && wdaGood
+
+	if allGood {
+		device.Device.LastHealthyTimestamp = time.Now().UnixMilli()
+		device.Device.Healthy = true
+
+	} else {
+		device.Device.Healthy = false
+	}
 }

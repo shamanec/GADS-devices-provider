@@ -11,10 +11,8 @@ import (
 )
 
 func UpdateDevices() {
-	err := Setup()
-	if err != nil {
-		util.ProviderLogger.LogError("provider", fmt.Sprintf("Failed to setup config after starting devices update - %s", err))
-	}
+	Setup()
+
 	if runtime.GOOS == "linux" {
 		util.ProviderLogger.LogInfo("provider", "Initial devices update")
 		updateDevicesConnectedStatus()
