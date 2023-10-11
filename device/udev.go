@@ -6,7 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Generate the udev rules file
+// Generate the udev rules file for Linux deployment
 // These udev rules create symlinks for the devices in /dev
 // Which we can then use to check device connectivity and attach devices to their respective containers
 func CreateUdevRules() error {

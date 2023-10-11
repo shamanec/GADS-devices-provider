@@ -10,8 +10,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/shamanec/GADS-devices-provider/models"
-	"github.com/shamanec/GADS-devices-provider/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -74,37 +72,6 @@ func getHostContainers() ([]types.Container, error) {
 		return nil, errors.New("Could not get container list: " + err.Error())
 	}
 	return containers, nil
-}
-
-// Check if device has an existing container
-func (device *LocalDevice) hasContainer(allContainers []types.Container) (bool, error) {
-	for _, container := range allContainers {
-		// Parse plain container name
-		containerName := strings.Replace(container.Names[0], "/", "", -1)
-
-		if strings.Contains(containerName, device.Device.UDID) {
-			deviceContainer := models.DeviceContainer{
-				ContainerID:     container.ID,
-				ContainerStatus: container.Status,
-				ImageName:       container.Image,
-				ContainerName:   containerName,
-			}
-			device.Device.Container = &deviceContainer
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// Get a device pointer from Config for a device by udid
-func GetDeviceByUDID(udid string) *models.Device {
-	for _, device := range util.Config.Devices {
-		if device.UDID == udid {
-			return device
-		}
-	}
-
-	return nil
 }
 
 func getFreePort() (port int, err error) {

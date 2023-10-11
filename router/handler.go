@@ -27,9 +27,9 @@ func StreamProxy(c *gin.Context) {
 	defer conn.Close()
 
 	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
+	device := device.DeviceMap[udid]
 
-	u := url.URL{Scheme: "ws", Host: "localhost:" + device.ContainerServerPort, Path: "android-stream"}
+	u := url.URL{Scheme: "ws", Host: "localhost:" + device.Device.ContainerServerPort, Path: "android-stream"}
 	destConn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		log.Println("Destination WebSocket connection error:", err)

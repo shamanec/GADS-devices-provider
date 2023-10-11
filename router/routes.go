@@ -156,9 +156,9 @@ func AppiumReverseProxy(c *gin.Context) {
 	}()
 
 	udid := c.Param("udid")
-	device := device.GetDeviceByUDID(udid)
+	device := device.DeviceMap[udid]
 
-	target := "http://localhost:" + device.AppiumPort
+	target := "http://localhost:" + device.Device.AppiumPort
 	path := c.Param("proxyPath")
 
 	proxy := newAppiumProxy(target, path)

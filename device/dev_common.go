@@ -589,21 +589,17 @@ func (device *LocalDevice) mountDeveloperImageIOS() error {
 
 // Create a new WebDriverAgent session and update stream settings
 func (device *LocalDevice) updateWebDriverAgent() error {
-	fmt.Println("INFO: Updating WebDriverAgent session and mjpeg stream settings")
+	util.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Updating WebDriverAgent session and mjpeg stream settings for device `%s`", device.Device.UDID))
 
 	err := device.createWebDriverAgentSession()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Error(fmt.Sprintf("Could not create WebDriverAgent session for device %v - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not create WebDriverAgent session for device %v - %v", device.Device.UDID, err))
 		return err
 	}
 
 	err = device.updateWebDriverAgentStreamSettings()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Error(fmt.Sprintf("Could not update WebDriverAgent stream settings for device %v - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not update WebDriverAgent stream settings for device %v - %v", device.Device.UDID, err))
 		return err
 	}
 
@@ -672,15 +668,12 @@ func (device *LocalDevice) createWebDriverAgentSession() error {
 
 // Loops checking if the Appium/WebDriverAgent servers for the device are alive and updates the DB each time
 func (device *LocalDevice) updateDeviceHealthStatus() {
-	log.WithFields(log.Fields{
-		"event": "device_setup",
-	}).Info(fmt.Sprintf("Started health status check for device %v. Will poll Appium/WebDriverAgent servers respective to the device each second", device.Device.UDID))
+	util.ProviderLogger.LogInfo("device_setup", fmt.Sprintf("Started health status check for device %v. Will poll Appium/WebDriverAgent servers respective to the device each second", device.Device.UDID))
 	for {
 		select {
 		case <-time.After(1 * time.Second):
 			device.checkDeviceHealthStatus()
 		case <-device.Context.Done():
-			fmt.Println("Context done checking device health - " + device.Device.UDID)
 			return
 		}
 	}
@@ -694,9 +687,7 @@ func (device *LocalDevice) checkDeviceHealthStatus() {
 		wdaGood := false
 		wdaGood, err := device.isWdaHealthy()
 		if err != nil {
-			log.WithFields(log.Fields{
-				"event": "device_setup",
-			}).Warn(fmt.Sprintf("Failed checking WebDriverAgent status for device %v - %v", device.Device.UDID, err))
+			util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Failed checking WebDriverAgent status for device %v - %v", device.Device.UDID, err))
 		}
 
 		if wdaGood {
@@ -727,22 +718,6 @@ func (device *LocalDevice) isWdaHealthy() (bool, error) {
 	defer response.Body.Close()
 
 	responseCode := response.StatusCode
-	if responseCode != 200 {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func (device *LocalDevice) isAppiumHealthy() (bool, error) {
-	response, err := http.Get("http://localhost:" + device.Device.AppiumPort + "/status")
-	if err != nil {
-		return false, err
-	}
-	defer response.Body.Close()
-
-	responseCode := response.StatusCode
-
 	if responseCode != 200 {
 		return false, nil
 	}
