@@ -45,7 +45,6 @@ func updateDevicesOSX() {
 		os.Exit(1)
 	}
 
-	getLocalDevices()
 	removeAdbForwardedPorts()
 
 	for {
