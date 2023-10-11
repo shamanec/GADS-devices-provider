@@ -2,12 +2,10 @@ package util
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -19,12 +17,9 @@ type CustomLogger struct {
 
 var ProviderLogger *CustomLogger
 
-func SetLogging() {
-	getConfigData()
-
-	NewMongoClient()
+func SetupLogging() {
 	var err error
-	ProviderLogger, err = CreateCustomLogger("./logs/provider.log", hostAddress)
+	ProviderLogger, err = CreateCustomLogger("./logs/provider.log", Config.EnvConfig.DevicesHost)
 	if err != nil {
 		panic(err)
 	}
@@ -68,11 +63,11 @@ func (l CustomLogger) LogPanic(event_name string, message string) {
 
 func CreateCustomLogger(logFilePath, collection string) (*CustomLogger, error) {
 	// Create a new logger instance
-	logger := logrus.New()
+	logger := log.New()
 
 	// Configure the logger
-	logger.SetFormatter(&logrus.JSONFormatter{})
-	logger.SetLevel(logrus.DebugLevel)
+	logger.SetFormatter(&log.JSONFormatter{})
+	logger.SetLevel(log.DebugLevel)
 
 	// Open the log file
 	logFile, err := os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
@@ -100,22 +95,6 @@ type MongoDBHook struct {
 	Collection string
 }
 
-var configData map[string]interface{}
-var hostAddress string
-
-func getConfigData() {
-	bs, err := getConfigJsonBytes()
-	if err != nil {
-		panic("TEST")
-	}
-	err = json.Unmarshal(bs, &configData)
-	if err != nil {
-		panic("TEST2")
-	}
-
-	hostAddress = configData["env-config"].(map[string]interface{})["devices_host"].(string)
-}
-
 type logEntry struct {
 	Level     string
 	Message   string
@@ -124,14 +103,14 @@ type logEntry struct {
 	EventName string
 }
 
-func (hook *MongoDBHook) Fire(entry *logrus.Entry) error {
+func (hook *MongoDBHook) Fire(entry *log.Entry) error {
 	fields := entry.Data
 
 	logEntry := logEntry{
 		Level:     entry.Level.String(),
 		Message:   entry.Message,
 		Timestamp: time.Now().UnixMilli(),
-		Host:      hostAddress,
+		Host:      Config.EnvConfig.DevicesHost,
 		EventName: fields["event"].(string),
 	}
 
@@ -149,6 +128,6 @@ func (hook *MongoDBHook) Fire(entry *logrus.Entry) error {
 }
 
 // Levels returns the log levels at which the hook should fire
-func (hook *MongoDBHook) Levels() []logrus.Level {
-	return logrus.AllLevels
+func (hook *MongoDBHook) Levels() []log.Level {
+	return log.AllLevels
 }

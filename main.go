@@ -11,13 +11,15 @@ import (
 )
 
 func main() {
-	util.SetLogging()
 
 	port_flag := flag.String("port", "10001", "The port to run the server on")
 	flag.Parse()
-	util.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", *port_flag))
 
 	util.SetupConfig()
+	util.InitMongoClient()
+	util.SetupLogging()
+
+	util.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", *port_flag))
 
 	// Start a goroutine that will update devices on provider start and when there are events in /dev(device connected/disconnected)
 	go device.UpdateDevices()

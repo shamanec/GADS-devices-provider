@@ -9,7 +9,7 @@
     "supervision_password": "patladjan1",
     "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner",
     "devices_host": "192.168.1.13",
-    "rethink_db": "192.168.1.6:32771",
+    "mongo_db": "192.168.1.13:27017",
     "wda_repo_path": "/Users/shamanec/Downloads/WebDriverAgent-5.8.3/"
   },
   "devices-config": [

@@ -17,6 +17,6 @@ type EnvConfig struct {
 	ConnectSeleniumGrid string `json:"connect_selenium_grid" bson:"connect_selenium_grid"`
 	SupervisionPassword string `json:"supervision_password" bson:"supervision_password"`
 	WDABundleID         string `json:"wda_bundle_id" bson:"wda_bundle_id"`
-	RethinkDB           string `json:"rethink_db" bson:"rethink_db"`
+	MongoDB             string `json:"mongo_db" bson:"mongo_db"`
 	WDAPath             string `json:"wda_repo_path" bson:"wda_repo_path"`
 }

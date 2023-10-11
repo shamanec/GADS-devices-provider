@@ -14,9 +14,9 @@ import (
 var mongoClient *mongo.Client
 var mongoClientCtx context.Context
 
-func NewMongoClient() {
+func InitMongoClient() {
 	var err error
-	connectionString := "mongodb://localhost:27017"
+	connectionString := "mongodb://" + Config.EnvConfig.MongoDB
 
 	// Set up a context for the connection.
 	mongoClientCtx = context.TODO()
@@ -44,7 +44,7 @@ func checkDBConnection() {
 		err := mongoClient.Ping(mongoClientCtx, nil)
 		if err != nil {
 			fmt.Println("Lost connection to MongoDB server, attempting to create a new client - " + err.Error())
-			NewMongoClient()
+			InitMongoClient()
 			break
 		}
 		time.Sleep(1 * time.Second)
