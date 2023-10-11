@@ -22,7 +22,6 @@ func updateDevicesWindows() {
 		}
 	}
 
-	getLocalDevices()
 	removeAdbForwardedPorts()
 
 	for {

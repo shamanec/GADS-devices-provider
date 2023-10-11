@@ -11,7 +11,7 @@ import (
 )
 
 func UpdateDevices() {
-	err := SetupConfig()
+	err := Setup()
 	if err != nil {
 		util.ProviderLogger.LogError("provider", fmt.Sprintf("Failed to setup config after starting devices update - %s", err))
 	}

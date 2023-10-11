@@ -530,31 +530,6 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	}
 }
 
-func (device *LocalDevice) pairIOS() error {
-	log.WithFields(log.Fields{
-		"event": "ios_device_setup",
-	}).Debug("Pairing iOS device - " + device.Device.UDID)
-
-	p12, err := os.ReadFile("../configs/supervision.p12")
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Warn(fmt.Sprintf("Could not read /opt/supervision.p12 file when pairing device with UDID: %s, falling back to unsupervised pairing, err:%s", device.Device.UDID, err))
-		err = ios.Pair(device.GoIOSDeviceEntry)
-		if err != nil {
-			return errors.New("Could not pair successfully, err:" + err.Error())
-		}
-		return nil
-	}
-
-	err = ios.PairSupervised(device.GoIOSDeviceEntry, p12, util.Config.EnvConfig.SupervisionPassword)
-	if err != nil {
-		return errors.New("Could not pair successfully, err:" + err.Error())
-	}
-
-	return nil
-}
-
 func (device *LocalDevice) getGoIOSDevice() {
 	goIosDevice, err := ios.GetDevice(device.Device.UDID)
 	if err != nil {
@@ -565,24 +540,6 @@ func (device *LocalDevice) getGoIOSDevice() {
 	}
 
 	device.GoIOSDeviceEntry = goIosDevice
-}
-
-// Mount the developer disk images downloading them automatically in /opt/DeveloperDiskImages
-func (device *LocalDevice) mountDeveloperImageIOS() error {
-	basedir := "./devimages"
-
-	var err error
-	path, err := imagemounter.DownloadImageFor(device.GoIOSDeviceEntry, basedir)
-	if err != nil {
-		return err
-	}
-
-	err = imagemounter.MountImage(device.GoIOSDeviceEntry, path)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // HEALTH
@@ -821,4 +778,49 @@ func (device *LocalDevice) startAppium() {
 		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error waiting for Appium command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
+}
+
+// UNUSED
+
+// Mount the developer disk images downloading them automatically in /opt/DeveloperDiskImages
+func (device *LocalDevice) mountDeveloperImageIOS() error {
+	basedir := "./devimages"
+
+	var err error
+	path, err := imagemounter.DownloadImageFor(device.GoIOSDeviceEntry, basedir)
+	if err != nil {
+		return err
+	}
+
+	err = imagemounter.MountImage(device.GoIOSDeviceEntry, path)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (device *LocalDevice) pairIOS() error {
+	log.WithFields(log.Fields{
+		"event": "ios_device_setup",
+	}).Debug("Pairing iOS device - " + device.Device.UDID)
+
+	p12, err := os.ReadFile("../configs/supervision.p12")
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "ios_device_setup",
+		}).Warn(fmt.Sprintf("Could not read /opt/supervision.p12 file when pairing device with UDID: %s, falling back to unsupervised pairing, err:%s", device.Device.UDID, err))
+		err = ios.Pair(device.GoIOSDeviceEntry)
+		if err != nil {
+			return errors.New("Could not pair successfully, err:" + err.Error())
+		}
+		return nil
+	}
+
+	err = ios.PairSupervised(device.GoIOSDeviceEntry, p12, util.Config.EnvConfig.SupervisionPassword)
+	if err != nil {
+		return errors.New("Could not pair successfully, err:" + err.Error())
+	}
+
+	return nil
 }

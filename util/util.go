@@ -40,8 +40,21 @@ func GetConfigDevices() []*models.Device {
 	return Config.Devices
 }
 
+func SetupConfig() {
+	var err error
+	ProjectDir, err = os.Getwd()
+	if err != nil {
+		panic("Could not get project dir with os.Getwd() - " + err.Error())
+	}
+
+	err = getConfigJsonData()
+	if err != nil {
+		panic(("Could not get config data from config.json - " + err.Error()))
+	}
+}
+
 // Read the config.json file and initialize the configuration struct
-func GetConfigJsonData() error {
+func getConfigJsonData() error {
 	bs, err := getConfigJsonBytes()
 	if err != nil {
 		return err

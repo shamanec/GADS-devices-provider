@@ -194,13 +194,13 @@ func (device *LocalDevice) createIOSContainer() {
 
 		mounts = append(mounts, mount.Mount{
 			Type:   mount.TypeBind,
-			Source: projectDir + "/logs/container_" + device.Device.Name + "-" + device.Device.UDID,
+			Source: util.ProjectDir + "/logs/container_" + device.Device.Name + "-" + device.Device.UDID,
 			Target: "/opt/logs",
 		})
 
 		mounts = append(mounts, mount.Mount{
 			Type:   mount.TypeBind,
-			Source: projectDir + "/apps",
+			Source: util.ProjectDir + "/apps",
 			Target: "/opt/ipa",
 		})
 
@@ -347,12 +347,12 @@ func (device *LocalDevice) createAndroidContainer() {
 		mounts := []mount.Mount{
 			{
 				Type:   mount.TypeBind,
-				Source: projectDir + "/logs/container_" + device.Device.Name + "-" + device.Device.UDID,
+				Source: util.ProjectDir + "/logs/container_" + device.Device.Name + "-" + device.Device.UDID,
 				Target: "/opt/logs",
 			},
 			{
 				Type:   mount.TypeBind,
-				Source: projectDir + "/apps",
+				Source: util.ProjectDir + "/apps",
 				Target: "/opt/apk",
 			},
 			{

@@ -2,14 +2,10 @@ package device
 
 import (
 	"context"
-	"os"
 
 	"github.com/danielpaulus/go-ios/ios"
 	"github.com/shamanec/GADS-devices-provider/models"
 )
-
-type ConfigJsonData struct {
-}
 
 type LocalDevice struct {
 	Device           *models.Device
@@ -20,30 +16,18 @@ type LocalDevice struct {
 	GoIOSDeviceEntry ios.DeviceEntry
 }
 
-var projectDir string
-var Config ConfigJsonData
 var DeviceMap = make(map[string]*LocalDevice)
 
-// Set up the configuration for the provider
-// Get the data from config.json, start a DB connection and update the devices
-func SetupConfig() error {
-	var err error
-
-	// Get the current project folder
-	projectDir, err = os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	createDeviceMap()
-
+// Create Mongo collections for all devices for logging
+// Create a map of *device.LocalDevice for easier access across the code
+func Setup() error {
+	getLocalDevices()
 	createMongoLogCollectionsForAllDevices()
-
+	createDeviceMap()
 	return nil
 }
 
 func createDeviceMap() {
-	getLocalDevices()
 	for _, device := range localDevices {
 		DeviceMap[device.Device.UDID] = device
 	}

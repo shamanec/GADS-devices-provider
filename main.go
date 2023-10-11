@@ -17,13 +17,7 @@ func main() {
 	flag.Parse()
 	util.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", *port_flag))
 
-	// Parse config.json, get the connected devices and updated the DB with the initial data
-	err := device.SetupConfig()
-	if err != nil {
-		util.ProviderLogger.LogError("provider_setup", fmt.Sprintf("Initial config setup failed - %s", err))
-	}
-
-	util.GetConfigJsonData()
+	util.SetupConfig()
 
 	// Start a goroutine that will update devices on provider start and when there are events in /dev(device connected/disconnected)
 	go device.UpdateDevices()
