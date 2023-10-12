@@ -19,4 +19,5 @@ type EnvConfig struct {
 	WDABundleID         string `json:"wda_bundle_id" bson:"wda_bundle_id"`
 	MongoDB             string `json:"mongo_db" bson:"mongo_db"`
 	WDAPath             string `json:"wda_repo_path" bson:"wda_repo_path"`
+	ProviderNickname    string `json:"provider_nickname" bson: "provider_nickname"`
 }

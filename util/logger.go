@@ -110,7 +110,7 @@ func (hook *MongoDBHook) Fire(entry *log.Entry) error {
 		Level:     entry.Level.String(),
 		Message:   entry.Message,
 		Timestamp: time.Now().UnixMilli(),
-		Host:      Config.EnvConfig.DevicesHost,
+		Host:      Config.EnvConfig.ProviderNickname,
 		EventName: fields["event"].(string),
 	}
 

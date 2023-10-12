@@ -19,6 +19,7 @@ type Device struct {
 	Host                 string           `json:"host" bson:"host"`
 	AppiumSessionID      string           `json:"appiumSessionID,omitempty" bson:"appiumSessionID,omitempty"`
 	WDASessionID         string           `json:"wdaSessionID,omitempty" bson:"wdaSessionID,omitempty"`
+	Provider             string           `json:"provider" bson:"provider"`
 }
 
 type DeviceContainer struct {

@@ -3,7 +3,6 @@ package util
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -51,22 +50,24 @@ func checkDBConnection() {
 	}
 }
 
-func insertDevicesMongo() {
-	var mu sync.Mutex
-	mu.Lock()
-	defer mu.Unlock()
+func UpsertProviderMongo() {
+	data := bson.M{
+		"_id":                        Config.EnvConfig.ProviderNickname,
+		"host_address":               Config.EnvConfig.DevicesHost,
+		"selenium_hub_host":          Config.AppiumConfig.SeleniumHubHost,
+		"selenium_hub_port":          Config.AppiumConfig.SeleniumHubPort,
+		"selenium_hub_protocol_type": Config.AppiumConfig.SeleniumHubProtocolType,
+		"connect_selenium_grid":      Config.EnvConfig.ConnectSeleniumGrid,
+		"devices_in_config":          len(Config.Devices),
+	}
+	filter := bson.M{"_id": Config.EnvConfig.ProviderNickname}
+	update := bson.M{
+		"$set": data,
+	}
 
-	for _, device := range Config.Devices {
-		filter := bson.M{"_id": device.UDID}
-		update := bson.M{
-			"$set": device,
-		}
-		opts := options.Update().SetUpsert(true)
-
-		_, err := MongoClient().Database("gads").Collection("devices").UpdateOne(MongoCtx(), filter, update, opts)
-
-		if err != nil {
-			ProviderLogger.LogError("provider", "Failed inserting device data in Mongo - "+err.Error())
-		}
+	opts := options.Update().SetUpsert(true)
+	_, err := MongoClient().Database("gads").Collection("providers").UpdateOne(MongoCtx(), filter, update, opts)
+	if err != nil {
+		ProviderLogger.LogError("provider", "Failed registering provider data in Mongo - "+err.Error())
 	}
 }

@@ -18,6 +18,7 @@ func main() {
 	util.SetupConfig()
 	util.InitMongoClient()
 	util.SetupLogging()
+	util.UpsertProviderMongo()
 
 	util.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", *port_flag))
 

@@ -42,6 +42,7 @@ func getLocalDevices() {
 		}
 		localDevice.setContext()
 		localDevice.Device.Host = util.Config.EnvConfig.DevicesHost
+		localDevice.Device.Provider = util.Config.EnvConfig.ProviderNickname
 		localDevices = append(localDevices, &localDevice)
 
 		// Create logs directory for each device if it doesn't already exist
@@ -456,13 +457,11 @@ func buildWebDriverAgent() error {
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		fmt.Println("Error creating stdout pipe:", err)
 		return err
 	}
 
-	fmt.Println("Starting WebDriverAgent xcodebuild with command - " + cmd.String())
+	util.ProviderLogger.LogInfo("provider", fmt.Sprintf("Starting WebDriverAgent xcodebuild in path `%s` with command `%s` ", util.Config.EnvConfig.WDAPath, cmd.String()))
 	if err := cmd.Start(); err != nil {
-		fmt.Println("Error starting command:", err)
 		return err
 	}
 
@@ -476,8 +475,8 @@ func buildWebDriverAgent() error {
 
 	// Wait for the command to finish
 	if err := cmd.Wait(); err != nil {
-		fmt.Println("Error waiting for command to finish:", err)
-		fmt.Println("Building WebDriverAgent for testing was unsuccessful")
+		util.ProviderLogger.LogError("provider", fmt.Sprintf("Error waiting for build WebDriverAgent with `xcodebuild` command to finish - %s", err))
+		util.ProviderLogger.LogError("provider", "Building WebDriverAgent for testing was unsuccessful")
 		os.Exit(1)
 	}
 	return nil
