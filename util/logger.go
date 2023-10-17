@@ -19,7 +19,7 @@ var ProviderLogger *CustomLogger
 
 func SetupLogging() {
 	var err error
-	ProviderLogger, err = CreateCustomLogger("./logs/provider.log", Config.EnvConfig.DevicesHost)
+	ProviderLogger, err = CreateCustomLogger("./logs/provider.log", Config.EnvConfig.ProviderNickname)
 	if err != nil {
 		panic(err)
 	}

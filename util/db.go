@@ -53,7 +53,7 @@ func checkDBConnection() {
 func UpsertProviderMongo() {
 	data := bson.M{
 		"_id":                        Config.EnvConfig.ProviderNickname,
-		"host_address":               Config.EnvConfig.DevicesHost,
+		"host_address":               Config.EnvConfig.HostAddress,
 		"selenium_hub_host":          Config.AppiumConfig.SeleniumHubHost,
 		"selenium_hub_port":          Config.AppiumConfig.SeleniumHubPort,
 		"selenium_hub_protocol_type": Config.AppiumConfig.SeleniumHubProtocolType,

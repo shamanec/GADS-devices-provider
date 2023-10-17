@@ -16,7 +16,7 @@ type Device struct {
 	ScreenSize           string           `json:"screen_size" bson:"screen_size"`
 	Model                string           `json:"model" bson:"model"`
 	Image                string           `json:"image,omitempty" bson:"image,omitempty"`
-	Host                 string           `json:"host" bson:"host"`
+	HostAddress          string           `json:"host_address" bson:"host_address"`
 	AppiumSessionID      string           `json:"appiumSessionID,omitempty" bson:"appiumSessionID,omitempty"`
 	WDASessionID         string           `json:"wdaSessionID,omitempty" bson:"wdaSessionID,omitempty"`
 	Provider             string           `json:"provider" bson:"provider"`

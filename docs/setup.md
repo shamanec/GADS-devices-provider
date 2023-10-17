@@ -145,7 +145,7 @@ The provider uses `config.json` located in `./config` folder for configuration. 
     * **NB** Only if you have supervised iOS devices, else you can skip this
 * Set `wda_bundle_id` in `env-config`. This is the bundleID used for the prebuilt WebDriverAgent, e.g. `com.shamanec.WebDriverAgentRunner.xctrunner`
     * **NB** Only if you have iOS devices running on Linux, Windows. On macOS the WebDriverAgent is started with `xcodebuild` so the bundleID is irrelevant
-* Set `devices_host` in `env-config` to the IP address of the provider machine, e.g. `192.168.1.6`
+* Set `host_address` in `env-config` to the IP address of the provider machine, e.g. `192.168.1.6`
 * Set `rethink_db` in `env-config` to the IP address and port of the RethinkDB instance on your network, e.g. `192.168.1.632771` if you followed the setup for RethinkDB
 * ~Set `selenium_grid` in `env-config` to `true/false` if you want Selenium Grid connection established.~ - NOT working atm, leave to `false`
 

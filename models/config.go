@@ -13,11 +13,11 @@ type AppiumConfig struct {
 }
 
 type EnvConfig struct {
-	DevicesHost         string `json:"devices_host" bson:"devices_host"`
+	HostAddress         string `json:"host_address" bson:"host_address"`
 	ConnectSeleniumGrid string `json:"connect_selenium_grid" bson:"connect_selenium_grid"`
-	SupervisionPassword string `json:"supervision_password" bson:"supervision_password"`
-	WDABundleID         string `json:"wda_bundle_id" bson:"wda_bundle_id"`
-	MongoDB             string `json:"mongo_db" bson:"mongo_db"`
-	WDAPath             string `json:"wda_repo_path" bson:"wda_repo_path"`
-	ProviderNickname    string `json:"provider_nickname" bson: "provider_nickname"`
+	SupervisionPassword string `json:"supervision_password" bson:"-"`
+	WDABundleID         string `json:"wda_bundle_id" bson:"-"`
+	MongoDB             string `json:"mongo_db" bson:"-"`
+	WDAPath             string `json:"wda_repo_path" bson:"-"`
+	ProviderNickname    string `json:"provider_nickname" bson:"-"`
 }

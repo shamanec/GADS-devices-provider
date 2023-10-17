@@ -41,7 +41,7 @@ func getLocalDevices() {
 			ProviderState: "init",
 		}
 		localDevice.setContext()
-		localDevice.Device.Host = util.Config.EnvConfig.DevicesHost
+		localDevice.Device.HostAddress = util.Config.EnvConfig.HostAddress
 		localDevice.Device.Provider = util.Config.EnvConfig.ProviderNickname
 		localDevices = append(localDevices, &localDevice)
 
