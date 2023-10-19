@@ -1,6 +1,7 @@
 package device
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -113,25 +114,29 @@ func (device *LocalDevice) createAppiumSession() (string, error) {
 		automationName = "XCUITest"
 		platformName = "iOS"
 	}
-	requestString := `{
-		"capabilities": {
-			"alwaysMatch": {
-				"appium:automationName": "` + automationName + `",
-				"platformName": "` + platformName + `",
-				"appium:newCommandTimeout": 0
-			},
-			"firstMatch": [
-				{}
-			]
-		},
-		"desiredCapabilities": {
-			"appium:automationName": "` + automationName + `",
-			"platformName": "` + platformName + `",
-			"appium:newCommandTimeout": 0
-		}
-	}`
 
-	response, err := http.Post("http://localhost:"+device.Device.AppiumPort+"/session", "application/json", strings.NewReader(requestString))
+	data := map[string]interface{}{
+		"capabilities": map[string]interface{}{
+			"alwaysMatch": map[string]interface{}{
+				"appium:automationName":    automationName,
+				"platformName":             platformName,
+				"appium:newCommandTimeout": 0,
+			},
+			"firstMatch": []map[string]interface{}{},
+		},
+		"desiredCapabilities": map[string]interface{}{
+			"appium:automationName":    automationName,
+			"platformName":             platformName,
+			"appium:newCommandTimeout": 0,
+		},
+	}
+
+	jsonString, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	response, err := http.Post("http://localhost:"+device.Device.AppiumPort+"/session", "application/json", bytes.NewBuffer(jsonString))
 	if err != nil {
 		return "", err
 	}

@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -152,62 +150,28 @@ func (device *LocalDevice) setupIOSDevice() {
 // COMMON
 
 // Gets all connected iOS and Android devices to the host
-// Gets all connected iOS and Android devices to the host
 func getConnectedDevicesCommon(ios bool, android bool) []string {
 	log.WithFields(log.Fields{
 		"event": "provider",
 	}).Debug("Getting connected devices to host")
 
-	var err error
 	connectedDevices := []string{}
 
-	if runtime.GOOS == "linux" {
-		connectedDevices, err = getConnectedDevicesLinux()
-		if err != nil {
-			fmt.Println("error connected devices linux - " + err.Error())
-		}
+	androidDevices := []string{}
+	iosDevices := []string{}
+
+	if android {
+		androidDevices = getConnectedDevicesAndroid()
 	}
 
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		androidDevices := []string{}
-		iosDevices := []string{}
-
-		if android {
-			androidDevices = getConnectedDevicesAndroid()
-		}
-
-		if ios {
-			iosDevices = getConnectedDevicesIOS()
-		}
-
-		connectedDevices = append(connectedDevices, iosDevices...)
-		connectedDevices = append(connectedDevices, androidDevices...)
+	if ios {
+		iosDevices = getConnectedDevicesIOS()
 	}
+
+	connectedDevices = append(connectedDevices, iosDevices...)
+	connectedDevices = append(connectedDevices, androidDevices...)
 
 	return connectedDevices
-}
-
-// Get all the connected devices to the host by reading the symlinks in /dev
-func getConnectedDevicesLinux() ([]string, error) {
-	// Get all files/symlinks/folders in /dev
-	var connectedDevices []string = []string{}
-	devFiles, err := filepath.Glob("/dev/*")
-	if err != nil {
-		fmt.Println("Error listing files in /dev:", err)
-		return nil, err
-	}
-
-	for _, devFile := range devFiles {
-		// Split the devFile to get only the file name
-		_, fileName := filepath.Split(devFile)
-		// If the filename is a device symlink
-		// Add it to the connected devices list
-		if strings.Contains(fileName, "device") {
-			connectedDevices = append(connectedDevices, fileName)
-		}
-	}
-
-	return connectedDevices, nil
 }
 
 // Gets the connected iOS devices using the `go-ios` library
@@ -303,9 +267,33 @@ func adbAvailable() bool {
 	return true
 }
 
+func goIOSAvailable() bool {
+	cmd := exec.Command("ios", "list")
+	log.WithFields(log.Fields{
+		"event": "provider",
+	}).Debug("Checking if go-ios is available on host")
+
+	if err := cmd.Run(); err != nil {
+		log.WithFields(log.Fields{
+			"event": "provider",
+		}).Warn("go-ios is not available or command failed - " + err.Error())
+		return false
+	}
+	return true
+}
+
 func androidDevicesInConfig() bool {
 	for _, device := range localDevices {
 		if device.Device.OS == "android" {
+			return true
+		}
+	}
+	return false
+}
+
+func iOSDevicesInConfig() bool {
+	for _, device := range localDevices {
+		if device.Device.OS == "ios" {
 			return true
 		}
 	}
@@ -779,7 +767,62 @@ func (device *LocalDevice) startAppium() {
 	}
 }
 
-// UNUSED
+func (device *LocalDevice) startWdaWithGoIOS() {
+	// Create a usbmuxd.log file for Stderr
+	wdaLogger, _ := util.CreateCustomLogger("./logs/device_"+device.Device.UDID+"/wda.log", device.Device.UDID)
+
+	cmd := exec.CommandContext(context.Background(), "ios", "runwda", "--bundleid="+util.Config.EnvConfig.WDABundleID, "--testrunnerbundleid="+util.Config.EnvConfig.WDABundleID, "--xctestconfig=WebDriverAgentRunner.xctest", "--udid="+device.Device.UDID)
+
+	fmt.Println("COMMAND IS: " + cmd.String())
+	// Create a pipe to capture the command's output
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error creating stdoutpipe while running WebDriverAgent with go-ios for device `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
+
+	// Create a pipe to capture the command's error output
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error creating stderrpipe while running WebDriverAgent with go-ios for device `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
+
+	if err := cmd.Start(); err != nil {
+		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Could not start WebDriverAgent with go-ios for device `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
+
+	// Create a combined reader from stdout and stderr
+	combinedReader := io.MultiReader(stderr, stdout)
+	// Create a scanner to read the command's output line by line
+	scanner := bufio.NewScanner(combinedReader)
+
+	// errScanner := bufio.NewScanner(stderr)
+	// for errScanner.Scan() {
+	// 	line := errScanner.Text()
+	// 	wdaLogger.LogError("webdriveragent", strings.TrimSpace(line))
+	// }
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		wdaLogger.LogInfo("webdriveragent", strings.TrimSpace(line))
+
+		if strings.Contains(line, "ServerURLHere") {
+			// device.DeviceIP = strings.Split(strings.Split(line, "//")[1], ":")[0]
+			device.WdaReadyChan <- true
+		}
+	}
+
+	if err := cmd.Wait(); err != nil {
+		wdaLogger.LogError("webdriveragent", fmt.Sprintf("Error waiting for WebDriverAgent go-ios command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
+	}
+}
 
 // Mount the developer disk images downloading them automatically in /opt/DeveloperDiskImages
 func (device *LocalDevice) mountDeveloperImageIOS() error {
@@ -804,7 +847,7 @@ func (device *LocalDevice) pairIOS() error {
 		"event": "ios_device_setup",
 	}).Debug("Pairing iOS device - " + device.Device.UDID)
 
-	p12, err := os.ReadFile("../configs/supervision.p12")
+	p12, err := os.ReadFile("./configs/supervision.p12")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_device_setup",
