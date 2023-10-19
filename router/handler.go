@@ -72,9 +72,6 @@ func HandleRequests() *gin.Engine {
 
 	router := gin.Default()
 	router.GET("/device/:udid/health", DeviceHealth)
-	router.GET("/device/list", GetProviderDevices)
-	router.GET("/containers/:containerID/logs", GetContainerLogs)
-	router.POST("/device/create-udev-rules", CreateUdevRules)
 	router.POST("/device/:udid/tap", DeviceTap)
 	router.POST("/device/:udid/home", DeviceHome)
 	router.POST("/device/:udid/lock", DeviceLock)
@@ -85,7 +82,6 @@ func HandleRequests() *gin.Engine {
 	router.GET("/device/:udid/appiumSource", DeviceAppiumSource)
 	router.POST("/device/:udid/typeText", DeviceTypeText)
 	router.POST("/device/:udid/clearText", DeviceClearText)
-	router.GET("/logs", GetLogs)
 	router.Any("/device/:udid/appium/*proxyPath", AppiumReverseProxy)
 	router.GET("/device/:udid/android-stream", AndroidStreamProxy)
 	router.GET("/device/:udid/ios-stream", IosStreamProxy)

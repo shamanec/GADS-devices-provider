@@ -195,7 +195,7 @@ type actionData struct {
 	X          float64 `json:"x,omitempty"`
 	Y          float64 `json:"y,omitempty"`
 	EndX       float64 `json:"endX,omitempty"`
-	EndY       float64 `json:"endY,omitempty`
+	EndY       float64 `json:"endY,omitempty"`
 	TextToType string  `json:"text,omitempty"`
 }
 
