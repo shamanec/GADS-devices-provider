@@ -17,12 +17,14 @@ func main() {
 
 	util.SetupConfig()
 	util.InitMongoClient()
+	defer util.CloseMongoConn()
+
 	util.SetupLogging()
 	util.UpsertProviderMongo()
 
 	util.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", *port_flag))
 
-	// Start a goroutine that will update devices on provider start and when there are events in /dev(device connected/disconnected)
+	// Start a goroutine that will update devices on provider start
 	go device.UpdateDevices()
 
 	// Handle the endpoints

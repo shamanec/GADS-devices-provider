@@ -4,6 +4,8 @@ import (
 	"runtime"
 )
 
+var DeviceMap = make(map[string]*LocalDevice)
+
 func UpdateDevices() {
 	Setup()
 
@@ -15,4 +17,18 @@ func UpdateDevices() {
 		go updateDevicesWindows()
 	}
 	go updateDevicesMongo()
+}
+
+// Create Mongo collections for all devices for logging
+// Create a map of *device.LocalDevice for easier access across the code
+func Setup() {
+	getLocalDevices()
+	createMongoLogCollectionsForAllDevices()
+	createDeviceMap()
+}
+
+func createDeviceMap() {
+	for _, device := range localDevices {
+		DeviceMap[device.Device.UDID] = device
+	}
 }

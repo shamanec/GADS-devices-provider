@@ -15,7 +15,7 @@ var mongoClientCtx context.Context
 
 func InitMongoClient() {
 	var err error
-	connectionString := "mongodb://" + Config.EnvConfig.MongoDB
+	connectionString := "mongodb://" + Config.EnvConfig.MongoDB + "/?keepAlive=true"
 
 	// Set up a context for the connection.
 	mongoClientCtx = context.TODO()
@@ -34,19 +34,28 @@ func MongoClient() *mongo.Client {
 	return mongoClient
 }
 
+func CloseMongoConn() {
+	mongoClient.Disconnect(mongoClientCtx)
+}
+
 func MongoCtx() context.Context {
 	return mongoClientCtx
 }
 
 func checkDBConnection() {
+	errorCounter := 0
 	for {
-		err := mongoClient.Ping(mongoClientCtx, nil)
-		if err != nil {
-			fmt.Println("Lost connection to MongoDB server, attempting to create a new client - " + err.Error())
-			InitMongoClient()
-			break
+		if errorCounter < 10 {
+			time.Sleep(1 * time.Second)
+			err := mongoClient.Ping(mongoClientCtx, nil)
+			if err != nil {
+				fmt.Println("FAILED PINGING MONGO")
+				errorCounter++
+				continue
+			}
+		} else {
+			panic("Lost connection to MongoDB server for more than 10 seconds!")
 		}
-		time.Sleep(1 * time.Second)
 	}
 }
 
