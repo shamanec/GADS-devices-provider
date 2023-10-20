@@ -22,7 +22,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var usedPorts = make(map[int]bool)
 var mu sync.Mutex
 var netClient = &http.Client{
 	Timeout: time.Second * 120,
@@ -62,7 +61,7 @@ func (device *LocalDevice) setupAndroidDevice() {
 	}
 
 	// Get a free port on the host for WebDriverAgent server
-	streamPort, err := getFreePort()
+	streamPort, err := util.GetFreePort()
 	if err != nil {
 		util.ProviderLogger.LogError("provider", fmt.Sprintf("Could not allocate free host port for GADS-stream for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
@@ -93,7 +92,7 @@ func (device *LocalDevice) setupIOSDevice() {
 	device.getGoIOSDevice()
 
 	// Get a free port on the host for WebDriverAgent server
-	wdaPort, err := getFreePort()
+	wdaPort, err := util.GetFreePort()
 	if err != nil {
 		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent port for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
@@ -102,7 +101,7 @@ func (device *LocalDevice) setupIOSDevice() {
 	device.Device.WDAPort = fmt.Sprint(wdaPort)
 
 	// Get a free port on the host for WebDriverAgent stream
-	streamPort, err := getFreePort()
+	streamPort, err := util.GetFreePort()
 	if err != nil {
 		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent stream port for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
@@ -268,7 +267,7 @@ func adbAvailable() bool {
 }
 
 func goIOSAvailable() bool {
-	cmd := exec.Command("ios", "list")
+	cmd := exec.Command("ios", "-h")
 	log.WithFields(log.Fields{
 		"event": "provider",
 	}).Debug("Checking if go-ios is available on host")
@@ -729,7 +728,7 @@ func (device *LocalDevice) startAppium() {
 	defer appiumLog.Close()
 
 	// Get a free port on the host for Appium server
-	appiumPort, err := getFreePort()
+	appiumPort, err := util.GetFreePort()
 	if err != nil {
 		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Could not allocate free Appium host port for device - %v, err - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
@@ -801,12 +800,6 @@ func (device *LocalDevice) startWdaWithGoIOS() {
 	// Create a scanner to read the command's output line by line
 	scanner := bufio.NewScanner(combinedReader)
 
-	// errScanner := bufio.NewScanner(stderr)
-	// for errScanner.Scan() {
-	// 	line := errScanner.Text()
-	// 	wdaLogger.LogError("webdriveragent", strings.TrimSpace(line))
-	// }
-
 	for scanner.Scan() {
 		line := scanner.Text()
 
@@ -847,7 +840,7 @@ func (device *LocalDevice) pairIOS() error {
 		"event": "ios_device_setup",
 	}).Debug("Pairing iOS device - " + device.Device.UDID)
 
-	p12, err := os.ReadFile("./configs/supervision.p12")
+	p12, err := os.ReadFile("./config/supervision.p12")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "ios_device_setup",

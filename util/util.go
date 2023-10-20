@@ -3,7 +3,9 @@ package util
 import (
 	"encoding/json"
 	"io"
+	"net"
 	"os"
+	"sync"
 
 	"github.com/shamanec/GADS-devices-provider/models"
 	log "github.com/sirupsen/logrus"
@@ -11,6 +13,8 @@ import (
 
 var ProjectDir string
 var Config models.ConfigJsonData
+var mu sync.Mutex
+var usedPorts = make(map[int]bool)
 
 // Convert an interface{}(struct) into an indented JSON string
 func ConvertToJSONString(data interface{}) (string, error) {
@@ -36,10 +40,6 @@ func UnmarshalJSONString(jsonString string, v interface{}) error {
 	return nil
 }
 
-func GetConfigDevices() []*models.Device {
-	return Config.Devices
-}
-
 func SetupConfig() {
 	var err error
 	ProjectDir, err = os.Getwd()
@@ -51,6 +51,26 @@ func SetupConfig() {
 	if err != nil {
 		panic(("Could not get config data from config.json - " + err.Error()))
 	}
+}
+
+func GetFreePort() (port int, err error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	var a *net.TCPAddr
+	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
+		var l *net.TCPListener
+		if l, err = net.ListenTCP("tcp", a); err == nil {
+			defer l.Close()
+			port = l.Addr().(*net.TCPAddr).Port
+			if _, ok := usedPorts[port]; ok {
+				return GetFreePort()
+			}
+			usedPorts[port] = true
+			return port, nil
+		}
+	}
+	return
 }
 
 // Read the config.json file and initialize the configuration struct
@@ -73,7 +93,7 @@ func getConfigJsonData() error {
 
 // Read the config.json file into a byte slice
 func getConfigJsonBytes() ([]byte, error) {
-	jsonFile, err := os.Open("./configs/config.json")
+	jsonFile, err := os.Open("./config/config.json")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_config_data",

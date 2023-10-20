@@ -214,7 +214,7 @@ This is a non-mandatory but a preferable step - it will reduce the needed device
 3. Set it up for supervision using a new(or existing) supervision identity. You can do that for free without having a paid MDM account.
 4. Connect each consecutive device and supervise it using the same supervision identity.
 5. Export your supervision identity file and choose a password.
-6. Save your new supervision identity file in the project `./configs` folder as `supervision.p12`.
+6. Save your new supervision identity file in the project `./config` folder as `supervision.p12`.
 7. Open `config.json` and set your `supervision_password` in `env-config`
 
 **Note** You can also Trust manually when device provisioning is running but this is not optimal.

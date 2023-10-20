@@ -80,7 +80,7 @@ func (device *LocalDevice) setupIOSDeviceGoIOS() {
 	device.getGoIOSDevice()
 
 	// Get a free port on the host for WebDriverAgent server
-	wdaPort, err := getFreePort()
+	wdaPort, err := util.GetFreePort()
 	if err != nil {
 		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent port for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
@@ -89,7 +89,7 @@ func (device *LocalDevice) setupIOSDeviceGoIOS() {
 	device.Device.WDAPort = fmt.Sprint(wdaPort)
 
 	// Get a free port on the host for WebDriverAgent stream
-	streamPort, err := getFreePort()
+	streamPort, err := util.GetFreePort()
 	if err != nil {
 		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent stream port for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
