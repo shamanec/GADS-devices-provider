@@ -1,52 +1,47 @@
 package router
 
 import (
+	"context"
+	"fmt"
 	"log"
-	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
+	"github.com/gobwas/ws"
+	"github.com/gobwas/ws/wsutil"
 	"github.com/shamanec/GADS-devices-provider/device"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:   1024,
-	WriteBufferSize:  1024,
-	CheckOrigin:      func(r *http.Request) bool { return true },
-	HandshakeTimeout: time.Duration(time.Second * 5),
-}
-
 func StreamProxy(c *gin.Context) {
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
 	if err != nil {
-		log.Println("WebSocket upgrade error:", err)
-		return
+		fmt.Println(err)
 	}
+
 	defer conn.Close()
 
 	udid := c.Param("udid")
 	device := device.DeviceMap[udid]
 
 	u := url.URL{Scheme: "ws", Host: "localhost:" + device.Device.ContainerServerPort, Path: "android-stream"}
-	destConn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	destConn, _, _, err := ws.DefaultDialer.Dial(context.Background(), u.String())
 	if err != nil {
 		log.Println("Destination WebSocket connection error:", err)
 		return
 	}
+
 	defer destConn.Close()
 
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		for {
-			messageType, p, err := destConn.ReadMessage()
+			data, code, err := wsutil.ReadClientData(destConn)
 			if err != nil {
 				log.Println("Destination read error:", err)
 				return
 			}
-			err = conn.WriteMessage(messageType, p)
+			err = wsutil.WriteServerMessage(conn, code, data)
 			if err != nil {
 				log.Println("Proxy write error:", err)
 				return
@@ -55,12 +50,12 @@ func StreamProxy(c *gin.Context) {
 	}()
 
 	for {
-		messageType, p, err := conn.ReadMessage()
+		data, code, err := wsutil.ReadClientData(conn)
 		if err != nil {
 			log.Println("Proxy read error:", err)
 			return
 		}
-		err = destConn.WriteMessage(messageType, p)
+		err = wsutil.WriteServerMessage(destConn, code, data)
 		if err != nil {
 			log.Println("Destination write error:", err)
 			return
