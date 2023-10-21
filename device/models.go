@@ -14,4 +14,5 @@ type LocalDevice struct {
 	Context          context.Context
 	CtxCancel        context.CancelFunc
 	GoIOSDeviceEntry ios.DeviceEntry
+	IsResetting      bool
 }

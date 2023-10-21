@@ -54,8 +54,10 @@ func updateDevicesOSX() {
 			util.ProviderLogger.LogDebug("provider", "No devices connected")
 
 			for _, device := range localDevices {
-				device.Device.Connected = false
-				device.resetLocalDevice()
+				if device.Device.Connected {
+					device.Device.Connected = false
+					device.resetLocalDevice()
+				}
 			}
 		} else {
 			for _, device := range localDevices {

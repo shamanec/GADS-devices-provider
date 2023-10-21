@@ -62,6 +62,7 @@ func getLocalDevices() {
 		localDevice := LocalDevice{
 			Device:        device,
 			ProviderState: "init",
+			IsResetting:   false,
 		}
 		localDevice.setContext()
 		localDevice.Device.HostAddress = util.Config.EnvConfig.HostAddress
@@ -279,14 +280,20 @@ func iOSDevicesInConfig() bool {
 }
 
 func (device *LocalDevice) resetLocalDevice() {
-	mu.Lock()
-	defer mu.Unlock()
 
-	util.ProviderLogger.LogDebug("provider", fmt.Sprintf("Resetting LocalDevice for device `%v` after error. Cancelling context, setting ProviderState to `init`, Healthy to `false` and updating the DB", device.Device.UDID))
+	if !device.IsResetting {
+		mu.Lock()
+		device.IsResetting = true
+		mu.Unlock()
 
-	device.CtxCancel()
-	device.ProviderState = "init"
-	device.Device.Healthy = false
+		device.CtxCancel()
+		mu.Lock()
+		device.ProviderState = "init"
+		device.Device.Healthy = false
+		device.IsResetting = false
+		mu.Unlock()
+	}
+
 }
 
 // Set a context for a device to enable cancelling running goroutines related to that device when its disconnected
@@ -336,12 +343,6 @@ func (device *LocalDevice) checkDeviceHealthStatus() {
 		allGood, err = device.wdaHealthy()
 		if err != nil {
 			device.Device.Healthy = false
-		}
-		if allGood {
-			err = device.checkWDASession()
-			if err != nil {
-				device.Device.Healthy = false
-			}
 		}
 	}
 

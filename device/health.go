@@ -3,11 +3,8 @@ package device
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/shamanec/GADS-devices-provider/util"
 )
@@ -33,12 +30,6 @@ func GetDeviceHealth(udid string) (bool, error) {
 		allGood, err = device.wdaHealthy()
 		if err != nil {
 			return false, err
-		}
-		if allGood {
-			err = device.checkWDASession()
-			if err != nil {
-				return false, err
-			}
 		}
 	}
 
@@ -110,24 +101,28 @@ func (device *LocalDevice) checkAppiumSession() error {
 func (device *LocalDevice) createAppiumSession() (string, error) {
 	var automationName = "UiAutomator2"
 	var platformName = "Android"
+	var waitForIdleTimeout = 10
 	if device.Device.OS == "ios" {
 		automationName = "XCUITest"
 		platformName = "iOS"
+		waitForIdleTimeout = 0
 	}
 
 	data := map[string]interface{}{
 		"capabilities": map[string]interface{}{
 			"alwaysMatch": map[string]interface{}{
-				"appium:automationName":    automationName,
-				"platformName":             platformName,
-				"appium:newCommandTimeout": 0,
+				"appium:automationName":     automationName,
+				"platformName":              platformName,
+				"appium:newCommandTimeout":  0,
+				"appium:waitForIdleTimeout": waitForIdleTimeout,
 			},
 			"firstMatch": []map[string]interface{}{},
 		},
 		"desiredCapabilities": map[string]interface{}{
-			"appium:automationName":    automationName,
-			"platformName":             platformName,
-			"appium:newCommandTimeout": 0,
+			"appium:automationName":     automationName,
+			"platformName":              platformName,
+			"appium:newCommandTimeout":  0,
+			"appium:waitForIdleTimeout": waitForIdleTimeout,
 		},
 	}
 
@@ -149,82 +144,6 @@ func (device *LocalDevice) createAppiumSession() (string, error) {
 	}
 
 	return responseJson.Value.SessionID, nil
-}
-
-func (device *LocalDevice) checkWDASession() error {
-	response, err := http.Get("http://localhost:" + device.Device.WDAPort + "/status")
-	if err != nil {
-		return err
-	}
-
-	responseBody, _ := io.ReadAll(response.Body)
-
-	var responseJson map[string]interface{}
-	err = json.Unmarshal(responseBody, &responseJson)
-	if err != nil {
-		device.Device.WDASessionID = ""
-		return err
-	}
-
-	if responseJson["sessionId"] == "" || responseJson["sessionId"] == nil {
-		sessionId, err := device.createWDASession()
-		if err != nil {
-			device.Device.WDASessionID = ""
-			return err
-		}
-
-		if sessionId == "" {
-			device.Device.WDASessionID = ""
-			return err
-		}
-	}
-
-	device.Device.WDASessionID = fmt.Sprintf("%v", responseJson["sessionId"])
-	return nil
-}
-
-func (device *LocalDevice) createWDASession() (string, error) {
-	requestString := `{
-		"capabilities": {
-			"firstMatch": [
-				{
-					"arguments": [],
-					"environment": {},
-					"eventloopIdleDelaySec": 0,
-					"shouldWaitForQuiescence": true,
-					"shouldUseTestManagerForVisibilityDetection": false,
-					"maxTypingFrequency": 60,
-					"shouldUseSingletonTestManager": true,
-					"shouldTerminateApp": true,
-					"forceAppLaunch": true,
-					"useNativeCachingStrategy": true,
-					"forceSimulatorSoftwareKeyboardPresence": false
-				}
-			],
-			"alwaysMatch": {}
-		}
-	}`
-
-	response, err := http.Post("http://localhost:"+device.Device.WDAPort+"/session", "application/json", strings.NewReader(requestString))
-	if err != nil {
-		return "", err
-	}
-
-	responseBody, _ := io.ReadAll(response.Body)
-
-	var responseJson map[string]interface{}
-	err = json.Unmarshal(responseBody, &responseJson)
-	if err != nil {
-		return "", err
-	}
-
-	if responseJson["sessionId"] == "" || responseJson["sessionId"] == nil {
-		if err != nil {
-			return "", errors.New("Could not get `sessionId` while creating a new WebDriverAgent session")
-		}
-	}
-
-	return fmt.Sprintf("%v", responseJson["sessionId"]), nil
 }
 
 type AppiumGetSessionsResponse struct {
