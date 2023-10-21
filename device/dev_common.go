@@ -611,10 +611,13 @@ func (device *LocalDevice) createWebDriverAgentSession() error {
 
 // Loops checking if the Appium/WebDriverAgent servers for the device are alive and updates the DB each time
 func (device *LocalDevice) updateDeviceHealthStatus() {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
 	util.ProviderLogger.LogInfo("device_setup", fmt.Sprintf("Started health status check for device %v. Will poll Appium/WebDriverAgent servers respective to the device each second", device.Device.UDID))
 	for {
 		select {
-		case <-time.After(1 * time.Second):
+		case <-ticker.C:
 			device.checkDeviceHealthStatus()
 		case <-device.Context.Done():
 			return
@@ -623,28 +626,37 @@ func (device *LocalDevice) updateDeviceHealthStatus() {
 }
 
 // Checks Appium/WebDriverAgent servers are alive for the respective device
-// And updates the device health status in the DB
+// Also updates Appium/WebDriverAgent sessions
 // TODO - Currently unfinished, does not really check Appium for iOS/Android right now. Need to check if it can be unified with the health status endpoint code
 func (device *LocalDevice) checkDeviceHealthStatus() {
-	if device.Device.OS == "ios" {
-		wdaGood := false
-		wdaGood, err := device.isWdaHealthy()
-		if err != nil {
-			util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Failed checking WebDriverAgent status for device %v - %v", device.Device.UDID, err))
-		}
-
-		if wdaGood {
-			device.Device.LastHealthyTimestamp = time.Now().UnixMilli()
-			device.Device.Healthy = true
-			return
-		}
-	} else {
-		device.Device.LastHealthyTimestamp = time.Now().UnixMilli()
-		device.Device.Healthy = true
-		return
+	allGood := false
+	allGood, err := device.appiumHealthy()
+	if err != nil {
+		device.Device.Healthy = false
 	}
 
-	device.Device.Healthy = false
+	if allGood {
+		err = device.checkAppiumSession()
+		if err != nil {
+			device.Device.Healthy = false
+		}
+	}
+
+	if device.Device.OS == "ios" {
+		allGood, err = device.wdaHealthy()
+		if err != nil {
+			device.Device.Healthy = false
+		}
+		if allGood {
+			err = device.checkWDASession()
+			if err != nil {
+				device.Device.Healthy = false
+			}
+		}
+	}
+
+	device.Device.LastHealthyTimestamp = time.Now().UnixMilli()
+	device.Device.Healthy = true
 }
 
 // Check if the WebDriverAgent server for an iOS device is up

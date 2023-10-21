@@ -40,15 +40,13 @@ func AndroidStreamProxy(c *gin.Context) {
 	go func() {
 		defer close(done)
 		for {
-			data, code, err := wsutil.ReadClientData(destConn)
+			data, code, err := wsutil.ReadServerData(destConn)
 			if err != nil {
-				log.Println("Destination read error:", err)
 				return
 			}
 
 			err = wsutil.WriteServerMessage(conn, code, data)
 			if err != nil {
-				log.Println("Proxy write error:", err)
 				return
 			}
 		}
@@ -57,12 +55,11 @@ func AndroidStreamProxy(c *gin.Context) {
 	for {
 		data, code, err := wsutil.ReadClientData(conn)
 		if err != nil {
-			log.Println("Proxy read error:", err)
 			return
 		}
+
 		err = wsutil.WriteServerMessage(destConn, code, data)
 		if err != nil {
-			log.Println("Destination write error:", err)
 			return
 		}
 	}
