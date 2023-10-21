@@ -85,6 +85,7 @@ func (device *LocalDevice) setupAndroidDevice() {
 	if err != nil {
 		util.ProviderLogger.LogError("provider", fmt.Sprintf("Could not check if GADS-stream is running on device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
+		return
 	}
 
 	// Get a free port on the host for WebDriverAgent server
@@ -97,13 +98,36 @@ func (device *LocalDevice) setupAndroidDevice() {
 	device.Device.StreamPort = fmt.Sprint(streamPort)
 
 	if !isStreamAvailable {
-		device.installGadsStream()
-		device.addGadsStreamRecordingPermissions()
-		device.startGadsStreamApp()
+		err = device.installGadsStream()
+		if err != nil {
+			util.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not install GADS-stream on Android device - %v:\n %v", device.Device.UDID, err))
+			device.resetLocalDevice()
+			return
+		}
+
+		err = device.addGadsStreamRecordingPermissions()
+		if err != nil {
+			util.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not set GADS-stream recording permissions on Android device - %v:\n %v", device.Device.UDID, err))
+			device.resetLocalDevice()
+			return
+		}
+
+		err = device.startGadsStreamApp()
+		if err != nil {
+			util.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not start GADS-stream app on Android device - %v:\n %v", device.Device.UDID, err))
+			device.resetLocalDevice()
+			return
+		}
+
 		device.pressHomeButton()
 	}
 
-	device.forwardGadsStream()
+	err = device.forwardGadsStream()
+	if err != nil {
+		util.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not forward GADS-stream port to host port %v for Android device - %v:\n %v", device.Device.StreamPort, device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
 
 	go device.startAppium()
 	go device.updateDeviceHealthStatus()
@@ -114,8 +138,6 @@ func (device *LocalDevice) setupIOSDevice() {
 	util.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Running setup for device `%v`", device.Device.UDID))
 
 	// Get go-ios device entry for pairing/mounting images
-	// Mounting currently unused, images are mounted automatically through Xcode device setup
-	// Pairing currently unused, TODO after go-ios supports iOS >=17
 	device.getGoIOSDevice()
 
 	// Get a free port on the host for WebDriverAgent server
