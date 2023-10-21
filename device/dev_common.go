@@ -11,7 +11,6 @@ import (
 	"runtime"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/danielpaulus/go-ios/ios"
@@ -19,7 +18,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var mu sync.Mutex
 var netClient = &http.Client{
 	Timeout: time.Second * 120,
 }
@@ -304,16 +302,13 @@ func iOSDevicesInConfig() bool {
 func (device *LocalDevice) resetLocalDevice() {
 
 	if !device.IsResetting {
-		mu.Lock()
-		device.IsResetting = true
-		mu.Unlock()
+		util.ProviderLogger.LogDebug("provider", fmt.Sprintf("Resetting LocalDevice for device `%v` after error. Cancelling context, setting ProviderState to `init`, Healthy to `false` and updating the DB", device.Device.UDID))
 
+		device.IsResetting = true
 		device.CtxCancel()
-		mu.Lock()
 		device.ProviderState = "init"
 		device.Device.Healthy = false
 		device.IsResetting = false
-		mu.Unlock()
 	}
 
 }

@@ -38,33 +38,26 @@ func updateDevicesLinux() {
 	for {
 		connectedDevices := getConnectedDevicesCommon(true, androidDevicesInConfig)
 
-		if len(connectedDevices) == 0 {
-			util.ProviderLogger.LogDebug("provider", "No devices connected")
+		for _, device := range localDevices {
+			if slices.Contains(connectedDevices, device.Device.UDID) {
+				device.Device.Connected = true
+				if device.ProviderState != "preparing" && device.ProviderState != "live" {
+					device.setContext()
+					if device.Device.OS == "ios" {
+						device.WdaReadyChan = make(chan bool, 1)
+						go device.setupIOSDeviceGoIOS()
+					}
 
-			for _, device := range localDevices {
+					if device.Device.OS == "android" {
+						go device.setupAndroidDevice()
+					}
+				}
+				continue
+			} else {
 				if device.Device.Connected {
 					device.Device.Connected = false
 					device.resetLocalDevice()
 				}
-			}
-		} else {
-			for _, device := range localDevices {
-				if slices.Contains(connectedDevices, device.Device.UDID) {
-					device.Device.Connected = true
-					if device.ProviderState != "preparing" && device.ProviderState != "live" {
-						device.setContext()
-						if device.Device.OS == "ios" {
-							device.WdaReadyChan = make(chan bool, 1)
-							go device.setupIOSDeviceGoIOS()
-						}
-
-						if device.Device.OS == "android" {
-							go device.setupAndroidDevice()
-						}
-					}
-					continue
-				}
-				device.Device.Connected = false
 			}
 		}
 		time.Sleep(10 * time.Second)

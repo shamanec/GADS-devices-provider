@@ -146,7 +146,7 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 }
 
 // Get go-ios device entry to use library directly, instead of CLI binary
-func (device *LocalDevice) getGoIOSDevice() error {
+func (device *LocalDevice) getGoIOSDevice() {
 	goIosDevice, err := ios.GetDevice(device.Device.UDID)
 	if err != nil {
 		log.WithFields(log.Fields{
