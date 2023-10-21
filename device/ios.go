@@ -22,29 +22,22 @@ import (
 // Check if xcodebuild is available on the host by checking its version
 func xcodebuildAvailable() bool {
 	cmd := exec.Command("xcodebuild", "-version")
-	log.WithFields(log.Fields{
-		"event": "provider",
-	}).Debug("Checking if xcodebuild is available on host")
+	util.ProviderLogger.LogDebug("provider", "Checking if xcodebuild is available on host")
 
 	if err := cmd.Run(); err != nil {
-		log.WithFields(log.Fields{
-			"event": "provider",
-		}).Warn("xcodebuild is not available or command failed - " + err.Error())
+		util.ProviderLogger.LogDebug("provider", fmt.Sprintf("xcodebuild is not available or command failed - %s", err))
 		return false
 	}
 	return true
 }
 
+// Check if go-ios binary is available
 func goIOSAvailable() bool {
 	cmd := exec.Command("ios", "-h")
-	log.WithFields(log.Fields{
-		"event": "provider",
-	}).Debug("Checking if go-ios is available on host")
+	util.ProviderLogger.LogDebug("provider", "Checking if go-ios binary is available on host")
 
 	if err := cmd.Run(); err != nil {
-		log.WithFields(log.Fields{
-			"event": "provider",
-		}).Warn("go-ios is not available or command failed - " + err.Error())
+		util.ProviderLogger.LogDebug("provider", fmt.Sprintf("go-ios is not available on host or command failed - %s", err))
 		return false
 	}
 	return true
@@ -77,13 +70,11 @@ func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
 	}
 }
 
+// Build WebDriverAgent for testing with `xcodebuild`
 func buildWebDriverAgent() error {
-	// Command to run continuously (replace with your command)
 	cmd := exec.Command("xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "generic/platform=iOS", "build-for-testing")
 	cmd.Dir = util.Config.EnvConfig.WDAPath
 
-	cmd.Stderr = os.Stderr
-	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -112,14 +103,11 @@ func buildWebDriverAgent() error {
 }
 
 func (device *LocalDevice) startWdaWithXcodebuild() {
-	// Create a usbmuxd.log file for Stderr
 	logger, _ := util.CreateCustomLogger("./logs/device_"+device.Device.UDID+"/wda.log", device.Device.UDID)
 
-	// Command to run continuously (replace with your command)
 	cmd := exec.CommandContext(device.Context, "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.Device.UDID, "test-without-building", "-allowProvisioningUpdates")
 	cmd.Dir = util.Config.EnvConfig.WDAPath
 
-	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Error creating stdoutpipe while running WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
@@ -133,7 +121,6 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 		return
 	}
 
-	// Create a scanner to read the command's output line by line
 	scanner := bufio.NewScanner(stdout)
 
 	for scanner.Scan() {
@@ -158,7 +145,8 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	}
 }
 
-func (device *LocalDevice) getGoIOSDevice() {
+// Get go-ios device entry to use library directly, instead of CLI binary
+func (device *LocalDevice) getGoIOSDevice() error {
 	goIosDevice, err := ios.GetDevice(device.Device.UDID)
 	if err != nil {
 		log.WithFields(log.Fields{

@@ -17,7 +17,6 @@ func updateDevicesOSX() {
 
 	if !xcodebuildAvailable() {
 		util.ProviderLogger.LogError("provider", "xcodebuild is not available, you need to set up the host as explained in the readme")
-		fmt.Println("xcodebuild is not available, you need to set up the host as explained in the readme")
 		os.Exit(1)
 	}
 
