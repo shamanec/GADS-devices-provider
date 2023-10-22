@@ -13,13 +13,14 @@ import (
 func main() {
 
 	port_flag := flag.String("port", "10001", "The port to run the server on")
+	log_level := flag.String("log_level", "info", "The log level of the provider app - debug, info or error")
 	flag.Parse()
 
 	util.SetupConfig()
 	util.InitMongoClient()
 	defer util.CloseMongoConn()
 
-	util.SetupLogging()
+	util.SetupLogging(*log_level)
 	util.UpsertProviderMongo()
 
 	util.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", *port_flag))

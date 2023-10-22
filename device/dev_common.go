@@ -62,6 +62,7 @@ func getLocalDevices() {
 			ProviderState: "init",
 			IsResetting:   false,
 		}
+
 		localDevice.setContext()
 		localDevice.Device.HostAddress = util.Config.EnvConfig.HostAddress
 		localDevice.Device.Provider = util.Config.EnvConfig.ProviderNickname
@@ -71,6 +72,12 @@ func getLocalDevices() {
 		if _, err := os.Stat("./logs/device_" + device.UDID); os.IsNotExist(err) {
 			os.Mkdir("./logs/device_"+device.UDID, os.ModePerm)
 		}
+
+		logger, err := util.CreateCustomLogger("./logs/device_"+device.UDID+"/device.log", device.UDID)
+		if err != nil {
+			panic(fmt.Sprintf("Could not create a customer logger for device `%s` - %s", device.UDID, err))
+		}
+		localDevice.Logger = *logger
 	}
 }
 
@@ -386,9 +393,6 @@ type appiumCapabilities struct {
 }
 
 func (device *LocalDevice) startAppium() {
-	// Create a usbmuxd.log file for Stderr
-	appiumLogger, _ := util.CreateCustomLogger("./logs/device_"+device.Device.UDID+"/appium.log", device.Device.UDID)
-
 	var capabilities appiumCapabilities
 
 	if device.Device.OS == "ios" {
@@ -456,7 +460,7 @@ func (device *LocalDevice) startAppium() {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		appiumLogger.LogInfo("appium", strings.TrimSpace(line))
+		device.Logger.LogDebug("appium", strings.TrimSpace(line))
 	}
 
 	if err := cmd.Wait(); err != nil {

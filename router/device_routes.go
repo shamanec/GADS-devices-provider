@@ -10,20 +10,33 @@ import (
 	"github.com/shamanec/GADS-devices-provider/device"
 )
 
+// Copy the headers from the original endpoint to the proxied endpoint
+func copyHeaders(destination, source http.Header) {
+	for name, values := range source {
+		for _, v := range values {
+			destination.Add(name, v)
+		}
+	}
+}
+
 // Check the device health by checking Appium and WDA(for iOS)
 func DeviceHealth(c *gin.Context) {
 	udid := c.Param("udid")
-	bool, err := device.GetDeviceHealth(udid)
+	device := device.DeviceMap[udid]
+	bool, err := device.GetDeviceHealth()
 	if err != nil {
+		device.Logger.LogInfo("device", fmt.Sprintf("Could not check device health - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	if bool {
+		device.Logger.LogInfo("device", "Device is healthy")
 		c.Writer.WriteHeader(200)
 		return
 	}
 
+	device.Logger.LogError("device", "Device is not healthy")
 	c.Writer.WriteHeader(500)
 }
 
@@ -31,10 +44,12 @@ func DeviceHealth(c *gin.Context) {
 func DeviceHome(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.DeviceMap[udid]
+	device.Logger.LogInfo("appium_interact", "Navigating to Home/Springboard")
 
 	// Send the request
 	homeResponse, err := appiumHome(device)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to navigate to Home/Springboard - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -43,6 +58,7 @@ func DeviceHome(c *gin.Context) {
 	// Read the response body
 	homeResponseBody, err := io.ReadAll(homeResponse.Body)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to navigate to Home/Springboard - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -56,9 +72,11 @@ func DeviceHome(c *gin.Context) {
 func DeviceLock(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.DeviceMap[udid]
+	device.Logger.LogInfo("appium_interact", "Locking device")
 
 	lockResponse, err := appiumLockUnlock(device, "lock")
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to lock device - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -67,6 +85,7 @@ func DeviceLock(c *gin.Context) {
 	// Read the response body
 	lockResponseBody, err := io.ReadAll(lockResponse.Body)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to lock device - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -80,9 +99,11 @@ func DeviceLock(c *gin.Context) {
 func DeviceUnlock(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.DeviceMap[udid]
+	device.Logger.LogInfo("appium_interact", "Unlocking device")
 
 	lockResponse, err := appiumLockUnlock(device, "unlock")
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to unlock device - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -91,6 +112,7 @@ func DeviceUnlock(c *gin.Context) {
 	// Read the response body
 	lockResponseBody, err := io.ReadAll(lockResponse.Body)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to unlock device - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -104,6 +126,7 @@ func DeviceUnlock(c *gin.Context) {
 func DeviceScreenshot(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.DeviceMap[udid]
+	device.Logger.LogInfo("appium_interact", "Getting screenshot from device")
 
 	screenshotResp, err := appiumScreenshot(device)
 	defer screenshotResp.Body.Close()
@@ -111,6 +134,7 @@ func DeviceScreenshot(c *gin.Context) {
 	// Read the response body
 	screenshotRespBody, err := io.ReadAll(screenshotResp.Body)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to get screenshot from device - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -120,57 +144,17 @@ func DeviceScreenshot(c *gin.Context) {
 	fmt.Fprintf(c.Writer, string(screenshotRespBody))
 }
 
-// ================================
-// Device screen streaming
-
-// Call the device stream endpoint and proxy it to the respective provider stream endpoint
-func DeviceStream(c *gin.Context) {
-	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
-
-	deviceStreamURL := ""
-	if device.Device.OS == "android" {
-		deviceStreamURL = "http://localhost:" + device.Device.ContainerServerPort + "/stream"
-	}
-
-	if device.Device.OS == "ios" {
-		deviceStreamURL = "http://localhost:" + device.Device.StreamPort
-	}
-	client := http.Client{}
-
-	// Replace this URL with the actual endpoint URL serving the JPEG stream
-	resp, err := client.Get(deviceStreamURL)
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Error connecting to the stream")
-		return
-	}
-	defer resp.Body.Close()
-
-	copyHeaders(c.Writer.Header(), resp.Header)
-	_, err = io.Copy(c.Writer, resp.Body)
-	if err != nil {
-		return
-	}
-}
-
-// Copy the headers from the original endpoint to the proxied endpoint
-func copyHeaders(destination, source http.Header) {
-	for name, values := range source {
-		for _, v := range values {
-			destination.Add(name, v)
-		}
-	}
-}
-
 //======================================
 // Appium source
 
 func DeviceAppiumSource(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.DeviceMap[udid]
+	device.Logger.LogInfo("appium_interact", "Getting Appium source from device")
 
 	sourceResp, err := appiumSource(device)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to get Appium source from device - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -178,6 +162,7 @@ func DeviceAppiumSource(c *gin.Context) {
 	// Read the response body
 	body, err := io.ReadAll(sourceResp.Body)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to get Appium source from device - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -229,18 +214,23 @@ func DeviceTypeText(c *gin.Context) {
 
 	var requestBody actionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to type text to active element - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	device.Logger.LogInfo("appium_interact", fmt.Sprintf("Typing `%s` to active element", requestBody.TextToType))
+
 	typeResp, err := appiumTypeText(device, requestBody.TextToType)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to type `%s` to active element - %s", requestBody.TextToType, err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	body, err := io.ReadAll(typeResp.Body)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to type `%s` to active element - %s", requestBody.TextToType, err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -254,15 +244,18 @@ func DeviceTypeText(c *gin.Context) {
 func DeviceClearText(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.DeviceMap[udid]
+	device.Logger.LogInfo("appium_interact", "Clearing text from active element")
 
 	clearResp, err := appiumClearText(device)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Could not clear text from active element - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	body, err := io.ReadAll(clearResp.Body)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Could not clear text from active element - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -283,8 +276,11 @@ func DeviceTap(c *gin.Context) {
 		return
 	}
 
+	device.Logger.LogInfo("appium_interact", fmt.Sprintf("Tapping at coordinates X:%v Y:%v", fmt.Sprintf("%.2f", requestBody.X), fmt.Sprintf("%.2f", requestBody.Y)))
+
 	tapResp, err := appiumTap(device, requestBody.X, requestBody.Y)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to tap at coordinates X:%v Y:%v - %s", fmt.Sprintf("%.2f", requestBody.X), fmt.Sprintf("%.2f", requestBody.Y), err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -293,6 +289,7 @@ func DeviceTap(c *gin.Context) {
 	// Read the response body
 	body, err := io.ReadAll(tapResp.Body)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to tap at coordinates X:%v Y:%v` - %s", fmt.Sprintf("%.2f", requestBody.X), fmt.Sprintf("%.2f", requestBody.Y), err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -308,12 +305,16 @@ func DeviceSwipe(c *gin.Context) {
 
 	var requestBody actionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to decode request body when performing swipe - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	device.Logger.LogInfo("appium_interact", fmt.Sprintf("Swiping from X:%v Y:%v to X:%v Y:%v", fmt.Sprintf("%.3f", requestBody.X), fmt.Sprintf("%.3f", requestBody.Y), fmt.Sprintf("%.3f", requestBody.EndX), fmt.Sprintf("%.3f", requestBody.EndY)))
+
 	swipeResp, err := appiumSwipe(device, requestBody.X, requestBody.Y, requestBody.EndX, requestBody.EndY)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to swipe from X:%v Y:%v to X:%v Y:%v - %s", fmt.Sprintf("%.3f", requestBody.X), fmt.Sprintf("%.3f", requestBody.Y), fmt.Sprintf("%.3f", requestBody.EndX), fmt.Sprintf("%.3f", requestBody.EndY), err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -322,6 +323,7 @@ func DeviceSwipe(c *gin.Context) {
 	// Read the response body
 	body, err := io.ReadAll(swipeResp.Body)
 	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to swipe from X:%v Y:%v to X:%v Y:%v - %s", fmt.Sprintf("%.3f", requestBody.X), fmt.Sprintf("%.3f", requestBody.Y), fmt.Sprintf("%.3f", requestBody.EndX), fmt.Sprintf("%.3f", requestBody.EndY), err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}

@@ -103,20 +103,18 @@ func buildWebDriverAgent() error {
 }
 
 func (device *LocalDevice) startWdaWithXcodebuild() {
-	logger, _ := util.CreateCustomLogger("./logs/device_"+device.Device.UDID+"/wda.log", device.Device.UDID)
-
 	cmd := exec.CommandContext(device.Context, "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.Device.UDID, "test-without-building", "-allowProvisioningUpdates")
 	cmd.Dir = util.Config.EnvConfig.WDAPath
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Error creating stdoutpipe while running WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
+		device.Logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Error creating stdoutpipe while running WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
 
 	if err := cmd.Start(); err != nil {
-		logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Could not start WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
+		device.Logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Could not start WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -126,7 +124,7 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		logger.LogInfo("webdriveragent", strings.TrimSpace(line))
+		device.Logger.LogInfo("webdriveragent", strings.TrimSpace(line))
 
 		if strings.Contains(line, "Restarting after") {
 			device.resetLocalDevice()
@@ -140,7 +138,7 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	}
 
 	if err := cmd.Wait(); err != nil {
-		logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Error waiting for WebDriverAgent xcodebuild command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
+		device.Logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Error waiting for WebDriverAgent xcodebuild command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }
@@ -238,12 +236,9 @@ func (device *LocalDevice) createWebDriverAgentSession() error {
 }
 
 func (device *LocalDevice) startWdaWithGoIOS() {
-	// Create a usbmuxd.log file for Stderr
-	wdaLogger, _ := util.CreateCustomLogger("./logs/device_"+device.Device.UDID+"/wda.log", device.Device.UDID)
 
 	cmd := exec.CommandContext(context.Background(), "ios", "runwda", "--bundleid="+util.Config.EnvConfig.WDABundleID, "--testrunnerbundleid="+util.Config.EnvConfig.WDABundleID, "--xctestconfig=WebDriverAgentRunner.xctest", "--udid="+device.Device.UDID)
 
-	fmt.Println("COMMAND IS: " + cmd.String())
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -274,7 +269,7 @@ func (device *LocalDevice) startWdaWithGoIOS() {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		wdaLogger.LogInfo("webdriveragent", strings.TrimSpace(line))
+		device.Logger.LogDebug("webdriveragent", strings.TrimSpace(line))
 
 		if strings.Contains(line, "ServerURLHere") {
 			// device.DeviceIP = strings.Split(strings.Split(line, "//")[1], ":")[0]
@@ -283,7 +278,7 @@ func (device *LocalDevice) startWdaWithGoIOS() {
 	}
 
 	if err := cmd.Wait(); err != nil {
-		wdaLogger.LogError("webdriveragent", fmt.Sprintf("Error waiting for WebDriverAgent go-ios command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
+		device.Logger.LogError("webdriveragent", fmt.Sprintf("Error waiting for WebDriverAgent go-ios command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }

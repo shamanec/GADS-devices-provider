@@ -5,6 +5,7 @@ import (
 
 	"github.com/danielpaulus/go-ios/ios"
 	"github.com/shamanec/GADS-devices-provider/models"
+	"github.com/shamanec/GADS-devices-provider/util"
 )
 
 type LocalDevice struct {
@@ -15,4 +16,5 @@ type LocalDevice struct {
 	CtxCancel        context.CancelFunc
 	GoIOSDeviceEntry ios.DeviceEntry
 	IsResetting      bool
+	Logger           util.CustomLogger
 }

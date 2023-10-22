@@ -10,9 +10,7 @@ import (
 )
 
 // Check if a device is healthy by checking Appium and WebDriverAgent(for iOS) services
-func GetDeviceHealth(udid string) (bool, error) {
-	device := DeviceMap[udid]
-
+func (device *LocalDevice) GetDeviceHealth() (bool, error) {
 	allGood := false
 	allGood, err := device.appiumHealthy()
 	if err != nil {
