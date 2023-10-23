@@ -309,7 +309,7 @@ func iOSDevicesInConfig() bool {
 func (device *LocalDevice) resetLocalDevice() {
 
 	if !device.IsResetting {
-		util.ProviderLogger.LogDebug("provider", fmt.Sprintf("Resetting LocalDevice for device `%v` after error. Cancelling context, setting ProviderState to `init`, Healthy to `false` and updating the DB", device.Device.UDID))
+		util.ProviderLogger.LogInfo("provider", fmt.Sprintf("Resetting LocalDevice for device `%v` after error. Cancelling context, setting ProviderState to `init`, Healthy to `false` and updating the DB", device.Device.UDID))
 
 		device.IsResetting = true
 		device.CtxCancel()
