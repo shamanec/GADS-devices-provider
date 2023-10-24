@@ -196,7 +196,7 @@ func (device *LocalDevice) setupIOSDevice() {
 	// Start a goroutine that periodically checks if the WebDriverAgent server is up
 	go device.updateDeviceHealthStatus()
 
-	// Mark the device as 'live' and update it in RethinkDB
+	// Mark the device as 'live'
 	device.ProviderState = "live"
 }
 

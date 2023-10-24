@@ -1,30 +1,25 @@
 package device
 
 import (
-	"errors"
+	"fmt"
 
-	"github.com/danielpaulus/go-ios/ios"
 	"github.com/danielpaulus/go-ios/ios/zipconduit"
-	log "github.com/sirupsen/logrus"
+	"github.com/shamanec/GADS-devices-provider/util"
 )
 
-func InstallAppWithDevice(device ios.DeviceEntry, fileName string) error {
+func (device *LocalDevice) InstallAppWithDevice(fileName string) error {
 	filePath := "./apps/" + fileName
 
-	conn, err := zipconduit.New(device)
+	util.ProviderLogger.LogInfo("ios_device", fmt.Sprintf("Installing app `%s` on iOS device `%s`", filePath, device.Device.UDID))
+
+	conn, err := zipconduit.New(device.GoIOSDeviceEntry)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "install_app",
-		}).Error("Could not create zipconduit when installing app. Error: " + err.Error())
-		return errors.New("Failed installing application:" + err.Error())
+		return fmt.Errorf("Failed creating zip conduit with go-ios - %s", err)
 	}
 
 	err = conn.SendFile(filePath)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "install_app",
-		}).Error("Could not install app. Error: " + err.Error())
-		return errors.New("Failed installing application:" + err.Error())
+		return fmt.Errorf("Failed installing application with go-ios - %s", err)
 	}
 	return nil
 }

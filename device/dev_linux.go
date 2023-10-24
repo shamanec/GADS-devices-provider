@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/shamanec/GADS-devices-provider/util"
-	log "github.com/sirupsen/logrus"
 )
 
 func updateDevicesLinux() {
@@ -70,8 +69,6 @@ func (device *LocalDevice) setupIOSDeviceGoIOS() {
 	util.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Running setup for device `%v`", device.Device.UDID))
 
 	// Get go-ios device entry for pairing/mounting images
-	// Mounting currently unused, images are mounted automatically through Xcode device setup
-	// Pairing currently unused, TODO after go-ios supports iOS >=17
 	device.getGoIOSDevice()
 
 	// Get a free port on the host for WebDriverAgent server
@@ -96,10 +93,26 @@ func (device *LocalDevice) setupIOSDeviceGoIOS() {
 	go device.goIOSForward(device.Device.WDAPort, "8100")
 	go device.goIOSForward(device.Device.StreamPort, "9100")
 
-	device.pairIOS()
-	device.mountDeveloperImageIOS()
+	err = device.pairIOS()
+	if err != nil {
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not pair iOS device `%s` - %s", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
 
-	InstallAppWithDevice(device.GoIOSDeviceEntry, "WebDriverAgent.ipa")
+	err = device.mountDeveloperImageIOS()
+	if err != nil {
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not mount developer disk images on iOS device `%s` - %s", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
+
+	err = device.InstallAppWithDevice("WebDriverAgent.ipa")
+	if err != nil {
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not install WebDriverAgent on iOS device `%s` - %s", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
 
 	go device.startWdaWithGoIOS()
 
@@ -117,11 +130,7 @@ func (device *LocalDevice) setupIOSDeviceGoIOS() {
 	// Create a WebDriverAgent session and update the MJPEG stream settings
 	err = device.updateWebDriverAgent()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Error(fmt.Sprintf("Did not successfully create WebDriverAgent session or update its stream settings for device `%v` - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
-		return
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not update WebDriverAgent stream settings for iOS device `%s`, device setup will NOT be aborted - %s", device.Device.UDID, err))
 	}
 
 	go device.startAppium()
@@ -129,6 +138,6 @@ func (device *LocalDevice) setupIOSDeviceGoIOS() {
 	// Start a goroutine that periodically checks if the WebDriverAgent server is up
 	go device.updateDeviceHealthStatus()
 
-	// Mark the device as 'live' and update it in RethinkDB
+	// Mark the device as 'live'
 	device.ProviderState = "live"
 }

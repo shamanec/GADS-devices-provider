@@ -290,37 +290,33 @@ func (device *LocalDevice) mountDeveloperImageIOS() error {
 	var err error
 	path, err := imagemounter.DownloadImageFor(device.GoIOSDeviceEntry, basedir)
 	if err != nil {
-		return err
+		return fmt.Errorf("Could not download developer disk image with go-ios - %s", err)
 	}
 
 	err = imagemounter.MountImage(device.GoIOSDeviceEntry, path)
 	if err != nil {
-		return err
+		return fmt.Errorf("Could not mount developer disk image with go-ios - %s", err)
 	}
 
 	return nil
 }
 
 func (device *LocalDevice) pairIOS() error {
-	log.WithFields(log.Fields{
-		"event": "ios_device_setup",
-	}).Debug("Pairing iOS device - " + device.Device.UDID)
+	util.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Pairing iOS device `%s`", device.Device.UDID))
 
 	p12, err := os.ReadFile("./config/supervision.p12")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Warn(fmt.Sprintf("Could not read /opt/supervision.p12 file when pairing device with UDID: %s, falling back to unsupervised pairing, err:%s", device.Device.UDID, err))
+		util.ProviderLogger.LogWarn("ios_device_setup", fmt.Sprintf("Could not read /opt/supervision.p12 file when pairing device with UDID: %s, falling back to unsupervised pairing - %s", device.Device.UDID, err))
 		err = ios.Pair(device.GoIOSDeviceEntry)
 		if err != nil {
-			return errors.New("Could not pair successfully, err:" + err.Error())
+			return fmt.Errorf("Could not perform unsupervised pairing successfully - %s", err))
 		}
 		return nil
 	}
 
 	err = ios.PairSupervised(device.GoIOSDeviceEntry, p12, util.Config.EnvConfig.SupervisionPassword)
 	if err != nil {
-		return errors.New("Could not pair successfully, err:" + err.Error())
+		return fmt.Errorf("Could not perform supervised pairing successfully - %s", err))
 	}
 
 	return nil
