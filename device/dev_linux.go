@@ -16,7 +16,6 @@ func updateDevicesLinux() {
 	}
 
 	androidDevicesInConfig := androidDevicesInConfig()
-
 	if androidDevicesInConfig {
 		if !adbAvailable() {
 			util.ProviderLogger.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
@@ -95,21 +94,21 @@ func (device *LocalDevice) setupIOSDeviceGoIOS() {
 
 	err = device.pairIOS()
 	if err != nil {
-		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not pair iOS device `%s` - %s", device.Device.UDID, err))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not pair device `%s` - %s", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
 
 	err = device.mountDeveloperImageIOS()
 	if err != nil {
-		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not mount developer disk images on iOS device `%s` - %s", device.Device.UDID, err))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not mount developer disk images on device `%s` - %s", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
 
 	err = device.InstallAppWithDevice("WebDriverAgent.ipa")
 	if err != nil {
-		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not install WebDriverAgent on iOS device `%s` - %s", device.Device.UDID, err))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not install WebDriverAgent on device `%s` - %s", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -130,7 +129,7 @@ func (device *LocalDevice) setupIOSDeviceGoIOS() {
 	// Create a WebDriverAgent session and update the MJPEG stream settings
 	err = device.updateWebDriverAgent()
 	if err != nil {
-		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not update WebDriverAgent stream settings for iOS device `%s`, device setup will NOT be aborted - %s", device.Device.UDID, err))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not update WebDriverAgent stream settings for device `%s`, device setup will NOT be aborted - %s", device.Device.UDID, err))
 	}
 
 	go device.startAppium()

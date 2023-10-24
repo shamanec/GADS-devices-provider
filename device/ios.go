@@ -124,7 +124,7 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		device.Logger.LogInfo("webdriveragent", strings.TrimSpace(line))
+		// device.Logger.LogInfo("webdriveragent", strings.TrimSpace(line))
 
 		if strings.Contains(line, "Restarting after") {
 			device.resetLocalDevice()
@@ -138,7 +138,7 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 	}
 
 	if err := cmd.Wait(); err != nil {
-		device.Logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Error waiting for WebDriverAgent xcodebuild command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
+		device.Logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Error waiting for WebDriverAgent(xcodebuild) command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }
@@ -269,7 +269,7 @@ func (device *LocalDevice) startWdaWithGoIOS() {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		device.Logger.LogDebug("webdriveragent", strings.TrimSpace(line))
+		// device.Logger.LogDebug("webdriveragent", strings.TrimSpace(line))
 
 		if strings.Contains(line, "ServerURLHere") {
 			// device.DeviceIP = strings.Split(strings.Split(line, "//")[1], ":")[0]
@@ -278,7 +278,7 @@ func (device *LocalDevice) startWdaWithGoIOS() {
 	}
 
 	if err := cmd.Wait(); err != nil {
-		device.Logger.LogError("webdriveragent", fmt.Sprintf("Error waiting for WebDriverAgent go-ios command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
+		device.Logger.LogError("webdriveragent", fmt.Sprintf("Error waiting for WebDriverAgen(go-ios) command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }
@@ -302,21 +302,21 @@ func (device *LocalDevice) mountDeveloperImageIOS() error {
 }
 
 func (device *LocalDevice) pairIOS() error {
-	util.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Pairing iOS device `%s`", device.Device.UDID))
+	util.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Pairing device `%s`", device.Device.UDID))
 
 	p12, err := os.ReadFile("./config/supervision.p12")
 	if err != nil {
 		util.ProviderLogger.LogWarn("ios_device_setup", fmt.Sprintf("Could not read /opt/supervision.p12 file when pairing device with UDID: %s, falling back to unsupervised pairing - %s", device.Device.UDID, err))
 		err = ios.Pair(device.GoIOSDeviceEntry)
 		if err != nil {
-			return fmt.Errorf("Could not perform unsupervised pairing successfully - %s", err))
+			return fmt.Errorf("Could not perform unsupervised pairing successfully - %s", err)
 		}
 		return nil
 	}
 
 	err = ios.PairSupervised(device.GoIOSDeviceEntry, p12, util.Config.EnvConfig.SupervisionPassword)
 	if err != nil {
-		return fmt.Errorf("Could not perform supervised pairing successfully - %s", err))
+		return fmt.Errorf("Could not perform supervised pairing successfully - %s", err)
 	}
 
 	return nil
