@@ -15,14 +15,12 @@ import (
 
 	"github.com/danielpaulus/go-ios/ios"
 	"github.com/shamanec/GADS-devices-provider/util"
-	log "github.com/sirupsen/logrus"
 )
 
 var netClient = &http.Client{
 	Timeout: time.Second * 120,
 }
 var localDevices []*LocalDevice
-
 var DeviceMap = make(map[string]*LocalDevice)
 
 func UpdateDevices() {
@@ -52,8 +50,6 @@ func createDeviceMap() {
 	}
 }
 
-// DEVICES SETUP
-
 // Read the devices from Config and create a new slice with "upgraded" LocalDevices that contain fields just for the local setup
 func getLocalDevices() {
 	for _, device := range util.Config.Devices {
@@ -70,7 +66,10 @@ func getLocalDevices() {
 
 		// Create logs directory for each device if it doesn't already exist
 		if _, err := os.Stat("./logs/device_" + device.UDID); os.IsNotExist(err) {
-			os.Mkdir("./logs/device_"+device.UDID, os.ModePerm)
+			err = os.Mkdir("./logs/device_"+device.UDID, os.ModePerm)
+			if err != nil {
+				panic(fmt.Sprintf("Could not create logs folder for device `%s` - %s\n", device.UDID, err))
+			}
 		}
 
 		logger, err := util.CreateCustomLogger("./logs/device_"+device.UDID+"/device.log", device.UDID)
@@ -88,15 +87,14 @@ func (device *LocalDevice) setupAndroidDevice() {
 
 	isStreamAvailable, err := device.isGadsStreamServiceRunning()
 	if err != nil {
-		util.ProviderLogger.LogError("provider", fmt.Sprintf("Could not check if GADS-stream is running on device `%v` - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not check if GADS-stream is running on device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
 
-	// Get a free port on the host for WebDriverAgent server
 	streamPort, err := util.GetFreePort()
 	if err != nil {
-		util.ProviderLogger.LogError("provider", fmt.Sprintf("Could not allocate free host port for GADS-stream for device `%v` - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not allocate free host port for GADS-stream for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -145,7 +143,6 @@ func (device *LocalDevice) setupIOSDevice() {
 	// Get go-ios device entry for pairing/mounting images
 	device.getGoIOSDevice()
 
-	// Get a free port on the host for WebDriverAgent server
 	wdaPort, err := util.GetFreePort()
 	if err != nil {
 		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent port for device `%v` - %v", device.Device.UDID, err))
@@ -154,7 +151,6 @@ func (device *LocalDevice) setupIOSDevice() {
 	}
 	device.Device.WDAPort = fmt.Sprint(wdaPort)
 
-	// Get a free port on the host for WebDriverAgent stream
 	streamPort, err := util.GetFreePort()
 	if err != nil {
 		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent stream port for device `%v` - %v", device.Device.UDID, err))
@@ -184,9 +180,7 @@ func (device *LocalDevice) setupIOSDevice() {
 	// Create a WebDriverAgent session and update the MJPEG stream settings
 	err = device.updateWebDriverAgent()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Error(fmt.Sprintf("Did not successfully create WebDriverAgent session or update its stream settings for device `%v` - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Did not successfully create WebDriverAgent session or update its stream settings for device `%v` - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 		return
 	}
@@ -200,14 +194,8 @@ func (device *LocalDevice) setupIOSDevice() {
 	device.ProviderState = "live"
 }
 
-// COMMON
-
 // Gets all connected iOS and Android devices to the host
 func getConnectedDevicesCommon(ios bool, android bool) []string {
-	log.WithFields(log.Fields{
-		"event": "provider",
-	}).Debug("Getting connected devices to host")
-
 	connectedDevices := []string{}
 
 	androidDevices := []string{}
@@ -233,9 +221,7 @@ func getConnectedDevicesIOS() []string {
 
 	deviceList, err := ios.ListDevices()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "provider",
-		}).Warn("Could not get connected iOS devices with `go-ios` library, returning empty slice - " + err.Error())
+		util.ProviderLogger.LogDebug("provider", fmt.Sprintf("Could not get connected iOS devices with `go-ios` library, returning empty slice - %s", err))
 		return connectedDevices
 	}
 
@@ -255,16 +241,12 @@ func getConnectedDevicesAndroid() []string {
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "provider",
-		}).Debug("Could not get connected Android devices with `adb`, creating exec cmd StdoutPipe failed, returning empty slice - " + err.Error())
+		util.ProviderLogger.LogDebug("provider", fmt.Sprintf("Could not get connected Android devices with `adb`, creating exec cmd StdoutPipe failed, returning empty slice - %s", err))
 		return connectedDevices
 	}
 
 	if err := cmd.Start(); err != nil {
-		log.WithFields(log.Fields{
-			"event": "provider",
-		}).Debug("Could not get connected Android devices with `adb`, starting command failed, returning empty slice - " + err.Error())
+		util.ProviderLogger.LogDebug("provider", fmt.Sprintf("Could not get connected Android devices with `adb`, starting command failed, returning empty slice - %s", err))
 		return connectedDevices
 	}
 
@@ -280,9 +262,7 @@ func getConnectedDevicesAndroid() []string {
 
 	// Wait for the command to finish
 	if err := cmd.Wait(); err != nil {
-		log.WithFields(log.Fields{
-			"event": "provider",
-		}).Debug("Could not get connected Android devices with `adb`, waiting for command to finish failed, returning empty slice - " + err.Error())
+		util.ProviderLogger.LogDebug("provider", fmt.Sprintf("Could not get connected Android devices with `adb`, waiting for command to finish failed, returning empty slice - %s", err))
 		return []string{}
 	}
 	return connectedDevices
@@ -326,8 +306,6 @@ func (device *LocalDevice) setContext() {
 	device.CtxCancel = cancelFunc
 	device.Context = ctx
 }
-
-// HEALTH
 
 // Loops checking if the Appium/WebDriverAgent servers for the device are alive and updates the DB each time
 func (device *LocalDevice) updateDeviceHealthStatus() {
@@ -373,8 +351,6 @@ func (device *LocalDevice) checkDeviceHealthStatus() {
 	device.Device.LastHealthyTimestamp = time.Now().UnixMilli()
 	device.Device.Healthy = true
 }
-
-// APPIUM
 
 type appiumCapabilities struct {
 	UDID                  string `json:"appium:udid"`

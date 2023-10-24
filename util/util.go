@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -20,9 +21,6 @@ var usedPorts = make(map[int]bool)
 func ConvertToJSONString(data interface{}) (string, error) {
 	b, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "convert_interface_to_json",
-		}).Error("Could not marshal interface to json: " + err.Error())
 		return "", err
 	}
 	return string(b), nil
@@ -44,12 +42,12 @@ func SetupConfig() {
 	var err error
 	ProjectDir, err = os.Getwd()
 	if err != nil {
-		panic("Could not get project dir with os.Getwd() - " + err.Error())
+		panic(fmt.Sprintf("Could not get project dir with os.Getwd() - %s", err))
 	}
 
 	err = getConfigJsonData()
 	if err != nil {
-		panic(("Could not get config data from config.json - " + err.Error()))
+		panic(fmt.Sprintf("Could not get config data from config.json - %s", err))
 	}
 }
 
@@ -82,9 +80,6 @@ func getConfigJsonData() error {
 
 	err = json.Unmarshal(bs, &Config)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_config_data",
-		}).Error("Could not unmarshal config file: " + err.Error())
 		return err
 	}
 

@@ -16,7 +16,6 @@ import (
 	"github.com/danielpaulus/go-ios/ios"
 	"github.com/danielpaulus/go-ios/ios/imagemounter"
 	"github.com/shamanec/GADS-devices-provider/util"
-	log "github.com/sirupsen/logrus"
 )
 
 // Check if xcodebuild is available on the host by checking its version
@@ -147,9 +146,7 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 func (device *LocalDevice) getGoIOSDevice() {
 	goIosDevice, err := ios.GetDevice(device.Device.UDID)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "ios_device_setup",
-		}).Error(fmt.Sprintf("Could not get `go-ios` DeviceEntry for device - %v, err - %v", device.Device.UDID, err))
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not get `go-ios` DeviceEntry for device - %v, err - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 
