@@ -16,9 +16,7 @@
   * Taking high quality screenshots - useful since the stream quality is reduced to increase fps
 * Appium test execution - each device has its own Appium server running which is exposed on a provider endpoint for easier access
 * Linux
-  * Supports both Android and iOS
-  * Automatically spins up/down Docker containers when device is connected/disconnected. Each device is mounted in isolation to its respective container.
-  * Can run iOS Appium tests on cheap hardware on bigger scale with only one host machine due to the containerization. Currently does not support iOS >= 17 until a suitable solution for Linux is found.
+  * Supports both Android and iOS < 17
   * Has some limitations to Appium execution with iOS devices due to actual Xcode tools being unavailable on Linux
 * macOS
   * Supports both Android and iOS
