@@ -11,57 +11,12 @@ import (
 
 // Check if a device is healthy by checking Appium and WebDriverAgent(for iOS) services
 func (device *LocalDevice) GetDeviceHealth() (bool, error) {
-	allGood := false
-	allGood, err := device.appiumHealthy()
+	err := device.checkAppiumSession()
 	if err != nil {
 		return false, err
 	}
 
-	if allGood {
-		err = device.checkAppiumSession()
-		if err != nil {
-			return false, err
-		}
-	}
-
-	if device.Device.OS == "ios" {
-		allGood, err = device.wdaHealthy()
-		if err != nil {
-			return false, err
-		}
-	}
-
-	return allGood, nil
-}
-
-// Check if the Appium server for a device is up
-func (device *LocalDevice) appiumHealthy() (bool, error) {
-	response, err := http.Get("http://localhost:" + device.Device.AppiumPort + "/status")
-	if err != nil {
-		return false, err
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != 200 {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-// Check if the WebDriverAgent server for an iOS device is up
-func (device *LocalDevice) wdaHealthy() (bool, error) {
-	response, err := http.Get("http://localhost:" + device.Device.WDAPort + "/status")
-	if err != nil {
-		return false, err
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != 200 {
-		return false, nil
-	}
-
-	return true, nil
+	return device.Device.Connected, nil
 }
 
 func (device *LocalDevice) checkAppiumSession() error {

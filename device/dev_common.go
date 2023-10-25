@@ -294,7 +294,6 @@ func (device *LocalDevice) resetLocalDevice() {
 		device.IsResetting = true
 		device.CtxCancel()
 		device.ProviderState = "init"
-		device.Device.Healthy = false
 		device.IsResetting = false
 	}
 
@@ -309,7 +308,7 @@ func (device *LocalDevice) setContext() {
 
 // Loops checking if the Appium/WebDriverAgent servers for the device are alive and updates the DB each time
 func (device *LocalDevice) updateDeviceHealthStatus() {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
 	util.ProviderLogger.LogInfo("device_setup", fmt.Sprintf("Started health status check for device `%v`", device.Device.UDID))
@@ -317,39 +316,11 @@ func (device *LocalDevice) updateDeviceHealthStatus() {
 	for {
 		select {
 		case <-ticker.C:
-			device.checkDeviceHealthStatus()
+			device.checkAppiumSession()
 		case <-device.Context.Done():
 			return
 		}
 	}
-}
-
-// Checks Appium/WebDriverAgent servers are alive for the respective device
-// Also updates Appium/WebDriverAgent sessions
-// TODO - Currently unfinished, does not really check Appium for iOS/Android right now. Need to check if it can be unified with the health status endpoint code
-func (device *LocalDevice) checkDeviceHealthStatus() {
-	allGood := false
-	allGood, err := device.appiumHealthy()
-	if err != nil {
-		device.Device.Healthy = false
-	}
-
-	if allGood {
-		err = device.checkAppiumSession()
-		if err != nil {
-			device.Device.Healthy = false
-		}
-	}
-
-	if device.Device.OS == "ios" {
-		allGood, err = device.wdaHealthy()
-		if err != nil {
-			device.Device.Healthy = false
-		}
-	}
-
-	device.Device.LastHealthyTimestamp = time.Now().UnixMilli()
-	device.Device.Healthy = true
 }
 
 type appiumCapabilities struct {
