@@ -134,9 +134,6 @@ func (device *LocalDevice) setupIOSDeviceGoIOS() {
 
 	go device.startAppium()
 
-	// Start a goroutine that periodically checks if the WebDriverAgent server is up
-	go device.updateDeviceHealthStatus()
-
 	// Mark the device as 'live'
 	device.ProviderState = "live"
 }

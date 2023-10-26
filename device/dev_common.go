@@ -133,7 +133,6 @@ func (device *LocalDevice) setupAndroidDevice() {
 	}
 
 	go device.startAppium()
-	go device.updateDeviceHealthStatus()
 }
 
 func (device *LocalDevice) setupIOSDevice() {
@@ -186,9 +185,6 @@ func (device *LocalDevice) setupIOSDevice() {
 	}
 
 	go device.startAppium()
-
-	// Start a goroutine that periodically checks if the WebDriverAgent server is up
-	go device.updateDeviceHealthStatus()
 
 	// Mark the device as 'live'
 	device.ProviderState = "live"
@@ -306,23 +302,6 @@ func (device *LocalDevice) setContext() {
 	device.Context = ctx
 }
 
-// Loops checking if the Appium/WebDriverAgent servers for the device are alive and updates the DB each time
-func (device *LocalDevice) updateDeviceHealthStatus() {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	util.ProviderLogger.LogInfo("device_setup", fmt.Sprintf("Started health status check for device `%v`", device.Device.UDID))
-
-	for {
-		select {
-		case <-ticker.C:
-			device.checkAppiumSession()
-		case <-device.Context.Done():
-			return
-		}
-	}
-}
-
 type appiumCapabilities struct {
 	UDID                  string `json:"appium:udid"`
 	WdaMjpegPort          string `json:"appium:mjpegServerPort,omitempty"`
@@ -386,7 +365,7 @@ func (device *LocalDevice) startAppium() {
 	}
 	device.Device.AppiumPort = fmt.Sprint(appiumPort)
 
-	cmd := exec.CommandContext(device.Context, "appium", "-p", device.Device.AppiumPort, "--log-timestamp", "--allow-cors", "--default-capabilities", string(capabilitiesJson))
+	cmd := exec.CommandContext(device.Context, "appium", "-p", device.Device.AppiumPort, "--log-timestamp", "--allow-cors", "--session-override", "--default-capabilities", string(capabilitiesJson))
 
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
