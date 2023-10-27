@@ -1,116 +1,108 @@
 package device
 
 import (
+	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/shamanec/GADS-devices-provider/util"
-	log "github.com/sirupsen/logrus"
-	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var session *r.Session
+// Update all devices data in Mongo each second
+func updateDevicesMongo() {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 
-// Create a new connection to the DB
-func newDBConn() {
-	var err error = nil
-	session, err = r.Connect(r.ConnectOpts{
-		Address:  Config.EnvConfig.RethinkDB,
-		Database: "gads",
-	})
-
-	if err != nil {
-		panic("Could not make initial connection to RethinkDB on " + Config.EnvConfig.RethinkDB + ", make sure it is set up and running: " + err.Error())
-	}
-
-	go checkDBConnection()
-}
-
-// Check if the DB connection is alive and attempt to reconnect if not
-func checkDBConnection() {
 	for {
-		if !session.IsConnected() {
-			err := session.Reconnect()
-			if err != nil {
-				panic("DB is not connected and could not reestablish connection: " + err.Error())
-			}
-		}
-		time.Sleep(2 * time.Second)
+		<-ticker.C
+		upsertDevicesMongo()
 	}
 }
 
-// Insert/update the registered devices from config.json to the DB
-// when starting the provider
-func insertDevicesDB() error {
-	for _, device := range Config.Devices {
-		// Check if data for the device by UDID already exists in the table
-		cursor, err := r.Table("devices").Get(device.UDID).Run(session)
-		if err != nil {
-			return err
+// Upsert all devices data in Mongo
+func upsertDevicesMongo() {
+	for _, device := range localDevices {
+		filter := bson.M{"_id": device.Device.UDID}
+		update := bson.M{
+			"$set": device.Device,
 		}
+		opts := options.Update().SetUpsert(true)
 
-		// If there is no data for the device with this UDID
-		// Insert the data into the table
-		if cursor.IsNil() {
-			err = r.Table("devices").Insert(device).Exec(session)
-			if err != nil {
-				log.WithFields(log.Fields{
-					"event": "insert_db",
-				}).Error("Inserting device in DB failed: " + err.Error())
-			}
+		_, err := util.MongoClient().Database("gads").Collection("devices").UpdateOne(util.MongoCtx(), filter, update, opts)
+
+		if err != nil {
+			util.ProviderLogger.LogError("provider", "Failed inserting device data in Mongo - "+err.Error())
+		}
+	}
+}
+
+func createMongoLogCollectionsForAllDevices() {
+	ctx, cancel := context.WithTimeout(util.MongoCtx(), 10*time.Second)
+	defer cancel()
+
+	db := util.MongoClient().Database("logs")
+	collections, err := db.ListCollectionNames(ctx, bson.M{})
+	if err != nil {
+		panic(fmt.Sprintf("Could not get the list of collection names in the `logs` database in Mongo - %s\n", err))
+	}
+
+	// Loop through the devices from the config
+	// And create a collection for each device that doesn't already have one
+	for _, device := range localDevices {
+		if slices.Contains(collections, device.Device.UDID) {
 			continue
 		}
-		cursor.Close()
+		// Create capped collection options with limit of documents or 20 mb size limit
+		// Seems reasonable for now, I have no idea what is a proper amount
+		collectionOptions := options.CreateCollection()
+		collectionOptions.SetCapped(true)
+		collectionOptions.SetMaxDocuments(30000)
+		collectionOptions.SetSizeInBytes(20 * 1024 * 1024)
 
-		// If data for the device with this UDID exists in the DB
-		// Update it with the latest info
-		device.updateDB()
-	}
-
-	return nil
-}
-
-// Update the respective device document in the DB
-func (device *Device) updateDB() {
-	err := r.Table("devices").Update(device).Exec(session)
-	if err != nil {
-		util.LogError("update_db", fmt.Sprintf("Updating device `%v` in DB failed - %v", device.UDID, err))
-	}
-}
-
-// Loop through the registered devices and update the health status in the DB for each device each second
-func devicesHealthCheck() {
-	for {
-		for _, device := range Config.Devices {
-			if device.Connected {
-				go device.updateHealthStatusDB()
-			}
+		// Create the actual collection
+		err = db.CreateCollection(ctx, device.Device.UDID, collectionOptions)
+		if err != nil {
+			panic(fmt.Sprintf("Could not create collection for device `%s` - %s\n", device.Device.UDID, err))
 		}
-		time.Sleep(1 * time.Second)
+
+		// Define an index for queries based on timestamp in ascending order
+		indexModel := mongo.IndexModel{
+			Keys: bson.M{"timestamp": 1},
+		}
+
+		// Add the index on the respective device collection
+		_, err = db.Collection(device.Device.UDID).Indexes().CreateOne(ctx, indexModel)
+		if err != nil {
+			panic(fmt.Sprintf("Could not add index on a capped collection for device `%s` - %s\n", device.Device.UDID, err))
+		}
 	}
 }
 
-// Check Appium and WDA(for iOS) status and update the device health in DB
-func (device *Device) updateHealthStatusDB() {
-	allGood := false
-	appiumGood := false
-	wdaGood := true
-
-	appiumGood, _ = device.appiumHealthy()
-
-	if appiumGood && device.OS == "ios" {
-		wdaGood, _ = device.wdaHealthy()
+func createCappedCollection(dbName, collectionName string, maxDocuments, mb int64) {
+	db := util.MongoClient().Database(dbName)
+	collections, err := db.ListCollectionNames(context.Background(), bson.M{})
+	if err != nil {
+		panic(fmt.Sprintf("Could not get the list of collection names in the `%s` database in Mongo - %s\n", dbName, err))
 	}
 
-	allGood = appiumGood && wdaGood
+	if slices.Contains(collections, collectionName) {
+		return
+	}
 
-	if allGood {
-		device.LastHealthyTimestamp = time.Now().UnixMilli()
-		device.Healthy = true
-		device.updateDB()
+	// Create capped collection options with limit of documents or 20 mb size limit
+	// Seems reasonable for now, I have no idea what is a proper amount
+	collectionOptions := options.CreateCollection()
+	collectionOptions.SetCapped(true)
+	collectionOptions.SetMaxDocuments(maxDocuments)
+	collectionOptions.SetSizeInBytes(mb * 1024 * 1024)
 
-	} else {
-		device.Healthy = false
-		device.updateDB()
+	// Create the actual collection
+	err = db.CreateCollection(util.MongoCtx(), collectionName, collectionOptions)
+	if err != nil {
+		panic(fmt.Sprintf("Could not create collection `%s` - %s\n", collectionName, err))
 	}
 }

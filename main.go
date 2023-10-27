@@ -11,19 +11,21 @@ import (
 )
 
 func main() {
-	util.SetLogging()
 
 	port_flag := flag.String("port", "10001", "The port to run the server on")
+	log_level := flag.String("log_level", "info", "The log level of the provider app - debug, info or error")
 	flag.Parse()
-	fmt.Printf("Starting provider on port:%v\n", *port_flag)
 
-	// Parse config.json, get the connected devices and updated the DB with the initial data
-	err := device.SetupConfig()
-	if err != nil {
-		fmt.Println("Initial config setup failed: " + err.Error())
-	}
+	util.SetupConfig()
+	util.InitMongoClient()
+	defer util.CloseMongoConn()
 
-	// Start a goroutine that will update devices on provider start and when there are events in /dev(device connected/disconnected)
+	util.SetupLogging(*log_level)
+	util.UpsertProviderMongo()
+
+	util.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", *port_flag))
+
+	// Start a goroutine that will update devices on provider start
 	go device.UpdateDevices()
 
 	// Handle the endpoints

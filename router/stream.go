@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -11,7 +12,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
+	"github.com/gobwas/ws"
+	"github.com/gobwas/ws/wsutil"
 	"github.com/shamanec/GADS-devices-provider/device"
 )
 
@@ -19,15 +21,15 @@ func AndroidStreamProxy(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.DeviceMap[udid]
 
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
 	if err != nil {
-		log.Println("WebSocket upgrade error:", err)
-		return
+		fmt.Println(err)
 	}
+
 	defer conn.Close()
 
-	u := url.URL{Scheme: "ws", Host: "localhost:" + device.StreamPort, Path: ""}
-	destConn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	u := url.URL{Scheme: "ws", Host: "localhost:" + device.Device.StreamPort, Path: ""}
+	destConn, _, _, err := ws.DefaultDialer.Dial(context.Background(), u.String())
 	if err != nil {
 		log.Println("Destination WebSocket connection error:", err)
 		return
@@ -38,28 +40,26 @@ func AndroidStreamProxy(c *gin.Context) {
 	go func() {
 		defer close(done)
 		for {
-			messageType, p, err := destConn.ReadMessage()
+			data, code, err := wsutil.ReadServerData(destConn)
 			if err != nil {
-				log.Println("Destination read error:", err)
 				return
 			}
-			err = conn.WriteMessage(messageType, p)
+
+			err = wsutil.WriteServerMessage(conn, code, data)
 			if err != nil {
-				log.Println("Proxy write error:", err)
 				return
 			}
 		}
 	}()
 
 	for {
-		messageType, p, err := conn.ReadMessage()
+		data, code, err := wsutil.ReadClientData(conn)
 		if err != nil {
-			log.Println("Proxy read error:", err)
 			return
 		}
-		err = destConn.WriteMessage(messageType, p)
+
+		err = wsutil.WriteServerMessage(destConn, code, data)
 		if err != nil {
-			log.Println("Destination write error:", err)
 			return
 		}
 	}
@@ -69,14 +69,13 @@ func IosStreamProxy(c *gin.Context) {
 	udid := c.Param("udid")
 	device := device.DeviceMap[udid]
 
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
 	if err != nil {
-		log.Println("WebSocket upgrade error:", err)
-		return
+		fmt.Println(err)
 	}
 	defer conn.Close()
 
-	url := "http://localhost:" + device.StreamPort
+	url := "http://localhost:" + device.Device.StreamPort
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -121,7 +120,7 @@ func IosStreamProxy(c *gin.Context) {
 			if err != nil {
 				break
 			}
-			conn.WriteMessage(websocket.BinaryMessage, jpg)
+			wsutil.WriteServerBinary(conn, jpg)
 		}
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"slices"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/shamanec/GADS-devices-provider/util"
 )
 
 func updateDevicesOSX() {
@@ -16,7 +16,7 @@ func updateDevicesOSX() {
 	}
 
 	if !xcodebuildAvailable() {
-		fmt.Println("xcodebuild is not available, you need to set up the host as explained in the readme")
+		util.ProviderLogger.LogError("provider", "xcodebuild is not available, you need to set up the host as explained in the readme")
 		os.Exit(1)
 	}
 
@@ -24,37 +24,39 @@ func updateDevicesOSX() {
 
 	if androidDevicesInConfig {
 		if !adbAvailable() {
+			util.ProviderLogger.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
 			fmt.Println("adb is not available, you need to set up the host as explained in the readme")
 			os.Exit(1)
 		}
 	}
 
-	_, err := os.Stat(Config.EnvConfig.WDAPath)
+	_, err := os.Stat(util.Config.EnvConfig.WDAPath)
 	if err != nil {
-		fmt.Println(Config.EnvConfig.WDAPath + " does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
+		util.ProviderLogger.LogError("provider", util.Config.EnvConfig.WDAPath+" does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
+		fmt.Println(util.Config.EnvConfig.WDAPath + " does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
 		os.Exit(1)
 	}
 
 	err = buildWebDriverAgent()
 	if err != nil {
+		util.ProviderLogger.LogError("provider", fmt.Sprintf("Could not successfully build WebDriverAgent for testing - %s", err))
 		fmt.Println("Could not successfully build WebDriverAgent for testing - " + err.Error())
 		os.Exit(1)
 	}
 
-	getLocalDevices()
 	removeAdbForwardedPorts()
 
 	for {
 		connectedDevices := getConnectedDevicesCommon(true, androidDevicesInConfig)
 
 		if len(connectedDevices) == 0 {
-			log.WithFields(log.Fields{
-				"event": "update_devices",
-			}).Info("No devices connected")
+			util.ProviderLogger.LogDebug("provider", "No devices connected")
 
 			for _, device := range localDevices {
-				device.Device.Connected = false
-				device.resetLocalDevice()
+				if device.Device.Connected {
+					device.Device.Connected = false
+					device.resetLocalDevice()
+				}
 			}
 		} else {
 			for _, device := range localDevices {

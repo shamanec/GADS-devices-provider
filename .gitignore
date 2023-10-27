@@ -1,3 +1,3 @@
 logs/*
 GADS-devices-provider
-configs/supervision.p12
+config/supervision.p12
