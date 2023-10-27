@@ -99,7 +99,6 @@ func (device *LocalDevice) pressHomeButton() {
 	}
 }
 
-// Forward gads-stream socket to the host container
 func (device *LocalDevice) forwardGadsStream() error {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "forward", "tcp:"+device.Device.StreamPort, "tcp:1991")
 	util.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Forwarding GADS-stream port(1991) to host port `%v` for device `%v`", device.Device.StreamPort, device.Device.UDID))

@@ -53,9 +53,9 @@ func updateDevicesLinux() {
 				continue
 			} else {
 				if device.Device.Connected {
-					device.Device.Connected = false
 					device.resetLocalDevice()
 				}
+				device.Device.Connected = false
 			}
 		}
 		time.Sleep(10 * time.Second)

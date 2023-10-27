@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"sync"
 	"time"
 
 	"github.com/shamanec/GADS-devices-provider/util"
@@ -26,10 +25,6 @@ func updateDevicesMongo() {
 
 // Upsert all devices data in Mongo
 func upsertDevicesMongo() {
-	var mu sync.Mutex
-	mu.Lock()
-	defer mu.Unlock()
-
 	for _, device := range localDevices {
 		filter := bson.M{"_id": device.Device.UDID}
 		update := bson.M{
