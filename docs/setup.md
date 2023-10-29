@@ -1,5 +1,5 @@
 # Provider
-Currently the project assumes that GADS UI, RethinkDB and device providers are on the same network. They can all be on the same machine as well.  
+Currently the project assumes that [GADS UI](https://github.com/shamanec/GADS), MongoDB and device providers are on the same network. They can all be on the same machine as well.  
 The provider supports Linux, macOS and Windows  
 * Linux - iOS < 17, Android
 * macOS - iOS, Android
@@ -64,25 +64,25 @@ This can be used for remote development of iOS apps or execution of native XCUIT
 2. Anything else that might need Instruments and/or any other Xcode/OSX exclusive tools
 
 ## macOS
-### Xcode - iOS devices
+### Xcode - iOS only
 * Install latest stable Xcode release - for iOS 17 install latest beta release
 * Install command line tools with `xcode-select --install`
 
-### WebDriverAgent - iOS devices
+### WebDriverAgent - iOS only
 1. Download the latest release of [WebDriverAgent](https://github.com/appium/WebDriverAgent/releases)
 2. Unzip the source code in any folder.
 3. Open WebDriverAgent.xcodeproj in Xcode
 4. Select signing profiles for WebDriverAgentLib and WebDriverAgentRunner.
 5. Build the WebDriverAgent and run on a device at least once to validate it builds and runs as expected.
 
-### Set up go-ios - iOS devices
+### Set up go-ios - iOS only
 * Download the latest release of [go-ios](https://github.com/danielpaulus/go-ios) and unzip it
 * Add it to `/usr/local/bin` with `sudo cp ios /usr/local/bin`
 
-### Android debug bridge - Android devices
+### Android debug bridge - Android only
 * Install `adb` (Android debug bridge). It should be available in PATH so it can be directly accessed via Terminal
 
-### GADS Android stream - Android devices
+### GADS Android stream - Android only
 1. Download the latest release of [GADS-Android-stream](https://github.com/shamanec/GADS-Android-stream/releases)
 2. Unzip the `*.apk` file and put it in `apps` folder (in the GADS-devices-provider repo)
 
@@ -103,10 +103,10 @@ This can be used for remote development of iOS apps or execution of native XCUIT
     * Android deviecs - `appium install driver uiautomator2`
 * Add any additional Appium dependencies like `ANDROID_HOME`(Android SDK) environment variable, etc.
 
-### Android debug bridge
-* Install `adb` (Android debug bridge). It should be available in PATH so it can be directly accessed via CLI
+### Android debug bridge - Android only
+* Install `adb` (Android debug bridge). It should be available in PATH so it can be directly accessed via terminal
 
-### iTunes
+### iTunes - iOS only
 * Install `iTunes` to be able to provision iOS < 17 devices - NOT READY YET, CAN BE SKIPPED
 
 # Configuration JSON setup
@@ -114,7 +114,7 @@ The provider uses `config.json` located in `./config` folder for configuration. 
 
 ## Common
 ### Env config
-* Set `supervision_password` in `env-config` to the password for your supervised devices certificate - supervision setup can be found below.
+* Set `supervision_password` in `env-config` to the password for your supervised iOS devices certificate - supervision setup can be found below.
     * **NB** Only if you have supervised iOS devices, else you can skip this
 * Set `wda_bundle_id` in `env-config`. This is the bundleID used for the prebuilt WebDriverAgent, e.g. `com.shamanec.WebDriverAgentRunner.xctrunner`
     * **NB** Only if you have iOS devices running on Linux, Windows. On macOS the WebDriverAgent is started with `xcodebuild` so the bundleID is irrelevant
@@ -149,7 +149,7 @@ For each device set:
   * `udid` - UDID of the Android or iOS device
     * For Android can get it with `adb devices`
     * For iOS can get it with Xcode through `Devices & Simulator` or using `go-ios` or a similar tool (tidevice, gidevice, pymobiledevice3)
-  * `model` - device model to be displayed in [GADS](https://github.com/shamanec/GADS) device selection. 
+  * `model` - device model to be displayed in [GADS-UI](https://github.com/shamanec/GADS) device selection. 
 
 ## Linux
 There are no Linux specific configuration options at the moment
@@ -175,11 +175,11 @@ You need a paid Apple Developer account to build and sign `WebDriverAgent`. With
  `Example`: **/Users/<username>/Library/Developer/Xcode/DerivedData/WebDriverAgent-dzxbpamuepiwamhdbyvyfkbecyer/Build/Products/Debug-iphoneos**  
 6. Open `iOS App Signer`  
 7. Select `WebDriverAgentRunner-Runner.app`.  
-8. Generate the WDA *.ipa file.  
+8. Generate the WebDriverAgent *.ipa file.  
 
 **or zip it manually into an IPA yourself, I had some issues last time I did it :(**
 
-## Supervise the iOS devices - Linux, macOS, Windows
+## Supervise the iOS devices - Linux, macOS, ~Windows~
 This is a non-mandatory but a preferable step - it will reduce the needed device provisioning manual interactions
 
 1. Install Apple Configurator 2 on your Mac.
