@@ -70,7 +70,9 @@ func getLocalDevices() {
 		localDevice.Device.Provider = util.Config.EnvConfig.ProviderNickname
 		localDevices = append(localDevices, &localDevice)
 
-		localDevice.createGridTOML()
+		if util.Config.EnvConfig.UseSeleniumGrid {
+			localDevice.createGridTOML()
+		}
 
 		// Create logs directory for each device if it doesn't already exist
 		if _, err := os.Stat("./logs/device_" + device.UDID); os.IsNotExist(err) {
