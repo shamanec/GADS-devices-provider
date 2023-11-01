@@ -83,8 +83,7 @@ This can be used for remote development of iOS apps or execution of native XCUIT
 * Install `adb` (Android debug bridge). It should be available in PATH so it can be directly accessed via Terminal
 
 ### GADS Android stream - Android only
-1. Download the latest release of [GADS-Android-stream](https://github.com/shamanec/GADS-Android-stream/releases)
-2. Unzip the `*.apk` file and put it in `apps` folder (in the GADS-devices-provider repo)
+1. Starting the provider will automatically download the latests GADS-stream release and put the `apk` file in the `./apps` folder  
 
 ### Appium
 * Install Node > 16
@@ -120,9 +119,14 @@ The provider uses `config.json` located in `./config` folder for configuration. 
     * **NB** Only if you have iOS devices running on Linux, Windows. On macOS the WebDriverAgent is started with `xcodebuild` so the bundleID is irrelevant
 * Set `host_address` in `env-config` to the IP address of the provider machine, e.g. `192.168.1.6`
 * Set `mongo_db` in `env-config` to the IP address and port of the MongoDB instance on your network, e.g. `192.168.1.8:27017` if you followed the setup for MongoDB
-* ~Set `selenium_grid` in `env-config` to `true/false` if you want Selenium Grid connection established.~ - NOT working atm, leave to `false`
+* Set `use_selenium_grid` in `env-config` to `true/false` if you want Selenium Grid connection established.  
 
-### Appium config - currently hosts only Selenium Grid related data and that does NOT work
+#### Selenium Grid
+Devices can be automatically connected to Selenium Grid 4 instance. You need to create the Selenium Grid instance yourself and then setup the provider to connect to it.  
+To setup the provider download the latest Selenium server jar [release](https://github.com/SeleniumHQ/selenium/releases). Copy the downloaded jar and put it in the provider `./apps` folder.  
+Open the `config.json` file and in `env-config`:  
+* Set `selenium_jar` to the name of the jar you just pasted in `./apps`. Example: `selenium-server-4.14.0.jar`
+* Set `use_selenium_grid` in `env-config` to `true` and restart the provider. TOML files for each Appium server will be automatically created and used to connect nodes to the grid instance.  
 * Set `selenium_hub_host` to the IP address of the Selenium Grid instance  
 * Set `selenium_hub_port` to the port of the Selenium Grid instance  
 * Set `selenium_hub_protocol_type` to `http` or `https` depending on the Selenium Grid instance

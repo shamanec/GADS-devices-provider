@@ -133,6 +133,9 @@ func (device *LocalDevice) setupIOSDeviceGoIOS() {
 	}
 
 	go device.startAppium()
+	if util.Config.EnvConfig.UseSeleniumGrid {
+		go device.startGridNode()
+	}
 
 	// Mark the device as 'live'
 	device.ProviderState = "live"
