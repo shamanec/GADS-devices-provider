@@ -14,6 +14,6 @@ type EnvConfig struct {
 	MongoDB             string `json:"mongo_db" bson:"-"`
 	WDAPath             string `json:"wda_repo_path" bson:"-"`
 	ProviderNickname    string `json:"provider_nickname" bson:"-"`
-	SeleniumGridJar     string `json:"selenium_grid_jar" bson:"-"`
+	SeleniumJar         string `json:"selenium_jar" bson:"-"`
 	SeleniumGrid        string `json:"selenium_grid" bson:"selenium_grid"`
 }

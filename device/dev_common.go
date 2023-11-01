@@ -481,7 +481,7 @@ func (device *LocalDevice) createGridTOML() {
 
 func (device *LocalDevice) startGridNode() {
 	time.Sleep(5 * time.Second)
-	cmd := exec.CommandContext(device.Context, "java", "-jar", "./apps/"+util.Config.EnvConfig.SeleniumGridJar, "node", "--config", util.ProjectDir+"/config/"+device.Device.UDID+".toml", "--grid-url", util.Config.EnvConfig.SeleniumGrid)
+	cmd := exec.CommandContext(device.Context, "java", "-jar", "./apps/"+util.Config.EnvConfig.SeleniumJar, "node", "--config", util.ProjectDir+"/config/"+device.Device.UDID+".toml", "--grid-url", util.Config.EnvConfig.SeleniumGrid)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

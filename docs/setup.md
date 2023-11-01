@@ -125,7 +125,7 @@ The provider uses `config.json` located in `./config` folder for configuration. 
 Devices can be automatically connected to Selenium Grid 4 instance. You need to create the Selenium Grid instance yourself and then setup the provider to connect to it.  
 To setup the provider download the latest Selenium server jar [release](https://github.com/SeleniumHQ/selenium/releases). Copy the downloaded jar and put it in the provider `./apps` folder.  
 Open the `config.json` file and in `env-config`:  
-* Set `selenium_grid_jar` to the name of the jar you just pasted in `./apps`. Example: `selenium-server-4.14.0.jar`
+* Set `selenium_jar` to the name of the jar you just pasted in `./apps`. Example: `selenium-server-4.14.0.jar`
 * Set `use_selenium_grid` in `env-config` to `true` and restart the provider. TOML files for each Appium server will be automatically created and used to connect nodes to the grid instance.  
 * Set `selenium_hub_host` to the IP address of the Selenium Grid instance  
 * Set `selenium_hub_port` to the port of the Selenium Grid instance  
