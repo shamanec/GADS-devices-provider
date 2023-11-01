@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/danielpaulus/go-ios/ios"
+	"github.com/pelletier/go-toml"
 	"github.com/shamanec/GADS-devices-provider/util"
 )
 
@@ -42,6 +44,10 @@ func Setup() {
 	getLocalDevices()
 	createMongoLogCollectionsForAllDevices()
 	createDeviceMap()
+	err := util.CheckGadsStreamAndDownload()
+	if err != nil {
+		panic(fmt.Sprintf("Could not check availability of and download GADS-stream latest release - %s", err))
+	}
 }
 
 func createDeviceMap() {
@@ -63,6 +69,8 @@ func getLocalDevices() {
 		localDevice.Device.HostAddress = util.Config.EnvConfig.HostAddress
 		localDevice.Device.Provider = util.Config.EnvConfig.ProviderNickname
 		localDevices = append(localDevices, &localDevice)
+
+		localDevice.createGridTOML()
 
 		// Create logs directory for each device if it doesn't already exist
 		if _, err := os.Stat("./logs/device_" + device.UDID); os.IsNotExist(err) {
@@ -133,6 +141,11 @@ func (device *LocalDevice) setupAndroidDevice() {
 	}
 
 	go device.startAppium()
+	if util.Config.EnvConfig.UseSeleniumGrid {
+		go device.startGridNode()
+	}
+	// Mark the device as 'live'
+	device.ProviderState = "live"
 }
 
 func (device *LocalDevice) setupIOSDevice() {
@@ -185,6 +198,9 @@ func (device *LocalDevice) setupIOSDevice() {
 	}
 
 	go device.startAppium()
+	if util.Config.EnvConfig.UseSeleniumGrid {
+		go device.startGridNode()
+	}
 
 	// Mark the device as 'live'
 	device.ProviderState = "live"
@@ -391,6 +407,104 @@ func (device *LocalDevice) startAppium() {
 
 	if err := cmd.Wait(); err != nil {
 		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error waiting for Appium command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
+	}
+}
+
+type AppiumTomlNode struct {
+	DetectDrivers bool `toml:"detect-drivers"`
+}
+
+type AppiumTomlServer struct {
+	Port int `toml:"port"`
+}
+
+type AppiumTomlRelay struct {
+	URL            string   `toml:"url"`
+	StatusEndpoint string   `toml:"status-endpoint"`
+	Configs        []string `toml:"configs"`
+}
+
+type AppiumTomlConfig struct {
+	Server AppiumTomlServer `toml:"server"`
+	Node   AppiumTomlNode   `toml:"node"`
+	Relay  AppiumTomlRelay  `toml:"relay"`
+}
+
+var port_counter = 0
+
+func (device *LocalDevice) createGridTOML() {
+	automationName := ""
+	if device.Device.OS == "ios" {
+		automationName = "XCUITest"
+	} else {
+		automationName = "UiAutomator2"
+	}
+
+	url := fmt.Sprintf("http://%s:%v/device/%s/appium", util.Config.EnvConfig.HostAddress, util.Config.EnvConfig.HostPort, device.Device.UDID)
+	configs := fmt.Sprintf(`{"appium:deviceName": "%s", "platformName": "%s", "appium:platformVersion": "%s", "appium:automationName": "%s"}`, device.Device.Name, device.Device.OS, device.Device.OSVersion, automationName)
+
+	config := AppiumTomlConfig{
+		Server: AppiumTomlServer{
+			Port: 5555 + port_counter,
+		},
+		Node: AppiumTomlNode{
+			DetectDrivers: false,
+		},
+		Relay: AppiumTomlRelay{
+			URL:            url,
+			StatusEndpoint: "/status",
+			Configs: []string{
+				"1",
+				configs,
+			},
+		},
+	}
+
+	res, err := toml.Marshal(config)
+	if err != nil {
+		panic(fmt.Sprintf("Failed marshalling TOML Appium config for device `%s` - %s", device.Device.UDID, err))
+	}
+
+	file, err := os.Create("./config/" + device.Device.UDID + ".toml")
+	if err != nil {
+		panic(fmt.Sprintf("Failed creating TOML Appium config file for device `%s` - %s", device.Device.UDID, err))
+	}
+	defer file.Close()
+
+	_, err = io.WriteString(file, string(res))
+	if err != nil {
+		panic(fmt.Sprintf("Failed writing to TOML Appium config file for device `%s` - %s", device.Device.UDID, err))
+	}
+	port_counter++
+}
+
+func (device *LocalDevice) startGridNode() {
+	time.Sleep(5 * time.Second)
+	cmd := exec.CommandContext(device.Context, "java", "-jar", "./apps/"+util.Config.EnvConfig.SeleniumGridJar, "node", "--config", util.ProjectDir+"/config/"+device.Device.UDID+".toml", "--grid-url", util.Config.EnvConfig.SeleniumGrid)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error creating stdoutpipe while starting Selenium Grid node for device `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
+
+	if err := cmd.Start(); err != nil {
+		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Could not start Selenium Grid node for device `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
+
+	scanner := bufio.NewScanner(stdout)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		device.Logger.LogDebug("grid-node", strings.TrimSpace(line))
+	}
+
+	if err := cmd.Wait(); err != nil {
+		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error waiting for Selenium Grid node command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
 }

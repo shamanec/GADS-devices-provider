@@ -1,17 +1,15 @@
 {
-  "appium-config": {
-    "selenium_hub_host": "192.168.1.6",
-    "selenium_hub_port": "4444",
-    "selenium_hub_protocol_type": "http"
-  },
   "env-config": {
-    "connect_selenium_grid": "false",
+    "use_selenium_grid": true,
     "supervision_password": "patladjan1",
     "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner",
     "host_address": "192.168.1.6",
     "mongo_db": "192.168.1.28:27017",
     "wda_repo_path": "/Users/shamanec/Downloads/WebDriverAgent-5.8.3/",
-    "provider_nickname": "Provider2"
+    "provider_nickname": "Provider2",
+    "selenium_grid_jar": "selenium-server-4.14.0.jar",
+    "host_port": 10001,
+    "selenium_grid": "http://192.168.1.6:4444"
   },
   "devices-config": [
     {
