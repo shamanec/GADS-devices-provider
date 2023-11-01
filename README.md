@@ -15,7 +15,7 @@
   * Simple in-browser Appium inspector - see elements and their attributes
   * Taking high quality screenshots - useful since the stream quality is reduced to increase fps
 * Appium test execution - each device has its own Appium server running which is exposed on a provider endpoint for easier access
-* Selenium Grid connection
+* Optional Selenium Grid connection
 * Linux
   * Supports both Android and iOS < 17
   * Has some limitations to Appium execution with iOS devices due to actual Xcode tools being unavailable on Linux
