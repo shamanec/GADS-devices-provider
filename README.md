@@ -1,30 +1,29 @@
 ## Introduction
 
-* GADS-device-provider is a server that sets up devices for remote control with [GADS](https://github.com/shamanec/GADS) and Appium tests execution.
+* GADS-device-provider is a server that sets up devices for [Appium](https://github.com/appium/appium) tests execution and remote control with [GADS](https://github.com/shamanec/GADS).
 * Supports both Android and iOS devices
-* Supports Linux, macOS and Windows with some potential limitations based on OS
+* Supports Linux, macOS and Windows - notes below
 
 **NB** I've been doing this having only small number of devices available. It looks like everything is pretty much working but I do not know how it would behave on a bigger scale.  
 
 ## Features
-* Lots of steps but straighforward setup
-* Remote control support
-  * iOS video stream with WebDriverAgent
-  * Android video stream with GADS-Android-stream
-  * Limited interaction - tap, swipe, type text, lock and unlock device
-  * Simple in-browser Appium inspector - see elements and their attributes
-  * Taking high quality screenshots - useful since the stream quality is reduced to increase fps
-* Appium test execution - each device has its own Appium server running which is exposed on a provider endpoint for easier access
-* Optional Selenium Grid connection
+* Straighforward setup
+* Automatic provisioning when registered devices are connected
+  * Dependencies automatically installed on devices
+  * Appium server set up and started for each device
+  * Optionally Selenium Grid 4 node can be registered for each device Appium server
+* [GADS-UI](https://github.com/shamanec/GADS) remote control support
+  * iOS video stream using [WebDriverAgent](https://github.com/appium/WebDriverAgent)
+  * Android video stream using [GADS-Android-stream](https://github.com/shamanec/GADS-Android-stream)
+  * Limited interaction wrapped around Appium - tap, swipe, type text, lock and unlock device
+* Appium test execution - each device has its Appium server proxied on a provider endpoint for easier access
 * Linux
   * Supports both Android and iOS < 17
   * Has some limitations to Appium execution with iOS devices due to actual Xcode tools being unavailable on Linux
 * macOS
   * Supports both Android and iOS
-  * Automatically configures each device when it is connected/disconnected
 * Windows 10
   * Supports Android
-  * Automatically configures each device when it is connected/disconnected
 
 Developed and tested on `Ubuntu 18.04 LTS`, `macOS Ventura 13.5.1`, `Windows 10`
 
@@ -35,5 +34,6 @@ Read the setup very carefully before starting, I've tried to give as much inform
 ## Thanks
 | |About|
 |---|---|
-|[go-ios](https://github.com/danielpaulus/go-ios)|Many thanks for creating this tool to communicate with iOS devices on Linux, perfect for installing/reinstalling and running WebDriverAgentRunner without Xcode. Without it none of this would be possible|
+|[go-ios](https://github.com/danielpaulus/go-ios)|Many thanks for creating this tool to communicate with iOS devices on Linux, perfect for installing/reinstalling and running WebDriverAgentRunner without Xcode|
+|[Appium](https://github.com/appium/appium)|Since the project revolves around Appium test execution and it is also used for the remote control with GADS, none of this would be actually possible without it, kudos!|
 |[iOS App Signer](https://github.com/DanTheMan827/ios-app-signer)|This is an app for OS X that can (re)sign apps and bundle them into ipa files that are ready to be installed on an iOS device.|  
