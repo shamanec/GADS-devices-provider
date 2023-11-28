@@ -383,7 +383,7 @@ func (device *LocalDevice) startAppium() {
 	}
 	device.Device.AppiumPort = fmt.Sprint(appiumPort)
 
-	cmd := exec.CommandContext(device.Context, "appium", "-p", device.Device.AppiumPort, "--log-timestamp", "--allow-cors", "--session-override", "--default-capabilities", string(capabilitiesJson))
+	cmd := exec.CommandContext(device.Context, "appium", "-p", device.Device.AppiumPort, "--log-timestamp", "--session-override", "--default-capabilities", string(capabilitiesJson))
 
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()

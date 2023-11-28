@@ -76,6 +76,7 @@ func newAppiumProxy(target string, path string) *httputil.ReverseProxy {
 			req.URL.Host = targetURL.Host
 			req.URL.Path = targetURL.Path + path
 			req.Host = targetURL.Host
+			req.Header.Del("Access-Control-Allow-Origin")
 		},
 	}
 }
