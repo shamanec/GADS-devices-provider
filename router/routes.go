@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shamanec/GADS-devices-provider/device"
@@ -79,4 +82,43 @@ func newAppiumProxy(target string, path string) *httputil.ReverseProxy {
 			req.Header.Del("Access-Control-Allow-Origin")
 		},
 	}
+}
+
+func UploadFile(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	allowedExtensions := []string{"ipa", "zip", "apk"}
+	// Check file extension
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	isAllowed := false
+	for _, allowedExt := range allowedExtensions {
+		if ext == "."+allowedExt {
+			isAllowed = true
+			break
+		}
+	}
+
+	if !isAllowed {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File extension `" + ext + "` not allowed"})
+		return
+	}
+
+	// Specify the upload directory
+	uploadDir := "./apps/"
+	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
+		os.Mkdir(uploadDir, os.ModePerm)
+	}
+
+	// Save the uploaded file to the specified directory
+	dst := uploadDir + file.Filename
+	if err := c.SaveUploadedFile(file, dst); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully"})
 }
