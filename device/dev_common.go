@@ -2,6 +2,7 @@ package device
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -68,6 +69,8 @@ func getLocalDevices() {
 		localDevice.setContext()
 		localDevice.Device.HostAddress = util.Config.EnvConfig.HostAddress
 		localDevice.Device.Provider = util.Config.EnvConfig.ProviderNickname
+		localDevice.Device.Model = "N/A"
+		localDevice.Device.OSVersion = "N/A"
 		localDevices = append(localDevices, &localDevice)
 
 		if util.Config.EnvConfig.UseSeleniumGrid {
@@ -101,6 +104,8 @@ func (device *LocalDevice) setupAndroidDevice() {
 		device.resetLocalDevice()
 		return
 	}
+	device.updateModel()
+	device.updateOSVersion()
 
 	isStreamAvailable, err := device.isGadsStreamServiceRunning()
 	if err != nil {
@@ -174,6 +179,7 @@ func (device *LocalDevice) setupIOSDevice() {
 	}
 	// Update hardware model got from plist
 	device.Device.HardwareModel = plistValues["HardwareModel"].(string)
+	device.Device.OSVersion = plistValues["ProductVersion"].(string)
 
 	// Update the screen dimensions of the device using data from the IOSDeviceDimensions map
 	err = device.updateScreenSize()
@@ -182,6 +188,7 @@ func (device *LocalDevice) setupIOSDevice() {
 		device.resetLocalDevice()
 		return
 	}
+	device.updateModel()
 
 	wdaPort, err := util.GetFreePort()
 	if err != nil {
@@ -539,7 +546,7 @@ func (device *LocalDevice) startGridNode() {
 
 func (device *LocalDevice) updateScreenSize() error {
 	if device.Device.OS == "ios" {
-		if dimensions, ok := util.IOSDeviceDimensions[device.Device.HardwareModel]; ok {
+		if dimensions, ok := util.IOSDeviceInfoMap[device.Device.HardwareModel]; ok {
 			device.Device.ScreenHeight = dimensions.Height
 			device.Device.ScreenWidth = dimensions.Width
 		} else {
@@ -553,4 +560,52 @@ func (device *LocalDevice) updateScreenSize() error {
 	}
 
 	return nil
+}
+
+func (device *LocalDevice) updateModel() {
+	if device.Device.OS == "ios" {
+		if info, ok := util.IOSDeviceInfoMap[device.Device.HardwareModel]; ok {
+			device.Device.Model = info.Model
+		} else {
+			device.Device.Model = "Unknown iOS device"
+		}
+	} else {
+		brandCmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "getprop", "ro.product.brand")
+		var outBuffer bytes.Buffer
+		brandCmd.Stdout = &outBuffer
+		if err := brandCmd.Run(); err != nil {
+			device.Device.Model = "Unknown brand and model"
+		}
+		brand := outBuffer.String()
+		outBuffer.Reset()
+
+		modelCmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "getprop", "ro.product.model")
+		modelCmd.Stdout = &outBuffer
+		if err := modelCmd.Run(); err != nil {
+			device.Device.Model = "Unknown brand/model"
+			return
+		}
+		model := outBuffer.String()
+
+		device.Device.Model = fmt.Sprintf("%s %s", strings.TrimSpace(brand), strings.TrimSpace(model))
+	}
+}
+
+func (device *LocalDevice) updateOSVersion() {
+	if device.Device.OS == "ios" {
+
+	} else {
+		sdkCmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "getprop", "ro.build.version.sdk")
+		var outBuffer bytes.Buffer
+		sdkCmd.Stdout = &outBuffer
+		if err := sdkCmd.Run(); err != nil {
+			device.Device.OSVersion = "N/A"
+		}
+		sdkVersion := strings.TrimSpace(outBuffer.String())
+		if osVersion, ok := util.AndroidVersionToSDK[sdkVersion]; ok {
+			device.Device.OSVersion = osVersion
+		} else {
+			device.Device.OSVersion = "N/A"
+		}
+	}
 }

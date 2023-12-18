@@ -137,19 +137,15 @@ Each device should have a JSON object in `devices-config` like:
 {
       "os": "ios",
       "name": "iPhone_11",
-      "os_version": "17.0",
-      "udid": "00008030000418C136FB8022",
-      "model": "iPhone 11"
+      "udid": "00008030000418C136FB8022"
 }
 ```
 For each device set: 
-  * `os` - should be `android` or `ios`
-  * `os_version` - `11` or `13.5.1` for example  
-  * `name` - avoid using special characters and spaces except '_'. Example: `Huawei_P20_Pro`, `iPhone_11`  
-  * `udid` - UDID of the Android or iOS device
-    * For Android can get it with `adb devices`
-    * For iOS can get it with Xcode through `Devices & Simulator` or using `go-ios` or a similar tool (tidevice, gidevice, pymobiledevice3)
-  * `model` - device model to be displayed in [GADS-UI](https://github.com/shamanec/GADS) device selection. 
+  * `os` - should be `android` or `ios`  
+  * `name` - use to differentiate devices if needed if multiple devices with the same brand and model available  
+  * `udid` - UDID of the Android or iOS device  
+    * For Android can get it with `adb devices`  
+    * For iOS can get it with Xcode through `Devices & Simulators` or using `go-ios` or a similar tool (tidevice, gidevice, pymobiledevice3)  
 
 ## Linux
 There are no Linux specific configuration options at the moment

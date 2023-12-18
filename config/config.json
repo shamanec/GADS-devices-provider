@@ -14,97 +14,68 @@
   "devices-config": [
     {
       "os": "ios",
-      "name": "iPhone_11",
-      "os_version": "17.0",
-      "udid": "00008030000418C136FB8022",
-      "model": "iPhone 11"
+      "name": "iPhone 11",
+      "udid": "00008030000418C136FB8022"
     },
     {
       "os": "ios",
-      "name": "iPhone_11",
-      "os_version": "17.0",
-      "udid": "00008030000418C136FB8023",
-      "model": "iPhone 11"
+      "name": "iPhone 11",
+      "udid": "00008030000418C136FB8023"
     },
     {
       "os": "ios",
-      "name": "iPhone_11",
-      "os_version": "17.0",
-      "udid": "00008030000418C136FB8024",
-      "model": "iPhone 11"
+      "name": "iPhone 11",
+      "udid": "00008030000418C136FB8024"
     },
     {
       "os": "ios",
-      "name": "iPhone_11",
-      "os_version": "17.0",
-      "udid": "00008030000418C136FB8025",
-      "model": "iPhone 11"
+      "name": "iPhone 11",
+      "udid": "00008030000418C136FB8025"
     },
     {
       "os": "ios",
-      "name": "iPhone_11",
-      "os_version": "17.0",
-      "udid": "00008030000418C136FB8026",
-      "model": "iPhone 11"
+      "name": "iPhone 11",
+      "udid": "00008030000418C136FB8026"
     },
     {
       "os": "ios",
-      "name": "iPhone_11",
-      "os_version": "17.0",
-      "udid": "00008030000418C136FB8027",
-      "model": "iPhone 11"
+      "name": "iPhone 11",
+      "udid": "00008030000418C136FB8027"
     },
     {
       "os": "ios",
-      "name": "iPhone_11",
-      "os_version": "17.0",
-      "udid": "00008030000418C136FB8029",
-      "model": "iPhone 11"
+      "name": "iPhone 11",
+      "udid": "00008030000418C136FB8029"
     },
     {
       "os": "ios",
-      "name": "iPhone_SE",
-      "os_version": "17.0",
-      "udid": "00008030-000418C136FB802E",
-      "model": "iPhone SE",
-      "image": "iphone-se-2020.png"
+      "name": "iPhone SE",
+      "udid": "00008030-000418C136FB802E"
     },
     {
       "os": "ios",
-      "name": "iPad_bejbe",
-      "os_version": "15.1",
-      "udid": "00008103000A69E23CBB001E",
-      "model": "iPad Pro 11"
+      "name": "iPad bejbe",
+      "udid": "00008103000A69E23CBB001E"
     },
     {
       "os": "ios",
-      "name": "iPhone_7",
-      "os_version": "14.6",
-      "udid": "ccec159ba0219c9fa0d0fc3d85451ab0dcfebd16",
-      "model": "iPhone 7",
-      "image": "iphone-7.png"
+      "name": "iPhone 7",
+      "udid": "ccec159ba0219c9fa0d0fc3d85451ab0dcfebd16"
     },
     {
       "os": "android",
       "udid": "WCR7N18B14002300",
-      "name": "Huawei_P20_Pro",
-      "os_version": "10",
-      "model": "Huawei P20 Pro",
-      "image": "huawei-p20-pro.png"
+      "name": "Huawei P20 Pro"
     },
     {
       "os": "android",
       "udid": "MUN0218928000401",
-      "name": "Huawei_Bejbe",
-      "os_version": "10",
-      "model": "Huawei Mate 20"
+      "name": "Huawei Bejbe"
     },
     {
       "os": "android",
       "udid": "RQ30041UV0",
-      "name": "Sony_Xperia",
-      "os_version": "7",
-      "model": "Sony Xperia"
+      "name": "Sony Xperia"
     }
   ]
 }
