@@ -5,6 +5,7 @@
 * Supports Linux, macOS and Windows - notes below
 
 **NB** I've been doing this having only small number of devices available. It looks like everything is pretty much working but I do not know how it would behave on a bigger scale.  
+**NB** Can be used without [GADS](https://github.com/shamanec/GADS) just to set up devices for Appium testing - will still require and do the whole setup for the devices, might clean it up at some point to allow both `GADS` and non-`GADS` deployments.  
 
 ## Features
 * Straighforward setup
