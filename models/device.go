@@ -9,11 +9,13 @@ type Device struct {
 	WDAPort         string `json:"wda_port,omitempty" bson:"wda_port,omitempty"`
 	Name            string `json:"name" bson:"name"`
 	OSVersion       string `json:"os_version" bson:"os_version"`
-	ScreenSize      string `json:"screen_size" bson:"screen_size"`
 	Model           string `json:"model" bson:"model"`
 	Image           string `json:"image,omitempty" bson:"image,omitempty"`
 	HostAddress     string `json:"host_address" bson:"host_address"`
 	AppiumSessionID string `json:"appiumSessionID,omitempty" bson:"appiumSessionID,omitempty"`
 	WDASessionID    string `json:"wdaSessionID,omitempty" bson:"wdaSessionID,omitempty"`
 	Provider        string `json:"provider" bson:"provider"`
+	ScreenWidth     string `json:"screen_width" bson:"screen_width"`
+	ScreenHeight    string `json:"screen_height" bson:"screen_height"`
+	HardwareModel   string `json:"hardware_model,omitempty" bson:"hardware_model,omitempty"`
 }

@@ -1,6 +1,7 @@
 package device
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -107,6 +108,26 @@ func (device *LocalDevice) forwardGadsStream() error {
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func updateAndroidScreenSizeADB(device *LocalDevice) error {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "wm", "size")
+
+	var outBuffer bytes.Buffer
+	cmd.Stdout = &outBuffer
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error executing command - %s", err)
+	}
+
+	output := outBuffer.String()
+	splitOutput := strings.Split(output, ": ")
+	screenDimensions := strings.Split(splitOutput[1], "x")
+
+	device.Device.ScreenWidth = strings.TrimSpace(screenDimensions[0])
+	device.Device.ScreenHeight = strings.TrimSpace(screenDimensions[1])
 
 	return nil
 }

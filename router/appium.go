@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -239,7 +240,7 @@ func appiumClearText(device *device.LocalDevice) (*http.Response, error) {
 		return activeElementResp, err
 	}
 
-	activeElementRespBody, err := ioutil.ReadAll(activeElementResp.Body)
+	activeElementRespBody, err := io.ReadAll(activeElementResp.Body)
 	if err != nil {
 		return nil, err
 	}

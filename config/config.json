@@ -1,9 +1,9 @@
 {
   "env-config": {
-    "use_selenium_grid": true,
+    "use_selenium_grid": false,
     "supervision_password": "patladjan1",
     "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner",
-    "host_address": "192.168.1.6",
+    "host_address": "192.168.1.28",
     "mongo_db": "192.168.1.28:27017",
     "wda_repo_path": "/Users/shamanec/Downloads/WebDriverAgent-5.8.3/",
     "provider_nickname": "Provider2",
@@ -17,7 +17,48 @@
       "name": "iPhone_11",
       "os_version": "17.0",
       "udid": "00008030000418C136FB8022",
-      "screen_size": "375x667",
+      "model": "iPhone 11"
+    },
+    {
+      "os": "ios",
+      "name": "iPhone_11",
+      "os_version": "17.0",
+      "udid": "00008030000418C136FB8023",
+      "model": "iPhone 11"
+    },
+    {
+      "os": "ios",
+      "name": "iPhone_11",
+      "os_version": "17.0",
+      "udid": "00008030000418C136FB8024",
+      "model": "iPhone 11"
+    },
+    {
+      "os": "ios",
+      "name": "iPhone_11",
+      "os_version": "17.0",
+      "udid": "00008030000418C136FB8025",
+      "model": "iPhone 11"
+    },
+    {
+      "os": "ios",
+      "name": "iPhone_11",
+      "os_version": "17.0",
+      "udid": "00008030000418C136FB8026",
+      "model": "iPhone 11"
+    },
+    {
+      "os": "ios",
+      "name": "iPhone_11",
+      "os_version": "17.0",
+      "udid": "00008030000418C136FB8027",
+      "model": "iPhone 11"
+    },
+    {
+      "os": "ios",
+      "name": "iPhone_11",
+      "os_version": "17.0",
+      "udid": "00008030000418C136FB8029",
       "model": "iPhone 11"
     },
     {
@@ -25,7 +66,6 @@
       "name": "iPhone_SE",
       "os_version": "17.0",
       "udid": "00008030-000418C136FB802E",
-      "screen_size": "375x667",
       "model": "iPhone SE",
       "image": "iphone-se-2020.png"
     },
@@ -34,7 +74,6 @@
       "name": "iPad_bejbe",
       "os_version": "15.1",
       "udid": "00008103000A69E23CBB001E",
-      "screen_size": "834x1194",
       "model": "iPad Pro 11"
     },
     {
@@ -42,13 +81,11 @@
       "name": "iPhone_7",
       "os_version": "14.6",
       "udid": "ccec159ba0219c9fa0d0fc3d85451ab0dcfebd16",
-      "screen_size": "375x667",
       "model": "iPhone 7",
       "image": "iphone-7.png"
     },
     {
       "os": "android",
-      "screen_size": "1080x2241",
       "udid": "WCR7N18B14002300",
       "name": "Huawei_P20_Pro",
       "os_version": "10",
@@ -57,7 +94,6 @@
     },
     {
       "os": "android",
-      "screen_size": "1080x2240",
       "udid": "MUN0218928000401",
       "name": "Huawei_Bejbe",
       "os_version": "10",
@@ -65,7 +101,6 @@
     },
     {
       "os": "android",
-      "screen_size": "720x1280",
       "udid": "RQ30041UV0",
       "name": "Sony_Xperia",
       "os_version": "7",

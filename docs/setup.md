@@ -139,15 +139,11 @@ Each device should have a JSON object in `devices-config` like:
       "name": "iPhone_11",
       "os_version": "17.0",
       "udid": "00008030000418C136FB8022",
-      "screen_size": "375x667",
       "model": "iPhone 11"
 }
 ```
 For each device set: 
   * `os` - should be `android` or `ios`
-  * `screen_size`- e.g. `375x667` where first value is width, second is height
-    * For Android - go to `https://whatismyandroidversion.com` and fill in the displayed `Screen size`, not `Viewport size`  
-    * For iOS - you can get it on https://whatismyviewport.com (ScreenSize: at the bottom)   
   * `os_version` - `11` or `13.5.1` for example  
   * `name` - avoid using special characters and spaces except '_'. Example: `Huawei_P20_Pro`, `iPhone_11`  
   * `udid` - UDID of the Android or iOS device

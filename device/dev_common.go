@@ -95,6 +95,13 @@ func (device *LocalDevice) setupAndroidDevice() {
 
 	util.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Running setup for device `%v`", device.Device.UDID))
 
+	err := device.updateScreenSize()
+	if err != nil {
+		util.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not update screen dimensions with adb for device `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
+
 	isStreamAvailable, err := device.isGadsStreamServiceRunning()
 	if err != nil {
 		util.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not check if GADS-stream is running on device `%v` - %v", device.Device.UDID, err))
@@ -146,6 +153,7 @@ func (device *LocalDevice) setupAndroidDevice() {
 	if util.Config.EnvConfig.UseSeleniumGrid {
 		go device.startGridNode()
 	}
+
 	// Mark the device as 'live'
 	device.ProviderState = "live"
 }
@@ -156,6 +164,24 @@ func (device *LocalDevice) setupIOSDevice() {
 
 	// Get go-ios device entry for pairing/mounting images
 	device.getGoIOSDevice()
+
+	// Get device info with go-ios to get the hardware model
+	plistValues, err := ios.GetValuesPlist(device.GoIOSDeviceEntry)
+	if err != nil {
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not get info plist values with go-ios `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
+	// Update hardware model got from plist
+	device.Device.HardwareModel = plistValues["HardwareModel"].(string)
+
+	// Update the screen dimensions of the device using data from the IOSDeviceDimensions map
+	err = device.updateScreenSize()
+	if err != nil {
+		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not update screen dimensions for device `%v` - %v", device.Device.UDID, err))
+		device.resetLocalDevice()
+		return
+	}
 
 	wdaPort, err := util.GetFreePort()
 	if err != nil {
@@ -509,4 +535,22 @@ func (device *LocalDevice) startGridNode() {
 		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error waiting for Selenium Grid node command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
 		device.resetLocalDevice()
 	}
+}
+
+func (device *LocalDevice) updateScreenSize() error {
+	if device.Device.OS == "ios" {
+		if dimensions, ok := util.IOSDeviceDimensions[device.Device.HardwareModel]; ok {
+			device.Device.ScreenHeight = dimensions.Height
+			device.Device.ScreenWidth = dimensions.Width
+		} else {
+			return fmt.Errorf("could not find `%s` hardware model in the IOSDeviceDimensions map, please update the map", device.Device.HardwareModel)
+		}
+	} else {
+		err := updateAndroidScreenSizeADB(device)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
