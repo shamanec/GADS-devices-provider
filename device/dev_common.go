@@ -242,18 +242,18 @@ func (device *LocalDevice) setupIOSDevice() {
 }
 
 // Gets all connected iOS and Android devices to the host
-func getConnectedDevicesCommon(ios bool, android bool) []string {
+func getConnectedDevicesCommon() []string {
 	connectedDevices := []string{}
 
 	androidDevices := []string{}
 	iosDevices := []string{}
 
-	if android {
-		androidDevices = getConnectedDevicesAndroid()
+	if util.Config.EnvConfig.ProvideAndroid {
+		androidDevices = GetConnectedDevicesAndroid()
 	}
 
-	if ios {
-		iosDevices = getConnectedDevicesIOS()
+	if util.Config.EnvConfig.ProvideIOS {
+		iosDevices = GetConnectedDevicesIOS()
 	}
 
 	connectedDevices = append(connectedDevices, iosDevices...)
@@ -263,7 +263,7 @@ func getConnectedDevicesCommon(ios bool, android bool) []string {
 }
 
 // Gets the connected iOS devices using the `go-ios` library
-func getConnectedDevicesIOS() []string {
+func GetConnectedDevicesIOS() []string {
 	var connectedDevices []string
 
 	deviceList, err := ios.ListDevices()
@@ -281,7 +281,7 @@ func getConnectedDevicesIOS() []string {
 }
 
 // Gets the connected android devices using `adb`
-func getConnectedDevicesAndroid() []string {
+func GetConnectedDevicesAndroid() []string {
 	var connectedDevices []string
 
 	cmd := exec.Command("adb", "devices")

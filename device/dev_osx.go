@@ -20,9 +20,7 @@ func updateDevicesOSX() {
 		os.Exit(1)
 	}
 
-	androidDevicesInConfig := androidDevicesInConfig()
-
-	if androidDevicesInConfig {
+	if util.Config.EnvConfig.ProvideAndroid {
 		if !adbAvailable() {
 			util.ProviderLogger.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
 			fmt.Println("adb is not available, you need to set up the host as explained in the readme")
@@ -47,7 +45,7 @@ func updateDevicesOSX() {
 	removeAdbForwardedPorts()
 
 	for {
-		connectedDevices := getConnectedDevicesCommon(true, androidDevicesInConfig)
+		connectedDevices := getConnectedDevicesCommon()
 
 		if len(connectedDevices) == 0 {
 			util.ProviderLogger.LogDebug("provider", "No devices connected")

@@ -11,10 +11,10 @@ import (
 type LocalDevice struct {
 	Device           *models.Device
 	ProviderState    string
-	WdaReadyChan     chan bool
-	Context          context.Context
-	CtxCancel        context.CancelFunc
-	GoIOSDeviceEntry ios.DeviceEntry
+	WdaReadyChan     chan bool          `json:"-"`
+	Context          context.Context    `json:"-"`
+	CtxCancel        context.CancelFunc `json:"-"`
+	GoIOSDeviceEntry ios.DeviceEntry    `json:"-"`
 	IsResetting      bool
-	Logger           util.CustomLogger
+	Logger           util.CustomLogger `json:"-"`
 }

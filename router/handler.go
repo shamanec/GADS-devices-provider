@@ -27,6 +27,7 @@ func HandleRequests() *gin.Engine {
 	router.GET("/device/:udid/ios-stream", IosStreamProxy)
 
 	router.POST("/provider/uploadFile", UploadFile)
+	router.GET("/provider", GetProviderData)
 
 	return router
 }

@@ -11,9 +11,7 @@ import (
 func updateDevicesWindows() {
 	util.ProviderLogger.LogInfo("provider", "Providing devices on a Windows host")
 
-	androidDevicesInConfig := androidDevicesInConfig()
-
-	if androidDevicesInConfig {
+	if util.Config.EnvConfig.ProvideAndroid {
 		util.ProviderLogger.LogInfo("provider", "There are Android devices in config, checking if adb is available on host")
 
 		if !adbAvailable() {
@@ -25,7 +23,7 @@ func updateDevicesWindows() {
 	removeAdbForwardedPorts()
 
 	for {
-		connectedDevices := getConnectedDevicesCommon(false, true)
+		connectedDevices := getConnectedDevicesCommon()
 
 		if len(connectedDevices) == 0 {
 			util.ProviderLogger.LogDebug("provider", "No connected devices found when updating devices")

@@ -9,7 +9,9 @@
     "provider_nickname": "Provider2",
     "selenium_jar": "selenium-server-4.14.0.jar",
     "host_port": 10001,
-    "selenium_grid": "http://192.168.1.6:4444"
+    "selenium_grid": "http://192.168.1.6:4444",
+    "provide_android": false,
+    "provide_ios": false
   },
   "devices-config": [
     {

@@ -16,4 +16,6 @@ type EnvConfig struct {
 	ProviderNickname    string `json:"provider_nickname" bson:"-"`
 	SeleniumJar         string `json:"selenium_jar" bson:"-"`
 	SeleniumGrid        string `json:"selenium_grid" bson:"selenium_grid"`
+	ProvideAndroid      bool   `json:"provide_android" bson:"provide_android"`
+	ProvideIOS          bool   `json:"provide_ios" bson:"provide_ios"`
 }

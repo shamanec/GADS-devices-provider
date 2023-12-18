@@ -120,6 +120,8 @@ The provider uses `config.json` located in `./config` folder for configuration. 
 * Set `host_address` in `env-config` to the IP address of the provider machine, e.g. `192.168.1.6`
 * Set `mongo_db` in `env-config` to the IP address and port of the MongoDB instance on your network, e.g. `192.168.1.8:27017` if you followed the setup for MongoDB
 * Set `use_selenium_grid` in `env-config` to `true/false` if you want Selenium Grid connection established.  
+* Set `provide_android` in `env-config` to `true` if you want to setup and provide Android devices  
+* Set `provide_ios` in `env-config` to `true` if you want to setup and provide iOS devices
 
 #### Selenium Grid
 Devices can be automatically connected to Selenium Grid 4 instance. You need to create the Selenium Grid instance yourself and then setup the provider to connect to it.  

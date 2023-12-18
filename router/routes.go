@@ -12,6 +12,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/shamanec/GADS-devices-provider/device"
+	"github.com/shamanec/GADS-devices-provider/models"
+	"github.com/shamanec/GADS-devices-provider/util"
 )
 
 type JsonErrorResponse struct {
@@ -121,4 +123,25 @@ func UploadFile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully"})
+}
+
+type ProviderData struct {
+	ProviderData            models.EnvConfig               `json:"provider"`
+	ConnectedAndroidDevices []string                       `json:"connected_android_devices"`
+	ConnectedIOSDevices     []string                       `json:"connected_ios_devices"`
+	DeviceData              map[string]*device.LocalDevice `json:"device_data"`
+}
+
+func GetProviderData(c *gin.Context) {
+	connectedAndroid := device.GetConnectedDevicesAndroid()
+	connectedIOS := device.GetConnectedDevicesIOS()
+
+	var providerData ProviderData
+
+	providerData.ConnectedAndroidDevices = connectedAndroid
+	providerData.ConnectedIOSDevices = connectedIOS
+	providerData.ProviderData = util.Config.EnvConfig
+	providerData.DeviceData = device.DeviceMap
+
+	c.JSON(http.StatusOK, providerData)
 }

@@ -15,16 +15,14 @@ func updateDevicesLinux() {
 		os.Mkdir("./logs", os.ModePerm)
 	}
 
-	androidDevicesInConfig := androidDevicesInConfig()
-	if androidDevicesInConfig {
+	if util.Config.EnvConfig.ProvideAndroid {
 		if !adbAvailable() {
 			util.ProviderLogger.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
 			os.Exit(1)
 		}
 	}
 
-	iOSDevicesInConfig := iOSDevicesInConfig()
-	if iOSDevicesInConfig {
+	if util.Config.EnvConfig.ProvideIOS {
 		if !goIOSAvailable() {
 			util.ProviderLogger.LogError("provider", "go-ios is not available, you need to set up the host as explained in the readme")
 			os.Exit(1)
@@ -34,7 +32,7 @@ func updateDevicesLinux() {
 	removeAdbForwardedPorts()
 
 	for {
-		connectedDevices := getConnectedDevicesCommon(true, androidDevicesInConfig)
+		connectedDevices := getConnectedDevicesCommon()
 
 		for _, device := range localDevices {
 			if slices.Contains(connectedDevices, device.Device.UDID) {
