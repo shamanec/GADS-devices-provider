@@ -637,3 +637,19 @@ func (device *LocalDevice) UninstallApp(app string) error {
 
 	return nil
 }
+
+func (device *LocalDevice) InstallApp(app string) error {
+	if device.Device.OS == "ios" {
+		err := device.installAppIOS(app)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := device.installAppAndroid(app)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

@@ -207,3 +207,31 @@ func UninstallApp(c *gin.Context) {
 
 	c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Device with udid `%s` does not exist", udid)})
 }
+
+func InstallApp(c *gin.Context) {
+	udid := c.Param("udid")
+
+	if device, ok := device.DeviceMap[udid]; ok {
+		payload, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+			return
+		}
+
+		var payloadJson ProcessApp
+		err = json.Unmarshal(payload, &payloadJson)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+			return
+		}
+		err = device.InstallApp(payloadJson.App)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to install app `%s`", payloadJson.App)})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully installed app `%s`", payloadJson.App)})
+		return
+	}
+
+	c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Device with udid `%s` does not exist", udid)})
+}

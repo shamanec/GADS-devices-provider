@@ -167,3 +167,14 @@ func (device *LocalDevice) uninstallAppAndroid(packageName string) error {
 
 	return nil
 }
+
+func (device *LocalDevice) installAppAndroid(appName string) error {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "install", "-r", "./apps/"+appName)
+
+	if err := cmd.Run(); err != nil {
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed executing adb install for app `%s` - %v", appName, err))
+		return err
+	}
+
+	return nil
+}
