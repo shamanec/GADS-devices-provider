@@ -171,3 +171,26 @@ func downloadGadsStreamApk() error {
 
 	return nil
 }
+
+func GetAllAppFiles() []string {
+	file, err := os.Open("./apps")
+	if err != nil {
+		ProviderLogger.LogError("provider", fmt.Sprintf("Could not os.Open() ./apps directory - %s", err))
+		return []string{}
+	}
+	defer file.Close()
+
+	fileList, err := file.Readdir(-1)
+	if err != nil {
+		ProviderLogger.LogError("provider", fmt.Sprintf("Could not Readdir on the ./apps directory - %s", err))
+		return []string{}
+	}
+
+	var files []string
+	for _, file := range fileList {
+		files = append(files, file.Name())
+		fmt.Println(file.Size())
+	}
+
+	return files
+}

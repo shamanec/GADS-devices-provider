@@ -7,27 +7,30 @@ import (
 
 func HandleRequests() *gin.Engine {
 
-	router := gin.Default()
+	r := gin.Default()
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
 	config.AllowHeaders = []string{"X-Auth-Token", "Content-Type"}
-	router.Use(cors.New(config))
-	router.GET("/device/:udid/health", DeviceHealth)
-	router.POST("/device/:udid/tap", DeviceTap)
-	router.POST("/device/:udid/home", DeviceHome)
-	router.POST("/device/:udid/lock", DeviceLock)
-	router.POST("/device/:udid/unlock", DeviceUnlock)
-	router.POST("/device/:udid/screenshot", DeviceScreenshot)
-	router.POST("/device/:udid/swipe", DeviceSwipe)
-	router.GET("/device/:udid/appiumSource", DeviceAppiumSource)
-	router.POST("/device/:udid/typeText", DeviceTypeText)
-	router.POST("/device/:udid/clearText", DeviceClearText)
-	router.Any("/device/:udid/appium/*proxyPath", AppiumReverseProxy)
-	router.GET("/device/:udid/android-stream", AndroidStreamProxy)
-	router.GET("/device/:udid/ios-stream", IosStreamProxy)
+	r.Use(cors.New(config))
 
-	router.POST("/provider/uploadFile", UploadFile)
-	router.GET("/provider", GetProviderData)
+	deviceGroup := r.Group("/device")
+	deviceGroup.GET("/:udid/health", DeviceHealth)
+	deviceGroup.POST("/:udid/tap", DeviceTap)
+	deviceGroup.POST("/:udid/home", DeviceHome)
+	deviceGroup.POST("/:udid/lock", DeviceLock)
+	deviceGroup.POST("/:udid/unlock", DeviceUnlock)
+	deviceGroup.POST("/:udid/screenshot", DeviceScreenshot)
+	deviceGroup.POST("/:udid/swipe", DeviceSwipe)
+	deviceGroup.GET("/:udid/appiumSource", DeviceAppiumSource)
+	deviceGroup.POST("/:udid/typeText", DeviceTypeText)
+	deviceGroup.POST("/:udid/clearText", DeviceClearText)
+	deviceGroup.Any("/:udid/appium/*proxyPath", AppiumReverseProxy)
+	deviceGroup.GET("/:udid/android-stream", AndroidStreamProxy)
+	deviceGroup.GET("/:udid/ios-stream", IosStreamProxy)
 
-	return router
+	providerGroup := r.Group("/provider")
+	providerGroup.POST("/uploadFile", UploadFile)
+	providerGroup.GET("/", GetProviderData)
+
+	return r
 }

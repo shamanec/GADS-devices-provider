@@ -122,7 +122,7 @@ func UploadFile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully", "status": "success", "apps": util.GetAllAppFiles()})
 }
 
 type ProviderData struct {
