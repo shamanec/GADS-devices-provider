@@ -14,6 +14,7 @@ func HandleRequests() *gin.Engine {
 	r.Use(cors.New(config))
 
 	deviceGroup := r.Group("/device")
+	deviceGroup.GET("/:udid", DeviceInfo)
 	deviceGroup.GET("/:udid/health", DeviceHealth)
 	deviceGroup.POST("/:udid/tap", DeviceTap)
 	deviceGroup.POST("/:udid/home", DeviceHome)

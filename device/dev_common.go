@@ -154,6 +154,8 @@ func (device *LocalDevice) setupAndroidDevice() {
 		return
 	}
 
+	device.getInstalledAppsAndroid()
+
 	go device.startAppium()
 	if util.Config.EnvConfig.UseSeleniumGrid {
 		go device.startGridNode()
@@ -236,6 +238,8 @@ func (device *LocalDevice) setupIOSDevice() {
 	if util.Config.EnvConfig.UseSeleniumGrid {
 		go device.startGridNode()
 	}
+
+	device.getInstalledAppsIOS()
 
 	// Mark the device as 'live'
 	device.ProviderState = "live"
@@ -607,5 +611,13 @@ func (device *LocalDevice) updateOSVersion() {
 		} else {
 			device.Device.OSVersion = "N/A"
 		}
+	}
+}
+
+func (device *LocalDevice) UpdateInstalledApps() {
+	if device.Device.OS == "ios" {
+		device.getInstalledAppsIOS()
+	} else {
+		device.getInstalledAppsAndroid()
 	}
 }

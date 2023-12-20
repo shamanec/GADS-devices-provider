@@ -2,6 +2,7 @@ package device
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/danielpaulus/go-ios/ios"
 	"github.com/danielpaulus/go-ios/ios/imagemounter"
@@ -317,4 +319,37 @@ func (device *LocalDevice) pairIOS() error {
 	}
 
 	return nil
+}
+
+func (device *LocalDevice) getInstalledAppsIOS() {
+	cmd := exec.CommandContext(device.Context, "ios", "apps", "--udid="+device.Device.UDID)
+
+	device.Device.InstalledApps = []string{}
+
+	var outBuffer bytes.Buffer
+	cmd.Stdout = &outBuffer
+	if err := cmd.Run(); err != nil {
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed running ios apps command to get installed apps - %v", device.Device.UDID, err))
+		return
+	}
+
+	// Get the command output json string
+	jsonString := strings.TrimSpace(outBuffer.String())
+
+	var appsData = []struct {
+		BundleID string `json:"CFBundleIdentifier"`
+	}{}
+
+	err := json.Unmarshal([]byte(jsonString), &appsData)
+	if err != nil {
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Error unmarshalling ios apps output json - %v", device.Device.UDID, err))
+		return
+	}
+
+	var mu sync.Mutex
+	mu.Lock()
+	defer mu.Unlock()
+	for _, appData := range appsData {
+		device.Device.InstalledApps = append(device.Device.InstalledApps, appData.BundleID)
+	}
 }

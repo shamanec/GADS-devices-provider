@@ -131,3 +131,27 @@ func updateAndroidScreenSizeADB(device *LocalDevice) error {
 
 	return nil
 }
+
+func (device *LocalDevice) getInstalledAppsAndroid() {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "cmd", "package", "list", "packages", "-3")
+
+	device.Device.InstalledApps = []string{}
+
+	var outBuffer bytes.Buffer
+	cmd.Stdout = &outBuffer
+	if err := cmd.Run(); err != nil {
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed running ios apps command to get installed apps - %v", device.Device.UDID, err))
+		return
+	}
+
+	// Get the command output to string
+	result := strings.TrimSpace(outBuffer.String())
+	// Get all lines with package names
+	lines := strings.Split(result, "\n")
+
+	// Clean the package names and add them to the device installed apps
+	for _, line := range lines {
+		packageName := strings.Split(line, ":")[1]
+		device.Device.InstalledApps = append(device.Device.InstalledApps, packageName)
+	}
+}

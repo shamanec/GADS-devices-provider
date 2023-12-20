@@ -145,3 +145,15 @@ func GetProviderData(c *gin.Context) {
 
 	c.JSON(http.StatusOK, providerData)
 }
+
+func DeviceInfo(c *gin.Context) {
+	udid := c.Param("udid")
+
+	if device, ok := device.DeviceMap[udid]; ok {
+		device.UpdateInstalledApps()
+		c.JSON(http.StatusOK, device)
+		return
+	}
+
+	c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Did not find device with udid `%s`", udid)})
+}
