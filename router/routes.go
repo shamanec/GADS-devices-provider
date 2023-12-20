@@ -235,3 +235,15 @@ func InstallApp(c *gin.Context) {
 
 	c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Device with udid `%s` does not exist", udid)})
 }
+
+func ResetDevice(c *gin.Context) {
+	udid := c.Param("udid")
+
+	if device, ok := device.DeviceMap[udid]; ok {
+		device.CtxCancel()
+		c.JSON(http.StatusOK, gin.H{"message": "Initiate setup reset on device"})
+		return
+	}
+
+	c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Device with udid `%s` does not exist", udid)})
+}

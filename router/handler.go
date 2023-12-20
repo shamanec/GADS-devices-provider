@@ -30,6 +30,7 @@ func HandleRequests() *gin.Engine {
 	deviceGroup.GET("/:udid/ios-stream", IosStreamProxy)
 	deviceGroup.POST("/:udid/uninstallApp", UninstallApp)
 	deviceGroup.POST("/:udid/installApp", InstallApp)
+	deviceGroup.POST("/:udid/reset", ResetDevice)
 
 	providerGroup := r.Group("/provider")
 	providerGroup.POST("/uploadFile", UploadFile)
