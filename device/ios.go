@@ -321,7 +321,8 @@ func (device *LocalDevice) pairIOS() error {
 	return nil
 }
 
-func (device *LocalDevice) getInstalledAppsIOS() {
+func getInstalledAppsIOS(device *LocalDevice) []string {
+	var installedApps = []string{}
 	cmd := exec.CommandContext(device.Context, "ios", "apps", "--udid="+device.Device.UDID)
 
 	device.Device.InstalledApps = []string{}
@@ -330,7 +331,7 @@ func (device *LocalDevice) getInstalledAppsIOS() {
 	cmd.Stdout = &outBuffer
 	if err := cmd.Run(); err != nil {
 		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed running ios apps command to get installed apps - %v", device.Device.UDID, err))
-		return
+		return installedApps
 	}
 
 	// Get the command output json string
@@ -343,13 +344,15 @@ func (device *LocalDevice) getInstalledAppsIOS() {
 	err := json.Unmarshal([]byte(jsonString), &appsData)
 	if err != nil {
 		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Error unmarshalling ios apps output json - %v", device.Device.UDID, err))
-		return
+		return installedApps
 	}
 
 	var mu sync.Mutex
 	mu.Lock()
 	defer mu.Unlock()
 	for _, appData := range appsData {
-		device.Device.InstalledApps = append(device.Device.InstalledApps, appData.BundleID)
+		installedApps = append(installedApps, appData.BundleID)
 	}
+
+	return installedApps
 }

@@ -135,7 +135,7 @@ func (device *LocalDevice) setupIOSDeviceGoIOS() {
 		go device.startGridNode()
 	}
 
-	device.getInstalledAppsIOS()
+	device.Device.InstalledApps = getInstalledAppsIOS(device)
 
 	// Mark the device as 'live'
 	device.ProviderState = "live"
