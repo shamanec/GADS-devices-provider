@@ -32,6 +32,7 @@ func HandleRequests() *gin.Engine {
 	providerGroup := r.Group("/provider")
 	providerGroup.POST("/uploadFile", UploadFile)
 	providerGroup.GET("/", GetProviderData)
+	providerGroup.GET("/devices", DevicesInfo)
 
 	return r
 }

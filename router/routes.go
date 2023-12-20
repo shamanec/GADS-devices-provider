@@ -157,3 +157,13 @@ func DeviceInfo(c *gin.Context) {
 
 	c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Did not find device with udid `%s`", udid)})
 }
+
+func DevicesInfo(c *gin.Context) {
+	devices := []*device.LocalDevice{}
+
+	for _, device := range device.DeviceMap {
+		devices = append(devices, device)
+	}
+
+	c.JSON(http.StatusOK, devices)
+}
