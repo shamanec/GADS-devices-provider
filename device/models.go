@@ -17,4 +17,5 @@ type LocalDevice struct {
 	GoIOSDeviceEntry ios.DeviceEntry    `json:"-"`
 	IsResetting      bool
 	Logger           util.CustomLogger `json:"-"`
+	InstallableApps  []string          `json:"installable_apps"`
 }
