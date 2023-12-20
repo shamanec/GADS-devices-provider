@@ -356,3 +356,14 @@ func getInstalledAppsIOS(device *LocalDevice) []string {
 
 	return installedApps
 }
+
+func (device *LocalDevice) uninstallAppIOS(bundleID string) error {
+	cmd := exec.CommandContext(device.Context, "ios", "uninstall", bundleID, "--udid=", device.Device.UDID)
+
+	if err := cmd.Run(); err != nil {
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed executing go-ios uninstall for bundle ID `%s` - %v", bundleID, err))
+		return err
+	}
+
+	return nil
+}

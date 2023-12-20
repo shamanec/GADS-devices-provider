@@ -3,11 +3,13 @@ package router
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -167,4 +169,41 @@ func DevicesInfo(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, devices)
+}
+
+type ProcessApp struct {
+	App string `json:"app"`
+}
+
+func UninstallApp(c *gin.Context) {
+	udid := c.Param("udid")
+
+	if device, ok := device.DeviceMap[udid]; ok {
+		payload, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+			return
+		}
+
+		var payloadJson ProcessApp
+		err = json.Unmarshal(payload, &payloadJson)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+			return
+		}
+
+		if slices.Contains(device.Device.InstalledApps, payloadJson.App) {
+			err = device.UninstallApp(payloadJson.App)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to uninstall app `%s`", payloadJson.App)})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully uninstalled app `%s`", payloadJson.App)})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("App `%s` is not installed on device", payloadJson.App)})
+		return
+	}
+
+	c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Device with udid `%s` does not exist", udid)})
 }

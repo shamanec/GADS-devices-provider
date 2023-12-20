@@ -621,3 +621,19 @@ func (device *LocalDevice) UpdateInstalledApps() {
 		device.Device.InstalledApps = getInstalledAppsAndroid(device)
 	}
 }
+
+func (device *LocalDevice) UninstallApp(app string) error {
+	if device.Device.OS == "ios" {
+		err := device.uninstallAppIOS(app)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := device.uninstallAppAndroid(app)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

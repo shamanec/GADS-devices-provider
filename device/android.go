@@ -139,7 +139,7 @@ func getInstalledAppsAndroid(device *LocalDevice) []string {
 	var outBuffer bytes.Buffer
 	cmd.Stdout = &outBuffer
 	if err := cmd.Run(); err != nil {
-		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed running ios apps command to get installed apps - %v", device.Device.UDID, err))
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed running ios apps command to get installed apps - %v", err))
 		return installedApps
 	}
 
@@ -155,4 +155,15 @@ func getInstalledAppsAndroid(device *LocalDevice) []string {
 	}
 
 	return installedApps
+}
+
+func (device *LocalDevice) uninstallAppAndroid(packageName string) error {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "uninstall", packageName)
+
+	if err := cmd.Run(); err != nil {
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed executing adb uninstall for package name `%s` - %v", packageName, err))
+		return err
+	}
+
+	return nil
 }

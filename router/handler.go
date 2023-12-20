@@ -28,6 +28,7 @@ func HandleRequests() *gin.Engine {
 	deviceGroup.Any("/:udid/appium/*proxyPath", AppiumReverseProxy)
 	deviceGroup.GET("/:udid/android-stream", AndroidStreamProxy)
 	deviceGroup.GET("/:udid/ios-stream", IosStreamProxy)
+	deviceGroup.POST("/:udid/uninstallApp", UninstallApp)
 
 	providerGroup := r.Group("/provider")
 	providerGroup.POST("/uploadFile", UploadFile)
