@@ -33,9 +33,9 @@ func HandleRequests() *gin.Engine {
 	deviceGroup.POST("/:udid/reset", ResetDevice)
 
 	providerGroup := r.Group("/provider")
-	providerGroup.POST("/uploadFile", UploadFile)
 	providerGroup.GET("/", GetProviderData)
 	providerGroup.GET("/devices", DevicesInfo)
+	providerGroup.POST("/uploadFile", UploadFile)
 
 	return r
 }
