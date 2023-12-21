@@ -2,6 +2,7 @@ package device
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/danielpaulus/go-ios/ios"
 	"github.com/danielpaulus/go-ios/ios/imagemounter"
@@ -314,6 +316,62 @@ func (device *LocalDevice) pairIOS() error {
 	err = ios.PairSupervised(device.GoIOSDeviceEntry, p12, util.Config.EnvConfig.SupervisionPassword)
 	if err != nil {
 		return fmt.Errorf("Could not perform supervised pairing successfully - %s", err)
+	}
+
+	return nil
+}
+
+func getInstalledAppsIOS(device *LocalDevice) []string {
+	var installedApps = []string{}
+	cmd := exec.CommandContext(device.Context, "ios", "apps", "--udid="+device.Device.UDID)
+
+	device.Device.InstalledApps = []string{}
+
+	var outBuffer bytes.Buffer
+	cmd.Stdout = &outBuffer
+	if err := cmd.Run(); err != nil {
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed running ios apps command to get installed apps - %v", device.Device.UDID, err))
+		return installedApps
+	}
+
+	// Get the command output json string
+	jsonString := strings.TrimSpace(outBuffer.String())
+
+	var appsData = []struct {
+		BundleID string `json:"CFBundleIdentifier"`
+	}{}
+
+	err := json.Unmarshal([]byte(jsonString), &appsData)
+	if err != nil {
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Error unmarshalling ios apps output json - %v", device.Device.UDID, err))
+		return installedApps
+	}
+
+	var mu sync.Mutex
+	mu.Lock()
+	defer mu.Unlock()
+	for _, appData := range appsData {
+		installedApps = append(installedApps, appData.BundleID)
+	}
+
+	return installedApps
+}
+
+func (device *LocalDevice) uninstallAppIOS(bundleID string) error {
+	cmd := exec.CommandContext(device.Context, "ios", "uninstall", bundleID, "--udid="+device.Device.UDID)
+	if err := cmd.Run(); err != nil {
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed executing go-ios uninstall for bundle ID `%s` - %v", bundleID, err))
+		return err
+	}
+
+	return nil
+}
+
+func (device *LocalDevice) installAppIOS(appName string) error {
+	cmd := exec.CommandContext(device.Context, "ios", "install", "--path=./apps/"+appName, "--udid="+device.Device.UDID)
+	if err := cmd.Run(); err != nil {
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed executing go-ios install for app `%s` - %v", appName, err))
+		return err
 	}
 
 	return nil

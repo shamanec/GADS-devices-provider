@@ -131,3 +131,50 @@ func updateAndroidScreenSizeADB(device *LocalDevice) error {
 
 	return nil
 }
+
+func getInstalledAppsAndroid(device *LocalDevice) []string {
+	var installedApps = []string{}
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "cmd", "package", "list", "packages", "-3")
+
+	var outBuffer bytes.Buffer
+	cmd.Stdout = &outBuffer
+	if err := cmd.Run(); err != nil {
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed running ios apps command to get installed apps - %v", err))
+		return installedApps
+	}
+
+	// Get the command output to string
+	result := strings.TrimSpace(outBuffer.String())
+	// Get all lines with package names
+	lines := strings.Split(result, "\n")
+
+	// Clean the package names and add them to the device installed apps
+	for _, line := range lines {
+		packageName := strings.Split(line, ":")[1]
+		installedApps = append(installedApps, packageName)
+	}
+
+	return installedApps
+}
+
+func (device *LocalDevice) uninstallAppAndroid(packageName string) error {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "uninstall", packageName)
+
+	if err := cmd.Run(); err != nil {
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed executing adb uninstall for package name `%s` - %v", packageName, err))
+		return err
+	}
+
+	return nil
+}
+
+func (device *LocalDevice) installAppAndroid(appName string) error {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "install", "-r", "./apps/"+appName)
+
+	if err := cmd.Run(); err != nil {
+		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed executing adb install for app `%s` - %v", appName, err))
+		return err
+	}
+
+	return nil
+}

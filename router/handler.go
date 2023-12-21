@@ -14,6 +14,7 @@ func HandleRequests() *gin.Engine {
 	r.Use(cors.New(config))
 
 	deviceGroup := r.Group("/device")
+	deviceGroup.GET("/:udid/info", DeviceInfo)
 	deviceGroup.GET("/:udid/health", DeviceHealth)
 	deviceGroup.POST("/:udid/tap", DeviceTap)
 	deviceGroup.POST("/:udid/home", DeviceHome)
@@ -27,10 +28,14 @@ func HandleRequests() *gin.Engine {
 	deviceGroup.Any("/:udid/appium/*proxyPath", AppiumReverseProxy)
 	deviceGroup.GET("/:udid/android-stream", AndroidStreamProxy)
 	deviceGroup.GET("/:udid/ios-stream", IosStreamProxy)
+	deviceGroup.POST("/:udid/uninstallApp", UninstallApp)
+	deviceGroup.POST("/:udid/installApp", InstallApp)
+	deviceGroup.POST("/:udid/reset", ResetDevice)
 
 	providerGroup := r.Group("/provider")
-	providerGroup.POST("/uploadFile", UploadFile)
 	providerGroup.GET("/", GetProviderData)
+	providerGroup.GET("/devices", DevicesInfo)
+	providerGroup.POST("/uploadFile", UploadFile)
 
 	return r
 }

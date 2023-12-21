@@ -154,6 +154,8 @@ func (device *LocalDevice) setupAndroidDevice() {
 		return
 	}
 
+	device.Device.InstalledApps = getInstalledAppsAndroid(device)
+
 	go device.startAppium()
 	if util.Config.EnvConfig.UseSeleniumGrid {
 		go device.startGridNode()
@@ -236,6 +238,8 @@ func (device *LocalDevice) setupIOSDevice() {
 	if util.Config.EnvConfig.UseSeleniumGrid {
 		go device.startGridNode()
 	}
+
+	device.Device.InstalledApps = getInstalledAppsIOS(device)
 
 	// Mark the device as 'live'
 	device.ProviderState = "live"
@@ -608,4 +612,44 @@ func (device *LocalDevice) updateOSVersion() {
 			device.Device.OSVersion = "N/A"
 		}
 	}
+}
+
+func (device *LocalDevice) UpdateInstalledApps() {
+	if device.Device.OS == "ios" {
+		device.Device.InstalledApps = getInstalledAppsIOS(device)
+	} else {
+		device.Device.InstalledApps = getInstalledAppsAndroid(device)
+	}
+}
+
+func (device *LocalDevice) UninstallApp(app string) error {
+	if device.Device.OS == "ios" {
+		err := device.uninstallAppIOS(app)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := device.uninstallAppAndroid(app)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (device *LocalDevice) InstallApp(app string) error {
+	if device.Device.OS == "ios" {
+		err := device.installAppIOS(app)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := device.installAppAndroid(app)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
