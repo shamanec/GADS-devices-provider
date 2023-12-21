@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/shamanec/GADS-devices-provider/device"
 	_ "github.com/shamanec/GADS-devices-provider/docs"
@@ -15,6 +17,17 @@ func main() {
 	port_flag := flag.String("port", "10001", "The port to run the server on")
 	log_level := flag.String("log_level", "info", "The log level of the provider app - debug, info or error")
 	flag.Parse()
+
+	// Create logs folder if it doesn't exist
+	_, err := os.Stat("./logs")
+	if os.IsNotExist(err) {
+		err = os.Mkdir("./logs", os.ModePerm)
+		if err != nil {
+			log.Fatal("Could not create logs folder - " + err.Error())
+		}
+	} else {
+		log.Fatal("Could not create logs folder - " + err.Error())
+	}
 
 	util.SetupConfig()
 	util.InitMongoClient()
