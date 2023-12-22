@@ -25,7 +25,7 @@ func main() {
 		if err != nil {
 			log.Fatal("Could not create logs folder - " + err.Error())
 		}
-	} else {
+	} else if err != nil {
 		log.Fatal("Could not create logs folder - " + err.Error())
 	}
 
