@@ -296,7 +296,40 @@ func DeviceTap(c *gin.Context) {
 
 	c.Writer.WriteHeader(tapResp.StatusCode)
 	copyHeaders(c.Writer.Header(), tapResp.Header)
-	fmt.Fprintf(c.Writer, string(body))
+	fmt.Fprint(c.Writer, string(body))
+}
+
+func DeviceTouchAndHold(c *gin.Context) {
+	udid := c.Param("udid")
+	device := device.DeviceMap[udid]
+
+	var requestBody actionData
+	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	device.Logger.LogInfo("appium_interact", fmt.Sprintf("Touch and hold at coordinates X:%v Y:%v", fmt.Sprintf("%.2f", requestBody.X), fmt.Sprintf("%.2f", requestBody.Y)))
+
+	touchAndHoldResp, err := appiumTouchAndHold(device, requestBody.X, requestBody.Y)
+	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to touch and hold at coordinates X:%v Y:%v - %s", fmt.Sprintf("%.2f", requestBody.X), fmt.Sprintf("%.2f", requestBody.Y), err))
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer touchAndHoldResp.Body.Close()
+
+	// Read the response body
+	body, err := io.ReadAll(touchAndHoldResp.Body)
+	if err != nil {
+		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to touch and hold at coordinates X:%v Y:%v` - %s", fmt.Sprintf("%.2f", requestBody.X), fmt.Sprintf("%.2f", requestBody.Y), err))
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.Writer.WriteHeader(touchAndHoldResp.StatusCode)
+	copyHeaders(c.Writer.Header(), touchAndHoldResp.Header)
+	fmt.Fprint(c.Writer, string(body))
 }
 
 func DeviceSwipe(c *gin.Context) {
@@ -330,5 +363,5 @@ func DeviceSwipe(c *gin.Context) {
 
 	c.Writer.WriteHeader(swipeResp.StatusCode)
 	copyHeaders(c.Writer.Header(), swipeResp.Header)
-	fmt.Fprintf(c.Writer, string(body))
+	fmt.Fprint(c.Writer, string(body))
 }

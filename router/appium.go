@@ -88,6 +88,60 @@ func appiumTap(device *device.LocalDevice, x float64, y float64) (*http.Response
 	return tapResponse, nil
 }
 
+func appiumTouchAndHold(device *device.LocalDevice, x float64, y float64) (*http.Response, error) {
+	appiumRequestURL := "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/actions"
+
+	// Generate the struct object for the Appium actions JSON request
+	action := devicePointerActions{
+		[]devicePointerAction{
+			{
+				Type: "pointer",
+				ID:   "finger1",
+				Parameters: deviceActionParameters{
+					PointerType: "touch",
+				},
+				Actions: []deviceAction{
+					{
+						Type:     "pointerMove",
+						Duration: 0,
+						X:        x,
+						Y:        y,
+					},
+					{
+						Type:   "pointerDown",
+						Button: 0,
+					},
+					{
+						Type:     "pause",
+						Duration: 2000,
+					},
+					{
+						Type:     "pointerUp",
+						Duration: 0,
+					},
+				},
+			},
+		},
+	}
+
+	actionJSON, err := util.ConvertToJSONString(action)
+	if err != nil {
+		return nil, fmt.Errorf("Could not convert Appium actions struct to a JSON string: %s", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, appiumRequestURL, bytes.NewBuffer([]byte(actionJSON)))
+	if err != nil {
+		return nil, fmt.Errorf("Could not generate http request to Appium /actions endpoint: %s", err)
+	}
+
+	touchAndHoldResponse, err := netClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Failed calling Appium /actions endpoint: %s", err)
+	}
+
+	return touchAndHoldResponse, nil
+}
+
 func appiumSwipe(device *device.LocalDevice, x, y, endX, endY float64) (*http.Response, error) {
 	appiumRequestURL := "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/actions"
 
