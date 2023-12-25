@@ -123,11 +123,31 @@ func updateAndroidScreenSizeADB(device *LocalDevice) error {
 	}
 
 	output := outBuffer.String()
-	splitOutput := strings.Split(output, ": ")
-	screenDimensions := strings.Split(splitOutput[1], "x")
+	// Some devices return more than one line with device screen info
+	// Physical size and Override size
+	// Thats why we'll process the response respectively
+	// Specifically this was applied when caught on Samsung S20 and S9, might apply for others
+	lines := strings.Split(output, "\n")
+	// If the split lines are 2 then we have only one size returned
+	// and one empty line
+	if len(lines) == 2 {
+		splitOutput := strings.Split(lines[0], ": ")
+		screenDimensions := strings.Split(splitOutput[1], "x")
 
-	device.Device.ScreenWidth = strings.TrimSpace(screenDimensions[0])
-	device.Device.ScreenHeight = strings.TrimSpace(screenDimensions[1])
+		device.Device.ScreenWidth = strings.TrimSpace(screenDimensions[0])
+		device.Device.ScreenHeight = strings.TrimSpace(screenDimensions[1])
+	}
+
+	// If the split lines are 3 then we have two sizes returned
+	// and one empty line
+	// We need the second size here
+	if len(lines) == 3 {
+		splitOutput := strings.Split(lines[1], ": ")
+		screenDimensions := strings.Split(splitOutput[1], "x")
+
+		device.Device.ScreenWidth = strings.TrimSpace(screenDimensions[0])
+		device.Device.ScreenHeight = strings.TrimSpace(screenDimensions[1])
+	}
 
 	return nil
 }
