@@ -19,4 +19,5 @@ type Device struct {
 	ScreenHeight    string   `json:"screen_height" bson:"screen_height"`
 	HardwareModel   string   `json:"hardware_model,omitempty" bson:"hardware_model,omitempty"`
 	InstalledApps   []string `json:"installed_apps" bson:"-"`
+	IOSProductType  string   `json:"ios_product_type,omitempty" bson:"ios_product_type,omitempty"`
 }

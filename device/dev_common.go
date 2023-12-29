@@ -179,9 +179,10 @@ func (device *LocalDevice) setupIOSDevice() {
 		device.resetLocalDevice()
 		return
 	}
-	// Update hardware model got from plist
+	// Update hardware model got from plist, os version and product type
 	device.Device.HardwareModel = plistValues["HardwareModel"].(string)
 	device.Device.OSVersion = plistValues["ProductVersion"].(string)
+	device.Device.IOSProductType = plistValues["ProductType"].(string)
 
 	// Update the screen dimensions of the device using data from the IOSDeviceDimensions map
 	err = device.updateScreenSize()
@@ -550,7 +551,7 @@ func (device *LocalDevice) startGridNode() {
 
 func (device *LocalDevice) updateScreenSize() error {
 	if device.Device.OS == "ios" {
-		if dimensions, ok := util.IOSDeviceInfoMap[device.Device.HardwareModel]; ok {
+		if dimensions, ok := util.IOSDeviceInfoMap[device.Device.IOSProductType]; ok {
 			device.Device.ScreenHeight = dimensions.Height
 			device.Device.ScreenWidth = dimensions.Width
 		} else {
@@ -568,7 +569,7 @@ func (device *LocalDevice) updateScreenSize() error {
 
 func (device *LocalDevice) updateModel() {
 	if device.Device.OS == "ios" {
-		if info, ok := util.IOSDeviceInfoMap[device.Device.HardwareModel]; ok {
+		if info, ok := util.IOSDeviceInfoMap[device.Device.IOSProductType]; ok {
 			device.Device.Model = info.Model
 		} else {
 			device.Device.Model = "Unknown iOS device"
