@@ -28,10 +28,10 @@ func updateDevicesOSX() {
 		}
 	}
 
-	_, err := os.Stat(util.Config.EnvConfig.WDAPath)
+	_, err := os.Stat(util.Config.EnvConfig.WdaRepoPath)
 	if err != nil {
-		util.ProviderLogger.LogError("provider", util.Config.EnvConfig.WDAPath+" does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
-		fmt.Println(util.Config.EnvConfig.WDAPath + " does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
+		util.ProviderLogger.LogError("provider", util.Config.EnvConfig.WdaRepoPath+" does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
+		fmt.Println(util.Config.EnvConfig.WdaRepoPath + " does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
 		os.Exit(1)
 	}
 

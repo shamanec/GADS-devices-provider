@@ -74,14 +74,14 @@ func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
 // Build WebDriverAgent for testing with `xcodebuild`
 func buildWebDriverAgent() error {
 	cmd := exec.Command("xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "generic/platform=iOS", "build-for-testing")
-	cmd.Dir = util.Config.EnvConfig.WDAPath
+	cmd.Dir = util.Config.EnvConfig.WdaRepoPath
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
 
-	util.ProviderLogger.LogInfo("provider", fmt.Sprintf("Starting WebDriverAgent xcodebuild in path `%s` with command `%s` ", util.Config.EnvConfig.WDAPath, cmd.String()))
+	util.ProviderLogger.LogInfo("provider", fmt.Sprintf("Starting WebDriverAgent xcodebuild in path `%s` with command `%s` ", util.Config.EnvConfig.WdaRepoPath, cmd.String()))
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func buildWebDriverAgent() error {
 
 func (device *LocalDevice) startWdaWithXcodebuild() {
 	cmd := exec.CommandContext(device.Context, "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.Device.UDID, "test-without-building", "-allowProvisioningUpdates")
-	cmd.Dir = util.Config.EnvConfig.WDAPath
+	cmd.Dir = util.Config.EnvConfig.WdaRepoPath
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -236,7 +236,7 @@ func (device *LocalDevice) createWebDriverAgentSession() error {
 
 func (device *LocalDevice) startWdaWithGoIOS() {
 
-	cmd := exec.CommandContext(context.Background(), "ios", "runwda", "--bundleid="+util.Config.EnvConfig.WDABundleID, "--testrunnerbundleid="+util.Config.EnvConfig.WDABundleID, "--xctestconfig=WebDriverAgentRunner.xctest", "--udid="+device.Device.UDID)
+	cmd := exec.CommandContext(context.Background(), "ios", "runwda", "--bundleid="+util.Config.EnvConfig.WdaBundleID, "--testrunnerbundleid="+util.Config.EnvConfig.WdaBundleID, "--xctestconfig=WebDriverAgentRunner.xctest", "--udid="+device.Device.UDID)
 
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()

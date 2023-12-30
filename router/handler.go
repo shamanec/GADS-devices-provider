@@ -13,6 +13,10 @@ func HandleRequests() *gin.Engine {
 	config.AllowHeaders = []string{"X-Auth-Token", "Content-Type"}
 	r.Use(cors.New(config))
 
+	r.GET("/info", GetProviderData)
+	r.GET("/devices", DevicesInfo)
+	r.POST("/uploadFile", UploadFile)
+
 	deviceGroup := r.Group("/device")
 	deviceGroup.GET("/:udid/info", DeviceInfo)
 	deviceGroup.GET("/:udid/health", DeviceHealth)
@@ -32,11 +36,7 @@ func HandleRequests() *gin.Engine {
 	deviceGroup.POST("/:udid/uninstallApp", UninstallApp)
 	deviceGroup.POST("/:udid/installApp", InstallApp)
 	deviceGroup.POST("/:udid/reset", ResetDevice)
-
-	providerGroup := r.Group("/provider")
-	providerGroup.GET("/", GetProviderData)
-	providerGroup.GET("/devices", DevicesInfo)
-	providerGroup.POST("/uploadFile", UploadFile)
+	deviceGroup.POST("/:udid/uploadFile", UploadFile)
 
 	return r
 }

@@ -41,7 +41,9 @@ func UnmarshalJSONString(jsonString string, v interface{}) error {
 	return nil
 }
 
-func SetupConfig() {
+func SetupConfig(nickname string) {
+	fmt.Println("KOLEO")
+	fmt.Println(nickname)
 	var err error
 	ProjectDir, err = os.Getwd()
 	if err != nil {
@@ -52,6 +54,12 @@ func SetupConfig() {
 	if err != nil {
 		panic(fmt.Sprintf("Could not get config data from config.json - %s", err))
 	}
+
+	provider, err := GetProviderFromDB(nickname)
+	if (provider == models.ProviderDB{}) {
+		panic(fmt.Sprintf("Provider with this nickname is not registered in the DB"))
+	}
+	Config.EnvConfig = provider
 }
 
 func GetFreePort() (port int, err error) {

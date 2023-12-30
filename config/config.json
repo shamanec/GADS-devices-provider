@@ -1,18 +1,4 @@
 {
-  "env-config": {
-    "use_selenium_grid": false,
-    "supervision_password": "patladjan1",
-    "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner",
-    "host_address": "192.168.1.28",
-    "mongo_db": "192.168.1.28:27017",
-    "wda_repo_path": "/Users/shamanec/Downloads/WebDriverAgent-5.8.3/",
-    "provider_nickname": "Provider2",
-    "selenium_jar": "selenium-server-4.14.0.jar",
-    "host_port": 10001,
-    "selenium_grid": "http://192.168.1.6:4444",
-    "provide_android": false,
-    "provide_ios": false
-  },
   "devices-config": [
     {
       "os": "ios",
@@ -78,6 +64,11 @@
       "os": "android",
       "udid": "RQ30041UV0",
       "name": "Sony Xperia"
+    },
+    {
+      "os": "android",
+      "udid": "RFCW90GMNWB",
+      "name": "Samsung S23"
     }
   ]
 }

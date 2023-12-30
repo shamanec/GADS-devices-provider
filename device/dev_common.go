@@ -68,7 +68,7 @@ func getLocalDevices() {
 
 		localDevice.setContext()
 		localDevice.Device.HostAddress = util.Config.EnvConfig.HostAddress
-		localDevice.Device.Provider = util.Config.EnvConfig.ProviderNickname
+		localDevice.Device.Provider = util.Config.EnvConfig.Nickname
 		localDevice.Device.Model = "N/A"
 		localDevice.Device.OSVersion = "N/A"
 		localDevices = append(localDevices, &localDevice)
@@ -481,7 +481,7 @@ func (device *LocalDevice) createGridTOML() {
 		automationName = "UiAutomator2"
 	}
 
-	url := fmt.Sprintf("http://%s:%v/device/%s/appium", util.Config.EnvConfig.HostAddress, util.Config.EnvConfig.HostPort, device.Device.UDID)
+	url := fmt.Sprintf("http://%s:%v/device/%s/appium", util.Config.EnvConfig.HostAddress, util.Config.EnvConfig.Port, device.Device.UDID)
 	configs := fmt.Sprintf(`{"appium:deviceName": "%s", "platformName": "%s", "appium:platformVersion": "%s", "appium:automationName": "%s"}`, device.Device.Name, device.Device.OS, device.Device.OSVersion, automationName)
 
 	config := AppiumTomlConfig{
@@ -520,33 +520,33 @@ func (device *LocalDevice) createGridTOML() {
 }
 
 func (device *LocalDevice) startGridNode() {
-	time.Sleep(5 * time.Second)
-	cmd := exec.CommandContext(device.Context, "java", "-jar", "./apps/"+util.Config.EnvConfig.SeleniumJar, "node", "--config", util.ProjectDir+"/config/"+device.Device.UDID+".toml", "--grid-url", util.Config.EnvConfig.SeleniumGrid)
+	// time.Sleep(5 * time.Second)
+	// cmd := exec.CommandContext(device.Context, "java", "-jar", "./apps/"+util.Config.EnvConfig.SeleniumJar, "node", "--config", util.ProjectDir+"/config/"+device.Device.UDID+".toml", "--grid-url", util.Config.EnvConfig.SeleniumGrid)
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error creating stdoutpipe while starting Selenium Grid node for device `%v` - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
-		return
-	}
+	// stdout, err := cmd.StdoutPipe()
+	// if err != nil {
+	// 	util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error creating stdoutpipe while starting Selenium Grid node for device `%v` - %v", device.Device.UDID, err))
+	// 	device.resetLocalDevice()
+	// 	return
+	// }
 
-	if err := cmd.Start(); err != nil {
-		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Could not start Selenium Grid node for device `%v` - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
-		return
-	}
+	// if err := cmd.Start(); err != nil {
+	// 	util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Could not start Selenium Grid node for device `%v` - %v", device.Device.UDID, err))
+	// 	device.resetLocalDevice()
+	// 	return
+	// }
 
-	scanner := bufio.NewScanner(stdout)
+	// scanner := bufio.NewScanner(stdout)
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		device.Logger.LogDebug("grid-node", strings.TrimSpace(line))
-	}
+	// for scanner.Scan() {
+	// 	line := scanner.Text()
+	// 	device.Logger.LogDebug("grid-node", strings.TrimSpace(line))
+	// }
 
-	if err := cmd.Wait(); err != nil {
-		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error waiting for Selenium Grid node command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
-	}
+	// if err := cmd.Wait(); err != nil {
+	// 	util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error waiting for Selenium Grid node command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
+	// 	device.resetLocalDevice()
+	// }
 }
 
 func (device *LocalDevice) updateScreenSize() error {

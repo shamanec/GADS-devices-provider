@@ -29,7 +29,7 @@ func SetupLogging(level string) {
 	logLevel = level
 
 	var err error
-	ProviderLogger, err = CreateCustomLogger("./logs/provider.log", Config.EnvConfig.ProviderNickname)
+	ProviderLogger, err = CreateCustomLogger("./logs/provider.log", Config.EnvConfig.Nickname)
 	if err != nil {
 		panic(err)
 	}
@@ -120,7 +120,7 @@ func (hook *MongoDBHook) Fire(entry *log.Entry) error {
 		Level:     entry.Level.String(),
 		Message:   entry.Message,
 		Timestamp: time.Now().UnixMilli(),
-		Host:      Config.EnvConfig.ProviderNickname,
+		Host:      Config.EnvConfig.Nickname,
 		EventName: fields["event"].(string),
 	}
 

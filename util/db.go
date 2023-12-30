@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/shamanec/GADS-devices-provider/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -13,9 +14,9 @@ import (
 var mongoClient *mongo.Client
 var mongoClientCtx context.Context
 
-func InitMongoClient() {
+func InitMongoClient(mongo_db string) {
 	var err error
-	connectionString := "mongodb://" + Config.EnvConfig.MongoDB + "/?keepAlive=true"
+	connectionString := "mongodb://" + mongo_db + "/?keepAlive=true"
 
 	// Set up a context for the connection.
 	mongoClientCtx = context.TODO()
@@ -59,22 +60,14 @@ func checkDBConnection() {
 	}
 }
 
-func UpsertProviderMongo() {
-	data := bson.M{
-		"_id":               Config.EnvConfig.ProviderNickname,
-		"host_address":      Config.EnvConfig.HostAddress,
-		"selenium_grid":     Config.EnvConfig.SeleniumGrid,
-		"use_selenium_grid": Config.EnvConfig.UseSeleniumGrid,
-		"devices_in_config": len(Config.Devices),
-	}
-	filter := bson.M{"_id": Config.EnvConfig.ProviderNickname}
-	update := bson.M{
-		"$set": data,
-	}
+func GetProviderFromDB(nickname string) (models.ProviderDB, error) {
+	var provider models.ProviderDB
+	coll := mongoClient.Database("gads").Collection("providers_new")
+	filter := bson.D{{Key: "nickname", Value: nickname}}
 
-	opts := options.Update().SetUpsert(true)
-	_, err := MongoClient().Database("gads").Collection("providers").UpdateOne(MongoCtx(), filter, update, opts)
+	err := coll.FindOne(context.TODO(), filter).Decode(&provider)
 	if err != nil {
-		ProviderLogger.LogError("provider", "Failed registering provider data in Mongo - "+err.Error())
+		return models.ProviderDB{}, err
 	}
+	return provider, nil
 }
