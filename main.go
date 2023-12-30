@@ -14,19 +14,45 @@ import (
 
 func main() {
 
+	// Flags for the provider startup
 	log_level := flag.String("log-level", "info", "The log level of the provider app - debug, info or error")
 	nickname := flag.String("nickname", "", "The nickname of the provider")
 	mongo_db := flag.String("mongo-db", "localhost:27017", "The address of the MongoDB instance")
 	provider_folder := flag.String("provider-folder", ".", "The folder where logs and apps are stored")
 	flag.Parse()
 
+	// Nickname is mandatory, this is what we use to get the configuration from the DB
 	if *nickname == "" {
 		log.Fatal("Please provide --nickname=* flag")
 	}
 
+	// Print out some info on startup, maybe a flag was missed
 	fmt.Printf("Current log level: %s, use the --log-level flag to change it", *log_level)
 	fmt.Printf("Will use `%s` as address for MongoDB instance, use the --mongo-db flag to change it\n", *mongo_db)
 	fmt.Printf("Will use `%s` as provider folder, use the --provider-folder flag to change it\n", *provider_folder)
+
+	// Create a connection to Mongo
+	util.InitMongoClient(fmt.Sprintf("%v", *mongo_db))
+	// Set up the provider configuration
+	util.SetupConfig(fmt.Sprintf("%v", *nickname), fmt.Sprintf("%v", *provider_folder))
+	// Defer closing the Mongo connection on provider stopped
+	defer util.CloseMongoConn()
+
+	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa
+	if util.Config.EnvConfig.OS != "macos" && util.Config.EnvConfig.ProvideIOS {
+		_, err := os.Stat(fmt.Sprintf("%s/apps/WebDriverAgent.ipa", *provider_folder))
+		if os.IsNotExist(err) {
+			log.Fatalf("You should put signed WebDriverAgent.ipa file in the `apps` folder in `%s`", *provider_folder)
+		}
+	}
+
+	// If Android devices provision enabled check for gads-stream.apk
+	if util.Config.EnvConfig.ProvideAndroid {
+		_, err := os.Stat(fmt.Sprintf("%s/apps/gads-stream.apk", *provider_folder))
+		if os.IsNotExist(err) {
+			log.Fatalf("You should put gads-stream.apk file in the `apps` folder in `%s`", *provider_folder)
+		}
+	}
 
 	// Create logs folder if it doesn't exist
 	_, err := os.Stat(fmt.Sprintf("%s/logs", *provider_folder))
@@ -38,10 +64,6 @@ func main() {
 	} else if err != nil {
 		log.Fatal("Could not create logs folder - " + err.Error())
 	}
-
-	util.InitMongoClient(fmt.Sprintf("%v", *mongo_db))
-	util.SetupConfig(fmt.Sprintf("%v", *nickname), fmt.Sprintf("%v", *provider_folder))
-	defer util.CloseMongoConn()
 
 	util.SetupLogging(*log_level)
 
