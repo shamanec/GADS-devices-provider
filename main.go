@@ -8,7 +8,7 @@ import (
 
 	"github.com/shamanec/GADS-devices-provider/config"
 	"github.com/shamanec/GADS-devices-provider/db"
-	"github.com/shamanec/GADS-devices-provider/device"
+	"github.com/shamanec/GADS-devices-provider/devices"
 	_ "github.com/shamanec/GADS-devices-provider/docs"
 	"github.com/shamanec/GADS-devices-provider/logger"
 	"github.com/shamanec/GADS-devices-provider/router"
@@ -72,7 +72,7 @@ func main() {
 	logger.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", config.Config.EnvConfig.Port))
 
 	// Start a goroutine that will update devices on provider start
-	go device.UpdateDevices()
+	go devices.UpdateDevices()
 
 	// Handle the endpoints
 	r := router.HandleRequests()

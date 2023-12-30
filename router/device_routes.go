@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shamanec/GADS-devices-provider/device"
+	"github.com/shamanec/GADS-devices-provider/devices"
 )
 
 // Copy the headers from the original endpoint to the proxied endpoint
@@ -22,8 +22,8 @@ func copyHeaders(destination, source http.Header) {
 // Check the device health by checking Appium and WDA(for iOS)
 func DeviceHealth(c *gin.Context) {
 	udid := c.Param("udid")
-	dev := device.DeviceMap[udid]
-	bool, err := device.GetDeviceHealth(dev)
+	dev := devices.DeviceMap[udid]
+	bool, err := devices.GetDeviceHealth(dev)
 	if err != nil {
 		dev.Logger.LogInfo("device", fmt.Sprintf("Could not check device health - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
@@ -43,7 +43,7 @@ func DeviceHealth(c *gin.Context) {
 // Call the respective Appium/WDA endpoint to go to Homescreen
 func DeviceHome(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 	device.Logger.LogInfo("appium_interact", "Navigating to Home/Springboard")
 
 	// Send the request
@@ -71,7 +71,7 @@ func DeviceHome(c *gin.Context) {
 // Call respective Appium/WDA endpoint to lock the device
 func DeviceLock(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 	device.Logger.LogInfo("appium_interact", "Locking device")
 
 	lockResponse, err := appiumLockUnlock(device, "lock")
@@ -98,7 +98,7 @@ func DeviceLock(c *gin.Context) {
 // Call the respective Appium/WDA endpoint to unlock the device
 func DeviceUnlock(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 	device.Logger.LogInfo("appium_interact", "Unlocking device")
 
 	lockResponse, err := appiumLockUnlock(device, "unlock")
@@ -125,7 +125,7 @@ func DeviceUnlock(c *gin.Context) {
 // Call the respective Appium/WDA endpoint to take a screenshot of the device screen
 func DeviceScreenshot(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 	device.Logger.LogInfo("appium_interact", "Getting screenshot from device")
 
 	screenshotResp, err := appiumScreenshot(device)
@@ -149,7 +149,7 @@ func DeviceScreenshot(c *gin.Context) {
 
 func DeviceAppiumSource(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 	device.Logger.LogInfo("appium_interact", "Getting Appium source from device")
 
 	sourceResp, err := appiumSource(device)
@@ -210,7 +210,7 @@ type devicePointerActions struct {
 
 func DeviceTypeText(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
 	var requestBody actionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
@@ -243,7 +243,7 @@ func DeviceTypeText(c *gin.Context) {
 
 func DeviceClearText(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 	device.Logger.LogInfo("appium_interact", "Clearing text from active element")
 
 	clearResp, err := appiumClearText(device)
@@ -268,7 +268,7 @@ func DeviceClearText(c *gin.Context) {
 
 func DeviceTap(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
 	var requestBody actionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
@@ -301,7 +301,7 @@ func DeviceTap(c *gin.Context) {
 
 func DeviceTouchAndHold(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
 	var requestBody actionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
@@ -334,7 +334,7 @@ func DeviceTouchAndHold(c *gin.Context) {
 
 func DeviceSwipe(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
 	var requestBody actionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {

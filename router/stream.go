@@ -14,12 +14,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
-	"github.com/shamanec/GADS-devices-provider/device"
+	"github.com/shamanec/GADS-devices-provider/devices"
 )
 
 func AndroidStreamProxy(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
 	conn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
 	if err != nil {
@@ -67,7 +67,7 @@ func AndroidStreamProxy(c *gin.Context) {
 
 func IosStreamProxy(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
 	conn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
 	if err != nil {
