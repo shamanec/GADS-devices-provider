@@ -17,4 +17,5 @@ type ProviderDB struct {
 	WdaBundleID         string `json:"wda_bundle_id" bson:"wda_bundle_id"`
 	SupervisionPassword string `json:"supervision_password" bson:"supervision_password"`
 	WdaRepoPath         string `json:"wda_repo_path" bson:"wda_repo_path"`
+	ProviderFolder      string `json:"-" bson:"-"`
 }

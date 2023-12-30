@@ -29,7 +29,7 @@ func SetupLogging(level string) {
 	logLevel = level
 
 	var err error
-	ProviderLogger, err = CreateCustomLogger("./logs/provider.log", Config.EnvConfig.Nickname)
+	ProviderLogger, err = CreateCustomLogger(fmt.Sprintf("%s/logs/provider.log", Config.EnvConfig.ProviderFolder), Config.EnvConfig.Nickname)
 	if err != nil {
 		panic(err)
 	}

@@ -29,13 +29,18 @@ var DeviceMap = make(map[string]*LocalDevice)
 func UpdateDevices() {
 	Setup()
 
-	if runtime.GOOS == "linux" {
+	switch runtime.GOOS {
+	case "linux":
 		go updateDevicesLinux()
-	} else if runtime.GOOS == "darwin" {
+		return
+	case "darwin":
 		go updateDevicesOSX()
-	} else if runtime.GOOS == "windows" {
+		return
+	case "windows":
 		go updateDevicesWindows()
+		return
 	}
+
 	go updateDevicesMongo()
 }
 
@@ -85,7 +90,7 @@ func getLocalDevices() {
 			}
 		}
 
-		logger, err := util.CreateCustomLogger("./logs/device_"+device.UDID+"/device.log", device.UDID)
+		logger, err := util.CreateCustomLogger(fmt.Sprintf("%s/logs/device_%s/device.log", util.Config.EnvConfig.ProviderFolder, device.UDID), device.UDID)
 		if err != nil {
 			panic(fmt.Sprintf("Could not create a customer logger for device `%s` - %s", device.UDID, err))
 		}
