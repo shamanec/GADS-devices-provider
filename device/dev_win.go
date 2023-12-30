@@ -5,17 +5,18 @@ import (
 	"slices"
 	"time"
 
-	"github.com/shamanec/GADS-devices-provider/util"
+	"github.com/shamanec/GADS-devices-provider/config"
+	"github.com/shamanec/GADS-devices-provider/logger"
 )
 
 func updateDevicesWindows() {
-	util.ProviderLogger.LogInfo("provider", "Providing devices on a Windows host")
+	logger.ProviderLogger.LogInfo("provider", "Providing devices on a Windows host")
 
-	if util.Config.EnvConfig.ProvideAndroid {
-		util.ProviderLogger.LogInfo("provider", "There are Android devices in config, checking if adb is available on host")
+	if config.Config.EnvConfig.ProvideAndroid {
+		logger.ProviderLogger.LogInfo("provider", "There are Android devices in config, checking if adb is available on host")
 
 		if !adbAvailable() {
-			util.ProviderLogger.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
+			logger.ProviderLogger.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
 			os.Exit(1)
 		}
 	}
@@ -26,7 +27,7 @@ func updateDevicesWindows() {
 		connectedDevices := getConnectedDevicesCommon()
 
 		if len(connectedDevices) == 0 {
-			util.ProviderLogger.LogDebug("provider", "No connected devices found when updating devices")
+			logger.ProviderLogger.LogDebug("provider", "No connected devices found when updating devices")
 
 			for _, device := range localDevices {
 				device.Device.Connected = false
@@ -37,9 +38,9 @@ func updateDevicesWindows() {
 				if slices.Contains(connectedDevices, device.Device.UDID) {
 					device.Device.Connected = true
 					if device.ProviderState != "preparing" && device.ProviderState != "live" {
-						device.setContext()
+						setContext(device)
 						if device.Device.OS == "android" {
-							go device.setupAndroidDevice()
+							go setupAndroidDevice(device)
 						}
 					}
 					continue

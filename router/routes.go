@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shamanec/GADS-devices-provider/config"
 	"github.com/shamanec/GADS-devices-provider/device"
 	"github.com/shamanec/GADS-devices-provider/models"
 	"github.com/shamanec/GADS-devices-provider/util"
@@ -131,7 +132,7 @@ type ProviderData struct {
 	ProviderData            models.ProviderDB     `json:"provider"`
 	ConnectedAndroidDevices []string              `json:"connected_android_devices"`
 	ConnectedIOSDevices     []string              `json:"connected_ios_devices"`
-	DeviceData              []*device.LocalDevice `json:"device_data"`
+	DeviceData              []*models.LocalDevice `json:"device_data"`
 }
 
 func GetProviderData(c *gin.Context) {
@@ -140,14 +141,14 @@ func GetProviderData(c *gin.Context) {
 
 	var providerData ProviderData
 
-	deviceData := []*device.LocalDevice{}
+	deviceData := []*models.LocalDevice{}
 	for _, device := range device.DeviceMap {
 		deviceData = append(deviceData, device)
 	}
 
 	providerData.ConnectedAndroidDevices = connectedAndroid
 	providerData.ConnectedIOSDevices = connectedIOS
-	providerData.ProviderData = util.Config.EnvConfig
+	providerData.ProviderData = config.Config.EnvConfig
 	providerData.DeviceData = deviceData
 
 	c.JSON(http.StatusOK, providerData)
@@ -156,10 +157,10 @@ func GetProviderData(c *gin.Context) {
 func DeviceInfo(c *gin.Context) {
 	udid := c.Param("udid")
 
-	if device, ok := device.DeviceMap[udid]; ok {
-		device.UpdateInstalledApps()
-		device.InstallableApps = util.GetAllAppFiles()
-		c.JSON(http.StatusOK, device)
+	if dev, ok := device.DeviceMap[udid]; ok {
+		device.UpdateInstalledApps(dev)
+		dev.InstallableApps = util.GetAllAppFiles()
+		c.JSON(http.StatusOK, dev)
 		return
 	}
 
@@ -167,7 +168,7 @@ func DeviceInfo(c *gin.Context) {
 }
 
 func DevicesInfo(c *gin.Context) {
-	devices := []*device.LocalDevice{}
+	devices := []*models.LocalDevice{}
 
 	for _, device := range device.DeviceMap {
 		devices = append(devices, device)
@@ -183,7 +184,7 @@ type ProcessApp struct {
 func UninstallApp(c *gin.Context) {
 	udid := c.Param("udid")
 
-	if device, ok := device.DeviceMap[udid]; ok {
+	if dev, ok := device.DeviceMap[udid]; ok {
 		payload, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
@@ -197,8 +198,8 @@ func UninstallApp(c *gin.Context) {
 			return
 		}
 
-		if slices.Contains(device.Device.InstalledApps, payloadJson.App) {
-			err = device.UninstallApp(payloadJson.App)
+		if slices.Contains(dev.Device.InstalledApps, payloadJson.App) {
+			err = device.UninstallApp(dev, payloadJson.App)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to uninstall app `%s`", payloadJson.App)})
 				return
@@ -216,7 +217,7 @@ func UninstallApp(c *gin.Context) {
 func InstallApp(c *gin.Context) {
 	udid := c.Param("udid")
 
-	if device, ok := device.DeviceMap[udid]; ok {
+	if dev, ok := device.DeviceMap[udid]; ok {
 		payload, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
@@ -229,7 +230,7 @@ func InstallApp(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
 			return
 		}
-		err = device.InstallApp(payloadJson.App)
+		err = device.InstallApp(dev, payloadJson.App)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to install app `%s`", payloadJson.App)})
 			return

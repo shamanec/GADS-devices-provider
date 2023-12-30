@@ -6,7 +6,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/shamanec/GADS-devices-provider/util"
+	"github.com/shamanec/GADS-devices-provider/db"
+	"github.com/shamanec/GADS-devices-provider/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -32,19 +33,19 @@ func upsertDevicesMongo() {
 		}
 		opts := options.Update().SetUpsert(true)
 
-		_, err := util.MongoClient().Database("gads").Collection("devices").UpdateOne(util.MongoCtx(), filter, update, opts)
+		_, err := db.MongoClient().Database("gads").Collection("devices").UpdateOne(db.MongoCtx(), filter, update, opts)
 
 		if err != nil {
-			util.ProviderLogger.LogError("provider", "Failed inserting device data in Mongo - "+err.Error())
+			logger.ProviderLogger.LogError("provider", "Failed inserting device data in Mongo - "+err.Error())
 		}
 	}
 }
 
 func createMongoLogCollectionsForAllDevices() {
-	ctx, cancel := context.WithTimeout(util.MongoCtx(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(db.MongoCtx(), 10*time.Second)
 	defer cancel()
 
-	db := util.MongoClient().Database("logs")
+	db := db.MongoClient().Database("logs")
 	collections, err := db.ListCollectionNames(ctx, bson.M{})
 	if err != nil {
 		panic(fmt.Sprintf("Could not get the list of collection names in the `logs` database in Mongo - %s\n", err))
@@ -83,8 +84,8 @@ func createMongoLogCollectionsForAllDevices() {
 }
 
 func createCappedCollection(dbName, collectionName string, maxDocuments, mb int64) {
-	db := util.MongoClient().Database(dbName)
-	collections, err := db.ListCollectionNames(context.Background(), bson.M{})
+	database := db.MongoClient().Database(dbName)
+	collections, err := database.ListCollectionNames(context.Background(), bson.M{})
 	if err != nil {
 		panic(fmt.Sprintf("Could not get the list of collection names in the `%s` database in Mongo - %s\n", dbName, err))
 	}
@@ -101,7 +102,7 @@ func createCappedCollection(dbName, collectionName string, maxDocuments, mb int6
 	collectionOptions.SetSizeInBytes(mb * 1024 * 1024)
 
 	// Create the actual collection
-	err = db.CreateCollection(util.MongoCtx(), collectionName, collectionOptions)
+	err = database.CreateCollection(db.MongoCtx(), collectionName, collectionOptions)
 	if err != nil {
 		panic(fmt.Sprintf("Could not create collection `%s` - %s\n", collectionName, err))
 	}

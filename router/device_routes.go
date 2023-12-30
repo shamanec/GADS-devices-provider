@@ -22,21 +22,21 @@ func copyHeaders(destination, source http.Header) {
 // Check the device health by checking Appium and WDA(for iOS)
 func DeviceHealth(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
-	bool, err := device.GetDeviceHealth()
+	dev := device.DeviceMap[udid]
+	bool, err := device.GetDeviceHealth(dev)
 	if err != nil {
-		device.Logger.LogInfo("device", fmt.Sprintf("Could not check device health - %s", err))
+		dev.Logger.LogInfo("device", fmt.Sprintf("Could not check device health - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	if bool {
-		device.Logger.LogInfo("device", "Device is healthy")
+		dev.Logger.LogInfo("device", "Device is healthy")
 		c.Writer.WriteHeader(200)
 		return
 	}
 
-	device.Logger.LogError("device", "Device is not healthy")
+	dev.Logger.LogError("device", "Device is not healthy")
 	c.Writer.WriteHeader(500)
 }
 

@@ -1,4 +1,4 @@
-package util
+package logger
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/shamanec/GADS-devices-provider/config"
+	"github.com/shamanec/GADS-devices-provider/db"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
@@ -29,7 +31,7 @@ func SetupLogging(level string) {
 	logLevel = level
 
 	var err error
-	ProviderLogger, err = CreateCustomLogger(fmt.Sprintf("%s/logs/provider.log", Config.EnvConfig.ProviderFolder), Config.EnvConfig.Nickname)
+	ProviderLogger, err = CreateCustomLogger(fmt.Sprintf("%s/logs/provider.log", config.Config.EnvConfig.ProviderFolder), config.Config.EnvConfig.Nickname)
 	if err != nil {
 		panic(err)
 	}
@@ -89,10 +91,10 @@ func CreateCustomLogger(logFilePath, collection string) (*CustomLogger, error) {
 	logger.SetOutput(logFile)
 
 	logger.AddHook(&MongoDBHook{
-		Client:     mongoClient,
+		Client:     db.MongoClient(),
 		DB:         "logs",
 		Collection: collection,
-		Ctx:        mongoClientCtx,
+		Ctx:        db.MongoCtx(),
 	})
 
 	return &CustomLogger{Logger: logger}, nil
@@ -120,7 +122,7 @@ func (hook *MongoDBHook) Fire(entry *log.Entry) error {
 		Level:     entry.Level.String(),
 		Message:   entry.Message,
 		Timestamp: time.Now().UnixMilli(),
-		Host:      Config.EnvConfig.Nickname,
+		Host:      config.Config.EnvConfig.Nickname,
 		EventName: fields["event"].(string),
 	}
 

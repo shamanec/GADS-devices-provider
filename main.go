@@ -6,10 +6,12 @@ import (
 	"log"
 	"os"
 
+	"github.com/shamanec/GADS-devices-provider/config"
+	"github.com/shamanec/GADS-devices-provider/db"
 	"github.com/shamanec/GADS-devices-provider/device"
 	_ "github.com/shamanec/GADS-devices-provider/docs"
+	"github.com/shamanec/GADS-devices-provider/logger"
 	"github.com/shamanec/GADS-devices-provider/router"
-	"github.com/shamanec/GADS-devices-provider/util"
 )
 
 func main() {
@@ -32,14 +34,14 @@ func main() {
 	fmt.Printf("Will use `%s` as provider folder, use the --provider-folder flag to change it\n", *provider_folder)
 
 	// Create a connection to Mongo
-	util.InitMongoClient(fmt.Sprintf("%v", *mongo_db))
+	db.InitMongoClient(fmt.Sprintf("%v", *mongo_db))
 	// Set up the provider configuration
-	util.SetupConfig(fmt.Sprintf("%v", *nickname), fmt.Sprintf("%v", *provider_folder))
+	config.SetupConfig(fmt.Sprintf("%v", *nickname), fmt.Sprintf("%v", *provider_folder))
 	// Defer closing the Mongo connection on provider stopped
-	defer util.CloseMongoConn()
+	defer db.CloseMongoConn()
 
 	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa
-	if util.Config.EnvConfig.OS != "macos" && util.Config.EnvConfig.ProvideIOS {
+	if config.Config.EnvConfig.OS != "macos" && config.Config.EnvConfig.ProvideIOS {
 		_, err := os.Stat(fmt.Sprintf("%s/apps/WebDriverAgent.ipa", *provider_folder))
 		if os.IsNotExist(err) {
 			log.Fatalf("You should put signed WebDriverAgent.ipa file in the `apps` folder in `%s`", *provider_folder)
@@ -47,7 +49,7 @@ func main() {
 	}
 
 	// If Android devices provision enabled check for gads-stream.apk
-	if util.Config.EnvConfig.ProvideAndroid {
+	if config.Config.EnvConfig.ProvideAndroid {
 		_, err := os.Stat(fmt.Sprintf("%s/apps/gads-stream.apk", *provider_folder))
 		if os.IsNotExist(err) {
 			log.Fatalf("You should put gads-stream.apk file in the `apps` folder in `%s`", *provider_folder)
@@ -66,8 +68,8 @@ func main() {
 	}
 
 	// Setup logging for the provider itself
-	util.SetupLogging(*log_level)
-	util.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", util.Config.EnvConfig.Port))
+	logger.SetupLogging(*log_level)
+	logger.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", config.Config.EnvConfig.Port))
 
 	// Start a goroutine that will update devices on provider start
 	go device.UpdateDevices()
@@ -76,5 +78,5 @@ func main() {
 	r := router.HandleRequests()
 
 	// Start the provider
-	r.Run(fmt.Sprintf(":%v", util.Config.EnvConfig.Port))
+	r.Run(fmt.Sprintf(":%v", config.Config.EnvConfig.Port))
 }

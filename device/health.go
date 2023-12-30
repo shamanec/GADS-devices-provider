@@ -6,12 +6,13 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/shamanec/GADS-devices-provider/models"
 	"github.com/shamanec/GADS-devices-provider/util"
 )
 
 // Check if a device is healthy by checking Appium and WebDriverAgent(for iOS) services
-func (device *LocalDevice) GetDeviceHealth() (bool, error) {
-	err := device.checkAppiumSession()
+func GetDeviceHealth(device *models.LocalDevice) (bool, error) {
+	err := checkAppiumSession(device)
 	if err != nil {
 		return false, err
 	}
@@ -19,7 +20,7 @@ func (device *LocalDevice) GetDeviceHealth() (bool, error) {
 	return device.Device.Connected, nil
 }
 
-func (device *LocalDevice) checkAppiumSession() error {
+func checkAppiumSession(device *models.LocalDevice) error {
 	response, err := http.Get("http://localhost:" + device.Device.AppiumPort + "/sessions")
 	if err != nil {
 		device.Device.AppiumSessionID = ""
@@ -35,7 +36,7 @@ func (device *LocalDevice) checkAppiumSession() error {
 	}
 
 	if len(responseJson.Value) == 0 {
-		sessionID, err := device.createAppiumSession()
+		sessionID, err := createAppiumSession(device)
 		if err != nil {
 			device.Device.AppiumSessionID = ""
 			return err
@@ -48,7 +49,7 @@ func (device *LocalDevice) checkAppiumSession() error {
 	return nil
 }
 
-func (device *LocalDevice) createAppiumSession() (string, error) {
+func createAppiumSession(device *models.LocalDevice) (string, error) {
 	var automationName = "UiAutomator2"
 	var platformName = "Android"
 	var waitForIdleTimeout = 10

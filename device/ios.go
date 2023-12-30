@@ -17,16 +17,18 @@ import (
 
 	"github.com/danielpaulus/go-ios/ios"
 	"github.com/danielpaulus/go-ios/ios/imagemounter"
-	"github.com/shamanec/GADS-devices-provider/util"
+	"github.com/shamanec/GADS-devices-provider/config"
+	"github.com/shamanec/GADS-devices-provider/logger"
+	"github.com/shamanec/GADS-devices-provider/models"
 )
 
 // Check if xcodebuild is available on the host by checking its version
 func xcodebuildAvailable() bool {
 	cmd := exec.Command("xcodebuild", "-version")
-	util.ProviderLogger.LogDebug("provider", "Checking if xcodebuild is available on host")
+	logger.ProviderLogger.LogDebug("provider", "Checking if xcodebuild is available on host")
 
 	if err := cmd.Run(); err != nil {
-		util.ProviderLogger.LogDebug("provider", fmt.Sprintf("xcodebuild is not available or command failed - %s", err))
+		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("xcodebuild is not available or command failed - %s", err))
 		return false
 	}
 	return true
@@ -35,38 +37,38 @@ func xcodebuildAvailable() bool {
 // Check if go-ios binary is available
 func goIOSAvailable() bool {
 	cmd := exec.Command("ios", "-h")
-	util.ProviderLogger.LogDebug("provider", "Checking if go-ios binary is available on host")
+	logger.ProviderLogger.LogDebug("provider", "Checking if go-ios binary is available on host")
 
 	if err := cmd.Run(); err != nil {
-		util.ProviderLogger.LogDebug("provider", fmt.Sprintf("go-ios is not available on host or command failed - %s", err))
+		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("go-ios is not available on host or command failed - %s", err))
 		return false
 	}
 	return true
 }
 
 // Forward iOS device ports using `go-ios` CLI, for some reason using the library doesn't work properly
-func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
+func goIOSForward(device *models.LocalDevice, hostPort string, devicePort string) {
 	cmd := exec.CommandContext(device.Context, "ios", "forward", hostPort, devicePort, "--udid="+device.Device.UDID)
 
 	// Create a pipe to capture the command's output
 	_, err := cmd.StdoutPipe()
 	if err != nil {
-		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not create stdoutpipe executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
+		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not create stdoutpipe executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
+		resetLocalDevice(device)
 		return
 	}
 
 	// Start the port forward command
 	err = cmd.Start()
 	if err != nil {
-		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Error executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
+		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Error executing `ios forward` for device `%v` - %v", device.Device.UDID, err))
+		resetLocalDevice(device)
 		return
 	}
 
 	if err := cmd.Wait(); err != nil {
-		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Error waiting `ios forward` to finish for device `%v` - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
+		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Error waiting `ios forward` to finish for device `%v` - %v", device.Device.UDID, err))
+		resetLocalDevice(device)
 		return
 	}
 }
@@ -74,14 +76,14 @@ func (device *LocalDevice) goIOSForward(hostPort string, devicePort string) {
 // Build WebDriverAgent for testing with `xcodebuild`
 func buildWebDriverAgent() error {
 	cmd := exec.Command("xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "generic/platform=iOS", "build-for-testing")
-	cmd.Dir = util.Config.EnvConfig.WdaRepoPath
+	cmd.Dir = config.Config.EnvConfig.WdaRepoPath
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
 
-	util.ProviderLogger.LogInfo("provider", fmt.Sprintf("Starting WebDriverAgent xcodebuild in path `%s` with command `%s` ", util.Config.EnvConfig.WdaRepoPath, cmd.String()))
+	logger.ProviderLogger.LogInfo("provider", fmt.Sprintf("Starting WebDriverAgent xcodebuild in path `%s` with command `%s` ", config.Config.EnvConfig.WdaRepoPath, cmd.String()))
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -91,32 +93,32 @@ func buildWebDriverAgent() error {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		util.ProviderLogger.LogDebug("webdriveragent_xcodebuild", line)
+		logger.ProviderLogger.LogDebug("webdriveragent_xcodebuild", line)
 	}
 
 	// Wait for the command to finish
 	if err := cmd.Wait(); err != nil {
-		util.ProviderLogger.LogError("provider", fmt.Sprintf("Error waiting for build WebDriverAgent with `xcodebuild` command to finish - %s", err))
-		util.ProviderLogger.LogError("provider", "Building WebDriverAgent for testing was unsuccessful")
+		logger.ProviderLogger.LogError("provider", fmt.Sprintf("Error waiting for build WebDriverAgent with `xcodebuild` command to finish - %s", err))
+		logger.ProviderLogger.LogError("provider", "Building WebDriverAgent for testing was unsuccessful")
 		os.Exit(1)
 	}
 	return nil
 }
 
-func (device *LocalDevice) startWdaWithXcodebuild() {
+func startWdaWithXcodebuild(device *models.LocalDevice) {
 	cmd := exec.CommandContext(device.Context, "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.Device.UDID, "test-without-building", "-allowProvisioningUpdates")
-	cmd.Dir = util.Config.EnvConfig.WdaRepoPath
+	cmd.Dir = config.Config.EnvConfig.WdaRepoPath
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		device.Logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Error creating stdoutpipe while running WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
+		resetLocalDevice(device)
 		return
 	}
 
 	if err := cmd.Start(); err != nil {
 		device.Logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Could not start WebDriverAgent with xcodebuild for device `%v` - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
+		resetLocalDevice(device)
 		return
 	}
 
@@ -128,7 +130,7 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 		// device.Logger.LogInfo("webdriveragent", strings.TrimSpace(line))
 
 		if strings.Contains(line, "Restarting after") {
-			device.resetLocalDevice()
+			resetLocalDevice(device)
 			return
 		}
 
@@ -140,41 +142,41 @@ func (device *LocalDevice) startWdaWithXcodebuild() {
 
 	if err := cmd.Wait(); err != nil {
 		device.Logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("Error waiting for WebDriverAgent(xcodebuild) command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
+		resetLocalDevice(device)
 	}
 }
 
 // Get go-ios device entry to use library directly, instead of CLI binary
-func (device *LocalDevice) getGoIOSDevice() {
+func getGoIOSDevice(device *models.LocalDevice) {
 	goIosDevice, err := ios.GetDevice(device.Device.UDID)
 	if err != nil {
-		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not get `go-ios` DeviceEntry for device - %v, err - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
+		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not get `go-ios` DeviceEntry for device - %v, err - %v", device.Device.UDID, err))
+		resetLocalDevice(device)
 	}
 
 	device.GoIOSDeviceEntry = goIosDevice
 }
 
 // Create a new WebDriverAgent session and update stream settings
-func (device *LocalDevice) updateWebDriverAgent() error {
-	util.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Updating WebDriverAgent session and mjpeg stream settings for device `%s`", device.Device.UDID))
+func updateWebDriverAgent(device *models.LocalDevice) error {
+	logger.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Updating WebDriverAgent session and mjpeg stream settings for device `%s`", device.Device.UDID))
 
-	err := device.createWebDriverAgentSession()
+	err := createWebDriverAgentSession(device)
 	if err != nil {
-		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not create WebDriverAgent session for device %v - %v", device.Device.UDID, err))
+		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not create WebDriverAgent session for device %v - %v", device.Device.UDID, err))
 		return err
 	}
 
-	err = device.updateWebDriverAgentStreamSettings()
+	err = updateWebDriverAgentStreamSettings(device)
 	if err != nil {
-		util.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not update WebDriverAgent stream settings for device %v - %v", device.Device.UDID, err))
+		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not update WebDriverAgent stream settings for device %v - %v", device.Device.UDID, err))
 		return err
 	}
 
 	return nil
 }
 
-func (device *LocalDevice) updateWebDriverAgentStreamSettings() error {
+func updateWebDriverAgentStreamSettings(device *models.LocalDevice) error {
 	// Set 30 frames per second, without any scaling, half the original screenshot quality
 	// TODO should make this configurable in some way, although can be easily updated the same way
 	requestString := `{"settings": {"mjpegServerFramerate": 30, "mjpegServerScreenshotQuality": 30, "mjpegScalingFactor": 100}}`
@@ -193,7 +195,7 @@ func (device *LocalDevice) updateWebDriverAgentStreamSettings() error {
 }
 
 // Create a new WebDriverAgent session
-func (device *LocalDevice) createWebDriverAgentSession() error {
+func createWebDriverAgentSession(device *models.LocalDevice) error {
 	// TODO see if this JSON can be simplified
 	requestString := `{
 		"capabilities": {
@@ -234,29 +236,29 @@ func (device *LocalDevice) createWebDriverAgentSession() error {
 	return nil
 }
 
-func (device *LocalDevice) startWdaWithGoIOS() {
+func startWdaWithGoIOS(device *models.LocalDevice) {
 
-	cmd := exec.CommandContext(context.Background(), "ios", "runwda", "--bundleid="+util.Config.EnvConfig.WdaBundleID, "--testrunnerbundleid="+util.Config.EnvConfig.WdaBundleID, "--xctestconfig=WebDriverAgentRunner.xctest", "--udid="+device.Device.UDID)
+	cmd := exec.CommandContext(context.Background(), "ios", "runwda", "--bundleid="+config.Config.EnvConfig.WdaBundleID, "--testrunnerbundleid="+config.Config.EnvConfig.WdaBundleID, "--xctestconfig=WebDriverAgentRunner.xctest", "--udid="+device.Device.UDID)
 
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error creating stdoutpipe while running WebDriverAgent with go-ios for device `%v` - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
+		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error creating stdoutpipe while running WebDriverAgent with go-ios for device `%v` - %v", device.Device.UDID, err))
+		resetLocalDevice(device)
 		return
 	}
 
 	// Create a pipe to capture the command's error output
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error creating stderrpipe while running WebDriverAgent with go-ios for device `%v` - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
+		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error creating stderrpipe while running WebDriverAgent with go-ios for device `%v` - %v", device.Device.UDID, err))
+		resetLocalDevice(device)
 		return
 	}
 
 	if err := cmd.Start(); err != nil {
-		util.ProviderLogger.LogError("device_setup", fmt.Sprintf("Could not start WebDriverAgent with go-ios for device `%v` - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
+		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("Could not start WebDriverAgent with go-ios for device `%v` - %v", device.Device.UDID, err))
+		resetLocalDevice(device)
 		return
 	}
 
@@ -278,12 +280,12 @@ func (device *LocalDevice) startWdaWithGoIOS() {
 
 	if err := cmd.Wait(); err != nil {
 		device.Logger.LogError("webdriveragent", fmt.Sprintf("Error waiting for WebDriverAgen(go-ios) command to finish, it errored out or device `%v` was disconnected - %v", device.Device.UDID, err))
-		device.resetLocalDevice()
+		resetLocalDevice(device)
 	}
 }
 
 // Mount the developer disk images downloading them automatically in /opt/DeveloperDiskImages
-func (device *LocalDevice) mountDeveloperImageIOS() error {
+func mountDeveloperImageIOS(device *models.LocalDevice) error {
 	basedir := "./devimages"
 
 	var err error
@@ -300,12 +302,12 @@ func (device *LocalDevice) mountDeveloperImageIOS() error {
 	return nil
 }
 
-func (device *LocalDevice) pairIOS() error {
-	util.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Pairing device `%s`", device.Device.UDID))
+func pairIOS(device *models.LocalDevice) error {
+	logger.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Pairing device `%s`", device.Device.UDID))
 
 	p12, err := os.ReadFile("./config/supervision.p12")
 	if err != nil {
-		util.ProviderLogger.LogWarn("ios_device_setup", fmt.Sprintf("Could not read /opt/supervision.p12 file when pairing device with UDID: %s, falling back to unsupervised pairing - %s", device.Device.UDID, err))
+		logger.ProviderLogger.LogWarn("ios_device_setup", fmt.Sprintf("Could not read /opt/supervision.p12 file when pairing device with UDID: %s, falling back to unsupervised pairing - %s", device.Device.UDID, err))
 		err = ios.Pair(device.GoIOSDeviceEntry)
 		if err != nil {
 			return fmt.Errorf("Could not perform unsupervised pairing successfully - %s", err)
@@ -313,7 +315,7 @@ func (device *LocalDevice) pairIOS() error {
 		return nil
 	}
 
-	err = ios.PairSupervised(device.GoIOSDeviceEntry, p12, util.Config.EnvConfig.SupervisionPassword)
+	err = ios.PairSupervised(device.GoIOSDeviceEntry, p12, config.Config.EnvConfig.SupervisionPassword)
 	if err != nil {
 		return fmt.Errorf("Could not perform supervised pairing successfully - %s", err)
 	}
@@ -321,7 +323,7 @@ func (device *LocalDevice) pairIOS() error {
 	return nil
 }
 
-func getInstalledAppsIOS(device *LocalDevice) []string {
+func getInstalledAppsIOS(device *models.LocalDevice) []string {
 	var installedApps = []string{}
 	cmd := exec.CommandContext(device.Context, "ios", "apps", "--udid="+device.Device.UDID)
 
@@ -357,7 +359,7 @@ func getInstalledAppsIOS(device *LocalDevice) []string {
 	return installedApps
 }
 
-func (device *LocalDevice) uninstallAppIOS(bundleID string) error {
+func uninstallAppIOS(device *models.LocalDevice, bundleID string) error {
 	cmd := exec.CommandContext(device.Context, "ios", "uninstall", bundleID, "--udid="+device.Device.UDID)
 	if err := cmd.Run(); err != nil {
 		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed executing go-ios uninstall for bundle ID `%s` - %v", bundleID, err))
@@ -367,7 +369,7 @@ func (device *LocalDevice) uninstallAppIOS(bundleID string) error {
 	return nil
 }
 
-func (device *LocalDevice) installAppIOS(appName string) error {
+func installAppIOS(device *models.LocalDevice, appName string) error {
 	cmd := exec.CommandContext(device.Context, "ios", "install", "--path=./apps/"+appName, "--udid="+device.Device.UDID)
 	if err := cmd.Run(); err != nil {
 		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed executing go-ios install for app `%s` - %v", appName, err))
