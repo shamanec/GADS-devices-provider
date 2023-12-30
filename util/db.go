@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/shamanec/GADS-devices-provider/models"
@@ -25,7 +26,7 @@ func InitMongoClient(mongo_db string) {
 	clientOptions := options.Client().ApplyURI(connectionString)
 	mongoClient, err = mongo.Connect(mongoClientCtx, clientOptions)
 	if err != nil {
-		panic(fmt.Sprintf("Could not connect to Mongo server at `%s` - %s", connectionString, err))
+		log.Fatalf("Could not connect to Mongo server at `%s` - %s", connectionString, err)
 	}
 
 	go checkDBConnection()
@@ -55,7 +56,7 @@ func checkDBConnection() {
 				continue
 			}
 		} else {
-			panic("Lost connection to MongoDB server for more than 10 seconds!")
+			log.Fatal("Lost connection to MongoDB server for more than 10 seconds!")
 		}
 	}
 }

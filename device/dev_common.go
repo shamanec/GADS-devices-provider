@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -32,13 +33,12 @@ func UpdateDevices() {
 	switch runtime.GOOS {
 	case "linux":
 		go updateDevicesLinux()
-		return
 	case "darwin":
 		go updateDevicesOSX()
-		return
 	case "windows":
 		go updateDevicesWindows()
-		return
+	default:
+		log.Fatal("OS is not one of `linux`, `darwin`, `windows`")
 	}
 
 	go updateDevicesMongo()

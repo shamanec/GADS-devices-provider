@@ -65,8 +65,8 @@ func main() {
 		log.Fatal("Could not create logs folder - " + err.Error())
 	}
 
+	// Setup logging for the provider itself
 	util.SetupLogging(*log_level)
-
 	util.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", util.Config.EnvConfig.Port))
 
 	// Start a goroutine that will update devices on provider start
@@ -75,5 +75,6 @@ func main() {
 	// Handle the endpoints
 	r := router.HandleRequests()
 
+	// Start the provider
 	r.Run(fmt.Sprintf(":%v", util.Config.EnvConfig.Port))
 }
