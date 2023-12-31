@@ -78,7 +78,7 @@ func setupIOSDeviceGoIOS(device *models.LocalDevice) {
 		resetLocalDevice(device)
 		return
 	}
-	device.Device.WDAPort = fmt.Sprint(wdaPort)
+	device.WDAPort = fmt.Sprint(wdaPort)
 
 	// Get a free port on the host for WebDriverAgent stream
 	streamPort, err := util.GetFreePort()
@@ -87,11 +87,11 @@ func setupIOSDeviceGoIOS(device *models.LocalDevice) {
 		resetLocalDevice(device)
 		return
 	}
-	device.Device.StreamPort = fmt.Sprint(streamPort)
+	device.StreamPort = fmt.Sprint(streamPort)
 
 	// Forward the WebDriverAgent server and stream to the host
-	go goIOSForward(device, device.Device.WDAPort, "8100")
-	go goIOSForward(device, device.Device.StreamPort, "9100")
+	go goIOSForward(device, device.WDAPort, "8100")
+	go goIOSForward(device, device.StreamPort, "9100")
 
 	err = pairIOS(device)
 	if err != nil {
@@ -119,7 +119,7 @@ func setupIOSDeviceGoIOS(device *models.LocalDevice) {
 	// Wait until WebDriverAgent successfully starts
 	select {
 	case <-device.WdaReadyChan:
-		logger.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Successfully started WebDriverAgent for device `%v` forwarded on port %v", device.Device.UDID, device.Device.WDAPort))
+		logger.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Successfully started WebDriverAgent for device `%v` forwarded on port %v", device.Device.UDID, device.WDAPort))
 		break
 	case <-time.After(30 * time.Second):
 		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Did not successfully start WebDriverAgent on device `%v` in 30 seconds", device.Device.UDID))

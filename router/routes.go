@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/shamanec/GADS-devices-provider/config"
+	"github.com/shamanec/GADS-devices-provider/db"
 	"github.com/shamanec/GADS-devices-provider/devices"
 	"github.com/shamanec/GADS-devices-provider/models"
 	"github.com/shamanec/GADS-devices-provider/util"
@@ -68,7 +69,7 @@ func AppiumReverseProxy(c *gin.Context) {
 	udid := c.Param("udid")
 	device := devices.DeviceMap[udid]
 
-	target := "http://localhost:" + device.Device.AppiumPort
+	target := "http://localhost:" + device.AppiumPort
 	path := c.Param("proxyPath")
 
 	proxy := newAppiumProxy(target, path)
@@ -252,4 +253,31 @@ func ResetDevice(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Device with udid `%s` does not exist", udid)})
+}
+
+func AddNewDevice(c *gin.Context) {
+	var deviceData models.Device
+
+	payload, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+		return
+	}
+
+	err = json.Unmarshal(payload, &deviceData)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+		return
+	}
+	if deviceData.UDID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing `udid` field"})
+		return
+	}
+
+	err = db.UpsertDeviceDB(deviceData)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully added device"})
 }

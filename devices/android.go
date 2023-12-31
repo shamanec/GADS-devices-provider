@@ -102,8 +102,8 @@ func pressHomeButton(device *models.LocalDevice) {
 }
 
 func forwardGadsStream(device *models.LocalDevice) error {
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "forward", "tcp:"+device.Device.StreamPort, "tcp:1991")
-	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Forwarding GADS-stream port(1991) to host port `%v` for device `%v`", device.Device.StreamPort, device.Device.UDID))
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "forward", "tcp:"+device.StreamPort, "tcp:1991")
+	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Forwarding GADS-stream port(1991) to host port `%v` for device `%v`", device.StreamPort, device.Device.UDID))
 
 	err := cmd.Run()
 	if err != nil {

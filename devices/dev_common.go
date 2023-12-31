@@ -128,7 +128,7 @@ func setupAndroidDevice(device *models.LocalDevice) {
 		resetLocalDevice(device)
 		return
 	}
-	device.Device.StreamPort = fmt.Sprint(streamPort)
+	device.StreamPort = fmt.Sprint(streamPort)
 
 	if !isStreamAvailable {
 		err = installGadsStream(device)
@@ -157,7 +157,7 @@ func setupAndroidDevice(device *models.LocalDevice) {
 
 	err = forwardGadsStream(device)
 	if err != nil {
-		logger.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not forward GADS-stream port to host port %v for Android device - %v:\n %v", device.Device.StreamPort, device.Device.UDID, err))
+		logger.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not forward GADS-stream port to host port %v for Android device - %v:\n %v", device.StreamPort, device.Device.UDID, err))
 		resetLocalDevice(device)
 		return
 	}
@@ -207,7 +207,7 @@ func setupIOSDevice(device *models.LocalDevice) {
 		resetLocalDevice(device)
 		return
 	}
-	device.Device.WDAPort = fmt.Sprint(wdaPort)
+	device.WDAPort = fmt.Sprint(wdaPort)
 
 	streamPort, err := util.GetFreePort()
 	if err != nil {
@@ -215,11 +215,11 @@ func setupIOSDevice(device *models.LocalDevice) {
 		resetLocalDevice(device)
 		return
 	}
-	device.Device.StreamPort = fmt.Sprint(streamPort)
+	device.StreamPort = fmt.Sprint(streamPort)
 
 	// Forward the WebDriverAgent server and stream to the host
-	go goIOSForward(device, device.Device.WDAPort, "8100")
-	go goIOSForward(device, device.Device.StreamPort, "9100")
+	go goIOSForward(device, device.WDAPort, "8100")
+	go goIOSForward(device, device.StreamPort, "9100")
 
 	// Start WebDriverAgent with `xcodebuild`
 	go startWdaWithXcodebuild(device)
@@ -227,7 +227,7 @@ func setupIOSDevice(device *models.LocalDevice) {
 	// Wait until WebDriverAgent successfully starts
 	select {
 	case <-device.WdaReadyChan:
-		logger.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Successfully started WebDriverAgent for device `%v` forwarded on port %v", device.Device.UDID, device.Device.WDAPort))
+		logger.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Successfully started WebDriverAgent for device `%v` forwarded on port %v", device.Device.UDID, device.WDAPort))
 		break
 	case <-time.After(30 * time.Second):
 		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Did not successfully start WebDriverAgent on device `%v` in 30 seconds", device.Device.UDID))
@@ -388,9 +388,9 @@ func startAppium(device *models.LocalDevice) {
 	if device.Device.OS == "ios" {
 		capabilities = appiumCapabilities{
 			UDID:                  device.Device.UDID,
-			WdaURL:                "http://localhost:" + device.Device.WDAPort,
-			WdaMjpegPort:          device.Device.StreamPort,
-			WdaLocalPort:          device.Device.WDAPort,
+			WdaURL:                "http://localhost:" + device.WDAPort,
+			WdaMjpegPort:          device.StreamPort,
+			WdaLocalPort:          device.WDAPort,
 			WdaLaunchTimeout:      "120000",
 			WdaConnectionTimeout:  "240000",
 			ClearSystemFiles:      "false",
@@ -427,9 +427,9 @@ func startAppium(device *models.LocalDevice) {
 		resetLocalDevice(device)
 		return
 	}
-	device.Device.AppiumPort = fmt.Sprint(appiumPort)
+	device.AppiumPort = fmt.Sprint(appiumPort)
 
-	cmd := exec.CommandContext(device.Context, "appium", "-p", device.Device.AppiumPort, "--log-timestamp", "--session-override", "--default-capabilities", string(capabilitiesJson))
+	cmd := exec.CommandContext(device.Context, "appium", "-p", device.AppiumPort, "--log-timestamp", "--session-override", "--default-capabilities", string(capabilitiesJson))
 
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()

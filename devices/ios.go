@@ -182,7 +182,7 @@ func updateWebDriverAgentStreamSettings(device *models.LocalDevice) error {
 	requestString := `{"settings": {"mjpegServerFramerate": 30, "mjpegServerScreenshotQuality": 30, "mjpegScalingFactor": 100}}`
 
 	// Post the mjpeg server settings
-	response, err := http.Post("http://localhost:"+device.Device.WDAPort+"/session/"+device.Device.WDASessionID+"/appium/settings", "application/json", strings.NewReader(requestString))
+	response, err := http.Post("http://localhost:"+device.WDAPort+"/session/"+device.WDASessionID+"/appium/settings", "application/json", strings.NewReader(requestString))
 	if err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func createWebDriverAgentSession(device *models.LocalDevice) error {
 		}
 	}`
 
-	req, err := http.NewRequest(http.MethodPost, "http://localhost:"+device.Device.WDAPort+"/session", strings.NewReader(requestString))
+	req, err := http.NewRequest(http.MethodPost, "http://localhost:"+device.WDAPort+"/session", strings.NewReader(requestString))
 	if err != nil {
 		return err
 	}
@@ -232,7 +232,7 @@ func createWebDriverAgentSession(device *models.LocalDevice) error {
 		}
 	}
 
-	device.Device.WDASessionID = fmt.Sprintf("%v", responseJson["sessionId"])
+	device.WDASessionID = fmt.Sprintf("%v", responseJson["sessionId"])
 	return nil
 }
 
