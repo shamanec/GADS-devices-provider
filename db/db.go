@@ -101,6 +101,21 @@ func GetConfiguredDevices() ([]*models.LocalDevice, error) {
 	return devicesList, nil
 }
 
+func GetConfiguredDevice(udid string) (models.Device, error) {
+	var deviceInfo models.Device
+	ctx, cancel := context.WithTimeout(mongoClientCtx, 10*time.Second)
+	defer cancel()
+
+	collection := mongoClient.Database("gads").Collection("configured_devices")
+	filter := bson.D{{Key: "udid", Value: udid}}
+
+	err := collection.FindOne(ctx, filter).Decode(&deviceInfo)
+	if err != nil {
+		return models.Device{}, err
+	}
+	return deviceInfo, nil
+}
+
 func UpsertDeviceDB(device models.Device) error {
 	update := bson.M{
 		"$set": device,

@@ -24,12 +24,12 @@ func main() {
 	flag.Parse()
 
 	// Nickname is mandatory, this is what we use to get the configuration from the DB
-	if *nickname == "" {
-		log.Fatal("Please provide --nickname=* flag")
-	}
+	// if *nickname == "" {
+	// 	log.Fatal("Please provide --nickname=* flag")
+	// }
 
 	// Print out some info on startup, maybe a flag was missed
-	fmt.Printf("Current log level: %s, use the --log-level flag to change it", *log_level)
+	fmt.Printf("Current log level: %s, use the --log-level flag to change it\n", *log_level)
 	fmt.Printf("Will use `%s` as address for MongoDB instance, use the --mongo-db flag to change it\n", *mongo_db)
 	fmt.Printf("Will use `%s` as provider folder, use the --provider-folder flag to change it\n", *provider_folder)
 
