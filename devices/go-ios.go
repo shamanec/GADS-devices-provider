@@ -9,7 +9,7 @@ import (
 )
 
 func InstallAppWithDevice(device *models.LocalDevice, fileName string) error {
-	filePath := "./apps/" + fileName
+	filePath := fileName
 
 	logger.ProviderLogger.LogInfo("ios_device", fmt.Sprintf("Installing app `%s` on iOS device `%s`", filePath, device.Device.UDID))
 

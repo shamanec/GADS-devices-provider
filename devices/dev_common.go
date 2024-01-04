@@ -7,11 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
-	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -32,19 +30,99 @@ var DeviceMap = make(map[string]*models.LocalDevice)
 
 func UpdateDevices() {
 	Setup()
+	// Start updating devices each 10 seconds in a goroutine
+	go updateDevicesAnyOS()
+	// Start updating the local devices data to Mongo in a goroutine
+	go updateDevicesMongo()
+}
 
-	switch runtime.GOOS {
-	case "linux":
-		go updateDevicesLinux()
-	case "darwin":
-		go updateDevicesOSX()
-	case "windows":
-		go updateDevicesWindows()
-	default:
-		log.Fatal("OS is not one of `linux`, `darwin`, `windows`")
+func updateDevicesAnyOS() {
+	// Create common logs directory if it doesn't already exist
+	if _, err := os.Stat("./logs"); os.IsNotExist(err) {
+		os.Mkdir("./logs", os.ModePerm)
 	}
 
-	go updateDevicesMongo()
+	// If we want to provide Android devices check if adb is available on PATH
+	if config.Config.EnvConfig.ProvideAndroid {
+		if !adbAvailable() {
+			logger.ProviderLogger.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
+			fmt.Println("adb is not available, you need to set up the host as explained in the readme")
+			os.Exit(1)
+		}
+	}
+
+	// If running on MacOS
+	if config.Config.EnvConfig.OS == "darwin" {
+		// Check if xcodebuild is available - Xcode and command line tools should be installed
+		if !xcodebuildAvailable() {
+			logger.ProviderLogger.LogError("provider", "xcodebuild is not available, you need to set up the host as explained in the readme")
+			os.Exit(1)
+		}
+
+		// Check if provided WebDriverAgent repo path exists
+		_, err := os.Stat(config.Config.EnvConfig.WdaRepoPath)
+		if err != nil {
+			logger.ProviderLogger.LogError("provider", config.Config.EnvConfig.WdaRepoPath+" does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
+			fmt.Println(config.Config.EnvConfig.WdaRepoPath + " does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
+			os.Exit(1)
+		}
+
+		// Build the WebDriverAgent using xcodebuild from the provided repo path
+		err = buildWebDriverAgent()
+		if err != nil {
+			logger.ProviderLogger.LogError("provider", fmt.Sprintf("Could not successfully build WebDriverAgent for testing - %s", err))
+			fmt.Println("Could not successfully build WebDriverAgent for testing - " + err.Error())
+			os.Exit(1)
+		}
+	}
+
+	// Try to remove potentially hanging ports forwarded by adb
+	removeAdbForwardedPorts()
+
+	for {
+		// Get all connected devices
+		connectedDevices := getConnectedDevicesCommon()
+
+		// If there are no devices or all devices were disconnected
+		// Loop through the local devices and reset them
+		if len(connectedDevices) == 0 {
+			logger.ProviderLogger.LogDebug("provider", "No devices connected")
+
+			for _, device := range localDevices {
+				if device.Device.Connected {
+					device.Device.Connected = false
+					resetLocalDevice(device)
+				}
+			}
+		} else {
+			// Loop through the provider devices
+			for _, device := range localDevices {
+				// If a connected device is part of the provider devices
+				if slices.Contains(connectedDevices, device.Device.UDID) {
+					// Set it as connected
+					device.Device.Connected = true
+					// If we are not already preparing the device or its not already prepared
+					if device.ProviderState != "preparing" && device.ProviderState != "live" {
+						// Setup the device
+						setContext(device)
+						if device.Device.OS == "ios" {
+							device.WdaReadyChan = make(chan bool, 1)
+							go setupIOSDevice(device)
+						}
+
+						if device.Device.OS == "android" {
+							go setupAndroidDevice(device)
+						}
+					}
+					continue
+				}
+				// If local devices is not in the connected devices
+				// Set connected as false
+				device.Device.Connected = false
+			}
+		}
+		time.Sleep(10 * time.Second)
+	}
 }
 
 // Create Mongo collections for all devices for logging
@@ -53,9 +131,11 @@ func Setup() {
 	getLocalDevices()
 	createMongoLogCollectionsForAllDevices()
 	createDeviceMap()
-	err := util.CheckGadsStreamAndDownload()
-	if err != nil {
-		panic(fmt.Sprintf("Could not check availability of and download GADS-stream latest release - %s", err))
+	if config.Config.EnvConfig.ProvideAndroid {
+		err := util.CheckGadsStreamAndDownload()
+		if err != nil {
+			panic(fmt.Sprintf("Could not check availability of and download GADS-stream latest release - %s", err))
+		}
 	}
 }
 
@@ -221,8 +301,39 @@ func setupIOSDevice(device *models.LocalDevice) {
 	go goIOSForward(device, device.WDAPort, "8100")
 	go goIOSForward(device, device.StreamPort, "9100")
 
-	// Start WebDriverAgent with `xcodebuild`
-	go startWdaWithXcodebuild(device)
+	isAboveIOS17, err := isAboveIOS17(device)
+	if err != nil {
+		device.Logger.LogError("ios_device_setup", fmt.Sprintf("Could not determine if device `%v` is above iOS 17 - %v", device.Device.UDID, err))
+		resetLocalDevice(device)
+		return
+	}
+
+	if isAboveIOS17 {
+		if config.Config.EnvConfig.OS != "darwin" {
+			logger.ProviderLogger.LogError("ios_device_setup", "Using iOS >= 17 devices on Linux and Windows is not supported")
+			resetLocalDevice(device)
+			return
+		}
+		// Start WebDriverAgent with `xcodebuild`
+		go startWdaWithXcodebuild(device)
+	} else {
+		wda_path := ""
+		// If on MacOS use the WebDriverAgent app from the xcodebuild output
+		if config.Config.EnvConfig.OS == "darwin" {
+			wda_path = config.Config.EnvConfig.WdaRepoPath + "build/Build/Products/Debug-iphoneos/WebDriverAgentRunner-Runner.app"
+		} else {
+			// If on Linux or Windows use the prebuilt and provided WebDriverAgent.ipa file
+			wda_path = "./apps/WebDriverAgent.ipa"
+		}
+		err = InstallAppWithDevice(device, wda_path)
+		if err != nil {
+			logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not install WebDriverAgent on device `%s` - %s", device.Device.UDID, err))
+			resetLocalDevice(device)
+			return
+		}
+
+		go startWdaWithGoIOS(device)
+	}
 
 	// Wait until WebDriverAgent successfully starts
 	select {
@@ -326,24 +437,6 @@ func GetConnectedDevicesAndroid() []string {
 		return []string{}
 	}
 	return connectedDevices
-}
-
-func androidDevicesInConfig() bool {
-	for _, device := range localDevices {
-		if device.Device.OS == "android" {
-			return true
-		}
-	}
-	return false
-}
-
-func iOSDevicesInConfig() bool {
-	for _, device := range localDevices {
-		if device.Device.OS == "ios" {
-			return true
-		}
-	}
-	return false
 }
 
 func resetLocalDevice(device *models.LocalDevice) {

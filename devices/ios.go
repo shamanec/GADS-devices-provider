@@ -75,7 +75,7 @@ func goIOSForward(device *models.LocalDevice, hostPort string, devicePort string
 
 // Build WebDriverAgent for testing with `xcodebuild`
 func buildWebDriverAgent() error {
-	cmd := exec.Command("xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "generic/platform=iOS", "build-for-testing")
+	cmd := exec.Command("xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "generic/platform=iOS", "build-for-testing", "-derivedDataPath", "./build")
 	cmd.Dir = config.Config.EnvConfig.WdaRepoPath
 
 	stdout, err := cmd.StdoutPipe()
@@ -377,4 +377,16 @@ func installAppIOS(device *models.LocalDevice, appName string) error {
 	}
 
 	return nil
+}
+
+func isAboveIOS17(device *models.LocalDevice) (bool, error) {
+	majorVersion := strings.Split(device.Device.OSVersion, ".")[0]
+	convertedVersion, err := strconv.Atoi(majorVersion)
+	if err != nil {
+		return false, err
+	}
+	if convertedVersion >= 17 {
+		return true, nil
+	}
+	return false, nil
 }

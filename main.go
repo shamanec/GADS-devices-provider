@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 
 	"github.com/shamanec/GADS-devices-provider/config"
 	"github.com/shamanec/GADS-devices-provider/db"
@@ -37,14 +38,19 @@ func main() {
 	db.InitMongoClient(fmt.Sprintf("%v", *mongo_db))
 	// Set up the provider configuration
 	config.SetupConfig(fmt.Sprintf("%v", *nickname), fmt.Sprintf("%v", *provider_folder))
+	config.Config.EnvConfig.OS = runtime.GOOS
 	// Defer closing the Mongo connection on provider stopped
 	defer db.CloseMongoConn()
 
 	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa
 	if config.Config.EnvConfig.OS != "macos" && config.Config.EnvConfig.ProvideIOS {
+		// Check for WDA ipa, then WDA app availability
 		_, err := os.Stat(fmt.Sprintf("%s/apps/WebDriverAgent.ipa", *provider_folder))
-		if os.IsNotExist(err) {
-			log.Fatalf("You should put signed WebDriverAgent.ipa file in the `apps` folder in `%s`", *provider_folder)
+		if err != nil {
+			_, err = os.Stat(fmt.Sprintf("%s/apps/WebDriverAgent.app", *provider_folder))
+			if os.IsNotExist(err) {
+				log.Fatalf("You should put signed WebDriverAgent.ipa file in the `apps` folder in `%s`", *provider_folder)
+			}
 		}
 	}
 
