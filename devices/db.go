@@ -28,6 +28,10 @@ func updateDevicesMongo() {
 func upsertDevicesMongo() {
 	for _, device := range localDevices {
 		filter := bson.M{"_id": device.Device.UDID}
+		if device.Device.Connected {
+			device.Device.LastUpdatedTimestamp = time.Now().UnixMilli()
+		}
+
 		update := bson.M{
 			"$set": device.Device,
 		}

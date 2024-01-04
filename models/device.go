@@ -16,19 +16,20 @@ type CustomLogger interface {
 }
 
 type Device struct {
-	Connected      bool     `json:"connected" bson:"connected"`
-	UDID           string   `json:"udid" bson:"udid"`
-	OS             string   `json:"os" bson:"os"`
-	Name           string   `json:"name" bson:"name"`
-	OSVersion      string   `json:"os_version" bson:"os_version"`
-	Model          string   `json:"model" bson:"model"`
-	HostAddress    string   `json:"host_address" bson:"host_address"`
-	Provider       string   `json:"provider" bson:"provider"`
-	ScreenWidth    string   `json:"screen_width" bson:"screen_width"`
-	ScreenHeight   string   `json:"screen_height" bson:"screen_height"`
-	HardwareModel  string   `json:"hardware_model,omitempty" bson:"hardware_model,omitempty"`
-	InstalledApps  []string `json:"installed_apps" bson:"-"`
-	IOSProductType string   `json:"ios_product_type,omitempty" bson:"ios_product_type,omitempty"`
+	Connected            bool     `json:"connected" bson:"connected"`
+	UDID                 string   `json:"udid" bson:"udid"`
+	OS                   string   `json:"os" bson:"os"`
+	Name                 string   `json:"name" bson:"name"`
+	OSVersion            string   `json:"os_version" bson:"os_version"`
+	Model                string   `json:"model" bson:"model"`
+	HostAddress          string   `json:"host_address" bson:"host_address"`
+	Provider             string   `json:"provider" bson:"provider"`
+	ScreenWidth          string   `json:"screen_width" bson:"screen_width"`
+	ScreenHeight         string   `json:"screen_height" bson:"screen_height"`
+	HardwareModel        string   `json:"hardware_model,omitempty" bson:"hardware_model,omitempty"`
+	InstalledApps        []string `json:"installed_apps" bson:"-"`
+	IOSProductType       string   `json:"ios_product_type,omitempty" bson:"ios_product_type,omitempty"`
+	LastUpdatedTimestamp int64    `json:"last_updated_timestamp" bson:"last_updated_timestamp"`
 }
 
 type LocalDevice struct {

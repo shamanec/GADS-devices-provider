@@ -1,18 +1,4 @@
 {
-  "env-config": {
-    "use_selenium_grid": false,
-    "supervision_password": "patladjan1",
-    "wda_bundle_id": "com.shamanec.WebDriverAgentRunner.xctrunner",
-    "host_address": "192.168.1.6",
-    "mongo_db": "192.168.1.6:27017",
-    "wda_repo_path": "/Users/shamanec/Downloads/WebDriverAgent-5.8.3/",
-    "provider_nickname": "Provider2",
-    "selenium_jar": "selenium-server-4.14.0.jar",
-    "host_port": 10001,
-    "selenium_grid": "http://192.168.1.6:4444",
-    "provide_android": true,
-    "provide_ios": true
-  },
   "devices-config": [
     {
       "os": "ios",
@@ -60,11 +46,6 @@
       "udid": "00008103000A69E23CBB001E"
     },
     {
-      "os": "ios",
-      "name": "iPhone 7",
-      "udid": "ccec159ba0219c9fa0d0fc3d85451ab0dcfebd16"
-    },
-    {
       "os": "android",
       "udid": "WCR7N18B14002300",
       "name": "Huawei P20 Pro"
@@ -83,6 +64,11 @@
       "os": "android",
       "udid": "RFCW90GMNWB",
       "name": "Samsung S23"
+    },
+    {
+      "udid": "ccec159ba0219c9fa0d0fc3d85451ab0dcfebd16",
+      "os": "ios",
+      "name": "iPhone 7"
     }
   ]
 }
