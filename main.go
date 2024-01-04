@@ -24,10 +24,10 @@ func main() {
 	provider_folder := flag.String("provider-folder", ".", "The folder where logs and apps are stored")
 	flag.Parse()
 
-	// Nickname is mandatory, this is what we use to get the configuration from the DB
-	// if *nickname == "" {
-	// 	log.Fatal("Please provide --nickname=* flag")
-	// }
+	//Nickname is mandatory, this is what we use to get the configuration from the DB
+	if *nickname == "" {
+		log.Fatal("Please provide --nickname=* flag")
+	}
 
 	// Print out some info on startup, maybe a flag was missed
 	fmt.Printf("Current log level: %s, use the --log-level flag to change it\n", *log_level)

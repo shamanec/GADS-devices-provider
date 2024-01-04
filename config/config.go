@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/shamanec/GADS-devices-provider/db"
 	"github.com/shamanec/GADS-devices-provider/models"
 	log "github.com/sirupsen/logrus"
 )
@@ -18,13 +19,13 @@ func SetupConfig(nickname, folder string) {
 		panic(fmt.Sprintf("Could not get config data from config.json - %s", err))
 	}
 
-	// provider, _ := db.GetProviderFromDB(nickname)
-	// if (provider == models.ProviderDB{}) {
-	// 	panic("Provider with this nickname is not registered in the DB")
-	// }
-	Config.EnvConfig.ProviderFolder = folder
-	// provider.ProviderFolder = folder
-	// Config.EnvConfig = provider
+	provider, _ := db.GetProviderFromDB(nickname)
+	if (provider == models.ProviderDB{}) {
+		panic("Provider with this nickname is not registered in the DB")
+	}
+	// Config.EnvConfig.ProviderFolder = folder
+	provider.ProviderFolder = folder
+	Config.EnvConfig = provider
 }
 
 // Read the config.json file and initialize the configuration struct

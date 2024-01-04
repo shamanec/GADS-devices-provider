@@ -7,9 +7,9 @@ type ConfigJsonData struct {
 
 type ProviderDB struct {
 	OS                  string `json:"os" bson:"os"`
-	Nickname            string `json:"provider_nickname" bson:"provider_nickname"`
+	Nickname            string `json:"nickname" bson:"nickname"`
 	HostAddress         string `json:"host_address" bson:"host_address"`
-	Port                int    `json:"host_port" bson:"host_port"`
+	Port                int    `json:"port" bson:"port"`
 	UseSeleniumGrid     bool   `json:"use_selenium_grid" bson:"use_selenium_grid"`
 	SeleniumGrid        string `json:"selenium_grid" bson:"selenium_grid"`
 	ProvideAndroid      bool   `json:"provide_android" bson:"provide_android"`

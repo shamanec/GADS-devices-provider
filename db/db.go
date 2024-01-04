@@ -63,7 +63,7 @@ func checkDBConnection() {
 
 func GetProviderFromDB(nickname string) (models.ProviderDB, error) {
 	var provider models.ProviderDB
-	coll := mongoClient.Database("gads").Collection("providers_new")
+	coll := mongoClient.Database("gads").Collection("providers")
 	filter := bson.D{{Key: "nickname", Value: nickname}}
 
 	err := coll.FindOne(context.TODO(), filter).Decode(&provider)
