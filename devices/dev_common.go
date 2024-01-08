@@ -25,7 +25,6 @@ import (
 var netClient = &http.Client{
 	Timeout: time.Second * 120,
 }
-var localDevices []*models.Device
 var DeviceMap = make(map[string]*models.Device)
 
 func UpdateDevices() {
@@ -88,7 +87,7 @@ func updateDevicesAnyOS() {
 		if len(connectedDevices) == 0 {
 			logger.ProviderLogger.LogDebug("provider", "No devices connected")
 
-			for _, device := range localDevices {
+			for _, device := range DeviceMap {
 				if device.Connected {
 					device.Connected = false
 					resetLocalDevice(device)
@@ -96,7 +95,7 @@ func updateDevicesAnyOS() {
 			}
 		} else {
 			// Loop through the provider devices
-			for _, device := range localDevices {
+			for _, device := range DeviceMap {
 				// If a connected device is part of the provider devices
 				if slices.Contains(connectedDevices, device.UDID) {
 					// Set it as connected
@@ -155,7 +154,6 @@ func getLocalDevices() {
 		localDevice.Provider = config.Config.EnvConfig.Nickname
 		localDevice.Model = "N/A"
 		localDevice.OSVersion = "N/A"
-		localDevices = append(localDevices, &localDevice)
 		DeviceMap[localDevice.UDID] = &localDevice
 
 		if config.Config.EnvConfig.UseSeleniumGrid {

@@ -26,7 +26,7 @@ func updateDevicesMongo() {
 
 // Upsert all devices data in Mongo
 func upsertDevicesMongo() {
-	for _, device := range localDevices {
+	for _, device := range DeviceMap {
 		filter := bson.M{"_id": device.UDID}
 		if device.Connected {
 			device.LastUpdatedTimestamp = time.Now().UnixMilli()
@@ -57,7 +57,7 @@ func createMongoLogCollectionsForAllDevices() {
 
 	// Loop through the devices from the config
 	// And create a collection for each device that doesn't already have one
-	for _, device := range localDevices {
+	for _, device := range DeviceMap {
 		if slices.Contains(collections, device.UDID) {
 			continue
 		}
