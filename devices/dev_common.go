@@ -206,6 +206,13 @@ func setupAndroidDevice(device *models.Device) {
 	device.StreamPort = fmt.Sprint(streamPort)
 
 	if !isStreamAvailable {
+		err = uninstallGadsStream(device)
+		if err != nil {
+			logger.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not uninstall GADS-stream from Android device - %v:\n %v", device.UDID, err))
+			resetLocalDevice(device)
+			return
+		}
+
 		err = installGadsStream(device)
 		if err != nil {
 			logger.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not install GADS-stream on Android device - %v:\n %v", device.UDID, err))

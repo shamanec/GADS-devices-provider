@@ -64,6 +64,11 @@ func installGadsStream(device *models.Device) error {
 	return nil
 }
 
+func uninstallGadsStream(device *models.Device) error {
+	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Uninstalling GADS-stream from device `%v`", device.UDID))
+	return UninstallApp(device, "com.shamanec.stream")
+}
+
 // Add recording permissions to gads-stream app to avoid popup on start
 func addGadsStreamRecordingPermissions(device *models.Device) error {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "shell", "appops", "set", "com.shamanec.stream", "PROJECT_MEDIA", "allow")
