@@ -54,25 +54,3 @@ func getConfigJsonData(folder string) error {
 
 	return nil
 }
-
-// Read the config.json file into a byte slice
-func getConfigJsonBytes() ([]byte, error) {
-	jsonFile, err := os.Open(fmt.Sprintf("%s/config.json"))
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_config_data",
-		}).Error("Could not open config file: " + err.Error())
-		return nil, err
-	}
-	defer jsonFile.Close()
-
-	bs, err := io.ReadAll(jsonFile)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_config_data",
-		}).Error("Could not read config file to byte slice: " + err.Error())
-		return nil, err
-	}
-
-	return bs, err
-}
