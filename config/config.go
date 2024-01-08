@@ -14,7 +14,7 @@ import (
 var Config models.ConfigJsonData
 
 func SetupConfig(nickname, folder string) {
-	err := getConfigJsonData()
+	err := getConfigJsonData(folder)
 	if err != nil {
 		panic(fmt.Sprintf("Could not get config data from config.json - %s", err))
 	}
@@ -29,9 +29,21 @@ func SetupConfig(nickname, folder string) {
 }
 
 // Read the config.json file and initialize the configuration struct
-func getConfigJsonData() error {
-	bs, err := getConfigJsonBytes()
+func getConfigJsonData(folder string) error {
+	jsonFile, err := os.Open(fmt.Sprintf("%s/config.json", folder))
 	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "get_config_data",
+		}).Error("Could not open config file: " + err.Error())
+		return err
+	}
+	defer jsonFile.Close()
+
+	bs, err := io.ReadAll(jsonFile)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"event": "get_config_data",
+		}).Error("Could not read config file to byte slice: " + err.Error())
 		return err
 	}
 
@@ -45,7 +57,7 @@ func getConfigJsonData() error {
 
 // Read the config.json file into a byte slice
 func getConfigJsonBytes() ([]byte, error) {
-	jsonFile, err := os.Open("./config/config.json")
+	jsonFile, err := os.Open(fmt.Sprintf("%s/config.json"))
 	if err != nil {
 		log.WithFields(log.Fields{
 			"event": "get_config_data",
