@@ -50,3 +50,8 @@ type IOSModelData struct {
 	Height string
 	Model  string
 }
+
+type ConnectedDevice struct {
+	OS   string
+	UDID string
+}

@@ -80,7 +80,7 @@ func updateDevicesAnyOS() {
 
 	for {
 		// Get all connected devices
-		connectedDevices := getConnectedDevicesCommon()
+		connectedDevices := GetConnectedDevicesCommon()
 
 		// If there are no devices or all devices were disconnected
 		// Loop through the local devices and reset them
@@ -97,27 +97,31 @@ func updateDevicesAnyOS() {
 			// Loop through the provider devices
 			for _, device := range DeviceMap {
 				// If a connected device is part of the provider devices
-				if slices.Contains(connectedDevices, device.UDID) {
-					// Set it as connected
-					device.Connected = true
-					// If we are not already preparing the device or its not already prepared
-					if device.ProviderState != "preparing" && device.ProviderState != "live" {
-						// Setup the device
-						setContext(device)
-						if device.OS == "ios" {
-							device.WdaReadyChan = make(chan bool, 1)
-							go setupIOSDevice(device)
-						}
+			CONNECTED:
+				for _, connDevice := range connectedDevices {
+					if connDevice.UDID == device.UDID {
+						// Set it as connected
+						device.Connected = true
+						// If we are not already preparing the device or its not already prepared
+						if device.ProviderState != "preparing" && device.ProviderState != "live" {
+							// Setup the device
+							setContext(device)
+							if device.OS == "ios" {
+								device.WdaReadyChan = make(chan bool, 1)
+								go setupIOSDevice(device)
+							}
 
-						if device.OS == "android" {
-							go setupAndroidDevice(device)
+							if device.OS == "android" {
+								go setupAndroidDevice(device)
+							}
 						}
+						break CONNECTED
 					}
-					continue
+					// If local devices is not in the connected devices
+					// Set connected as false
+					device.Connected = false
 				}
-				// If local devices is not in the connected devices
-				// Set connected as false
-				device.Connected = false
+
 			}
 		}
 		time.Sleep(10 * time.Second)
@@ -206,11 +210,15 @@ func setupAndroidDevice(device *models.Device) {
 	device.StreamPort = fmt.Sprint(streamPort)
 
 	if !isStreamAvailable {
-		err = uninstallGadsStream(device)
-		if err != nil {
-			logger.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not uninstall GADS-stream from Android device - %v:\n %v", device.UDID, err))
-			resetLocalDevice(device)
-			return
+		apps := getInstalledAppsAndroid(device)
+		if slices.Contains(apps, "com.shamanec.stream") {
+			err = uninstallGadsStream(device)
+			if err != nil {
+				logger.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not uninstall GADS-stream from Android device - %v:\n %v", device.UDID, err))
+				resetLocalDevice(device)
+				return
+			}
+			time.Sleep(1 * time.Second)
 		}
 
 		err = installGadsStream(device)
@@ -219,6 +227,7 @@ func setupAndroidDevice(device *models.Device) {
 			resetLocalDevice(device)
 			return
 		}
+		time.Sleep(1 * time.Second)
 
 		err = addGadsStreamRecordingPermissions(device)
 		if err != nil {
@@ -226,6 +235,7 @@ func setupAndroidDevice(device *models.Device) {
 			resetLocalDevice(device)
 			return
 		}
+		time.Sleep(1 * time.Second)
 
 		err = startGadsStreamApp(device)
 		if err != nil {
@@ -233,6 +243,7 @@ func setupAndroidDevice(device *models.Device) {
 			resetLocalDevice(device)
 			return
 		}
+		time.Sleep(1 * time.Second)
 
 		pressHomeButton(device)
 	}
@@ -368,11 +379,11 @@ func setupIOSDevice(device *models.Device) {
 }
 
 // Gets all connected iOS and Android devices to the host
-func getConnectedDevicesCommon() []string {
-	connectedDevices := []string{}
+func GetConnectedDevicesCommon() []models.ConnectedDevice {
+	connectedDevices := []models.ConnectedDevice{}
 
-	androidDevices := []string{}
-	iosDevices := []string{}
+	androidDevices := []models.ConnectedDevice{}
+	iosDevices := []models.ConnectedDevice{}
 
 	if config.Config.EnvConfig.ProvideAndroid {
 		androidDevices = GetConnectedDevicesAndroid()
@@ -389,8 +400,8 @@ func getConnectedDevicesCommon() []string {
 }
 
 // Gets the connected iOS devices using the `go-ios` library
-func GetConnectedDevicesIOS() []string {
-	var connectedDevices []string
+func GetConnectedDevicesIOS() []models.ConnectedDevice {
+	var connectedDevices []models.ConnectedDevice
 
 	deviceList, err := ios.ListDevices()
 	if err != nil {
@@ -399,16 +410,14 @@ func GetConnectedDevicesIOS() []string {
 	}
 
 	for _, connDevice := range deviceList.DeviceList {
-		if !slices.Contains(connectedDevices, connDevice.Properties.SerialNumber) {
-			connectedDevices = append(connectedDevices, connDevice.Properties.SerialNumber)
-		}
+		connectedDevices = append(connectedDevices, models.ConnectedDevice{OS: "ios", UDID: connDevice.Properties.SerialNumber})
 	}
 	return connectedDevices
 }
 
 // Gets the connected android devices using `adb`
-func GetConnectedDevicesAndroid() []string {
-	var connectedDevices []string
+func GetConnectedDevicesAndroid() []models.ConnectedDevice {
+	var connectedDevices []models.ConnectedDevice
 
 	cmd := exec.Command("adb", "devices")
 	// Create a pipe to capture the command's output
@@ -429,14 +438,14 @@ func GetConnectedDevicesAndroid() []string {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if !strings.Contains(line, "List of devices") && line != "" && strings.Contains(line, "device") {
-			connectedDevices = append(connectedDevices, strings.Fields(line)[0])
+			connectedDevices = append(connectedDevices, models.ConnectedDevice{OS: "android", UDID: strings.Fields(line)[0]})
 		}
 	}
 
 	// Wait for the command to finish
 	if err := cmd.Wait(); err != nil {
 		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("Could not get connected Android devices with `adb`, waiting for command to finish failed, returning empty slice - %s", err))
-		return []string{}
+		return []models.ConnectedDevice{}
 	}
 	return connectedDevices
 }

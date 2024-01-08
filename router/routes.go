@@ -129,26 +129,16 @@ func UploadFile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully", "status": "success", "apps": util.GetAllAppFiles()})
 }
 
-type ProviderData struct {
-	ProviderData            models.ProviderDB `json:"provider"`
-	ConnectedAndroidDevices []string          `json:"connected_android_devices"`
-	ConnectedIOSDevices     []string          `json:"connected_ios_devices"`
-	DeviceData              []*models.Device  `json:"device_data"`
-}
-
 func GetProviderData(c *gin.Context) {
-	connectedAndroid := devices.GetConnectedDevicesAndroid()
-	connectedIOS := devices.GetConnectedDevicesIOS()
-
-	var providerData ProviderData
+	connectedDevices := devices.GetConnectedDevicesCommon()
+	var providerData models.ProviderData
 
 	deviceData := []*models.Device{}
 	for _, device := range devices.DeviceMap {
 		deviceData = append(deviceData, device)
 	}
 
-	providerData.ConnectedAndroidDevices = connectedAndroid
-	providerData.ConnectedIOSDevices = connectedIOS
+	providerData.ConnectedDevices = connectedDevices
 	providerData.ProviderData = config.Config.EnvConfig
 	providerData.DeviceData = deviceData
 

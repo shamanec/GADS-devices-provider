@@ -19,3 +19,9 @@ type ProviderDB struct {
 	WdaRepoPath         string `json:"wda_repo_path" bson:"wda_repo_path"`
 	ProviderFolder      string `json:"-" bson:"-"`
 }
+
+type ProviderData struct {
+	ProviderData     ProviderDB        `json:"provider"`
+	ConnectedDevices []ConnectedDevice `json:"connected_devices"`
+	DeviceData       []*Device         `json:"device_data"`
+}
