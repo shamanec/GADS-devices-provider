@@ -11,16 +11,16 @@ import (
 )
 
 // Check if a device is healthy by checking Appium and WebDriverAgent(for iOS) services
-func GetDeviceHealth(device *models.LocalDevice) (bool, error) {
+func GetDeviceHealth(device *models.Device) (bool, error) {
 	err := checkAppiumSession(device)
 	if err != nil {
 		return false, err
 	}
 
-	return device.Device.Connected, nil
+	return device.Connected, nil
 }
 
-func checkAppiumSession(device *models.LocalDevice) error {
+func checkAppiumSession(device *models.Device) error {
 	response, err := http.Get("http://localhost:" + device.AppiumPort + "/sessions")
 	if err != nil {
 		device.AppiumSessionID = ""
@@ -49,11 +49,11 @@ func checkAppiumSession(device *models.LocalDevice) error {
 	return nil
 }
 
-func createAppiumSession(device *models.LocalDevice) (string, error) {
+func createAppiumSession(device *models.Device) (string, error) {
 	var automationName = "UiAutomator2"
 	var platformName = "Android"
 	var waitForIdleTimeout = 10
-	if device.Device.OS == "ios" {
+	if device.OS == "ios" {
 		automationName = "XCUITest"
 		platformName = "iOS"
 		waitForIdleTimeout = 0

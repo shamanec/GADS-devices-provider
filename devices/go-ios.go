@@ -8,10 +8,10 @@ import (
 	"github.com/shamanec/GADS-devices-provider/models"
 )
 
-func InstallAppWithDevice(device *models.LocalDevice, fileName string) error {
+func InstallAppWithDevice(device *models.Device, fileName string) error {
 	filePath := fileName
 
-	logger.ProviderLogger.LogInfo("ios_device", fmt.Sprintf("Installing app `%s` on iOS device `%s`", filePath, device.Device.UDID))
+	logger.ProviderLogger.LogInfo("ios_device", fmt.Sprintf("Installing app `%s` on iOS device `%s`", filePath, device.UDID))
 
 	conn, err := zipconduit.New(device.GoIOSDeviceEntry)
 	if err != nil {

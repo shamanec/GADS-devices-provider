@@ -26,6 +26,8 @@ func SetupConfig(nickname, folder string) {
 	// Config.EnvConfig.ProviderFolder = folder
 	provider.ProviderFolder = folder
 	Config.EnvConfig = provider
+	fmt.Println("got config data")
+	fmt.Printf("%v\n", Config.Devices[0].UDID)
 }
 
 // Read the config.json file and initialize the configuration struct

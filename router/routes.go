@@ -130,10 +130,10 @@ func UploadFile(c *gin.Context) {
 }
 
 type ProviderData struct {
-	ProviderData            models.ProviderDB     `json:"provider"`
-	ConnectedAndroidDevices []string              `json:"connected_android_devices"`
-	ConnectedIOSDevices     []string              `json:"connected_ios_devices"`
-	DeviceData              []*models.LocalDevice `json:"device_data"`
+	ProviderData            models.ProviderDB `json:"provider"`
+	ConnectedAndroidDevices []string          `json:"connected_android_devices"`
+	ConnectedIOSDevices     []string          `json:"connected_ios_devices"`
+	DeviceData              []*models.Device  `json:"device_data"`
 }
 
 func GetProviderData(c *gin.Context) {
@@ -142,7 +142,7 @@ func GetProviderData(c *gin.Context) {
 
 	var providerData ProviderData
 
-	deviceData := []*models.LocalDevice{}
+	deviceData := []*models.Device{}
 	for _, device := range devices.DeviceMap {
 		deviceData = append(deviceData, device)
 	}
@@ -169,7 +169,7 @@ func DeviceInfo(c *gin.Context) {
 }
 
 func DevicesInfo(c *gin.Context) {
-	deviceList := []*models.LocalDevice{}
+	deviceList := []*models.Device{}
 
 	for _, device := range devices.DeviceMap {
 		deviceList = append(deviceList, device)
@@ -199,7 +199,7 @@ func UninstallApp(c *gin.Context) {
 			return
 		}
 
-		if slices.Contains(dev.Device.InstalledApps, payloadJson.App) {
+		if slices.Contains(dev.InstalledApps, payloadJson.App) {
 			err = devices.UninstallApp(dev, payloadJson.App)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to uninstall app `%s`", payloadJson.App)})

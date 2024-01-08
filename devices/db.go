@@ -27,13 +27,13 @@ func updateDevicesMongo() {
 // Upsert all devices data in Mongo
 func upsertDevicesMongo() {
 	for _, device := range localDevices {
-		filter := bson.M{"_id": device.Device.UDID}
-		if device.Device.Connected {
-			device.Device.LastUpdatedTimestamp = time.Now().UnixMilli()
+		filter := bson.M{"_id": device.UDID}
+		if device.Connected {
+			device.LastUpdatedTimestamp = time.Now().UnixMilli()
 		}
 
 		update := bson.M{
-			"$set": device.Device,
+			"$set": device,
 		}
 		opts := options.Update().SetUpsert(true)
 
@@ -58,7 +58,7 @@ func createMongoLogCollectionsForAllDevices() {
 	// Loop through the devices from the config
 	// And create a collection for each device that doesn't already have one
 	for _, device := range localDevices {
-		if slices.Contains(collections, device.Device.UDID) {
+		if slices.Contains(collections, device.UDID) {
 			continue
 		}
 		// Create capped collection options with limit of documents or 20 mb size limit
@@ -69,9 +69,9 @@ func createMongoLogCollectionsForAllDevices() {
 		collectionOptions.SetSizeInBytes(20 * 1024 * 1024)
 
 		// Create the actual collection
-		err = db.CreateCollection(ctx, device.Device.UDID, collectionOptions)
+		err = db.CreateCollection(ctx, device.UDID, collectionOptions)
 		if err != nil {
-			panic(fmt.Sprintf("Could not create collection for device `%s` - %s\n", device.Device.UDID, err))
+			panic(fmt.Sprintf("Could not create collection for device `%s` - %s\n", device.UDID, err))
 		}
 
 		// Define an index for queries based on timestamp in ascending order
@@ -80,9 +80,9 @@ func createMongoLogCollectionsForAllDevices() {
 		}
 
 		// Add the index on the respective device collection
-		_, err = db.Collection(device.Device.UDID).Indexes().CreateOne(ctx, indexModel)
+		_, err = db.Collection(device.UDID).Indexes().CreateOne(ctx, indexModel)
 		if err != nil {
-			panic(fmt.Sprintf("Could not add index on a capped collection for device `%s` - %s\n", device.Device.UDID, err))
+			panic(fmt.Sprintf("Could not add index on a capped collection for device `%s` - %s\n", device.UDID, err))
 		}
 	}
 }

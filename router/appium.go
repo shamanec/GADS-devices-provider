@@ -17,7 +17,7 @@ var netClient = &http.Client{
 	Timeout: time.Second * 120,
 }
 
-func appiumLockUnlock(device *models.LocalDevice, lock string) (*http.Response, error) {
+func appiumLockUnlock(device *models.Device, lock string) (*http.Response, error) {
 	var deviceHomeURL string
 	deviceHomeURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/appium/device/" + lock
 
@@ -34,7 +34,7 @@ func appiumLockUnlock(device *models.LocalDevice, lock string) (*http.Response, 
 	return lockResponse, nil
 }
 
-func appiumTap(device *models.LocalDevice, x float64, y float64) (*http.Response, error) {
+func appiumTap(device *models.Device, x float64, y float64) (*http.Response, error) {
 	appiumRequestURL := "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/actions"
 
 	// Generate the struct object for the Appium actions JSON request
@@ -88,7 +88,7 @@ func appiumTap(device *models.LocalDevice, x float64, y float64) (*http.Response
 	return tapResponse, nil
 }
 
-func appiumTouchAndHold(device *models.LocalDevice, x float64, y float64) (*http.Response, error) {
+func appiumTouchAndHold(device *models.Device, x float64, y float64) (*http.Response, error) {
 	appiumRequestURL := "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/actions"
 
 	// Generate the struct object for the Appium actions JSON request
@@ -142,7 +142,7 @@ func appiumTouchAndHold(device *models.LocalDevice, x float64, y float64) (*http
 	return touchAndHoldResponse, nil
 }
 
-func appiumSwipe(device *models.LocalDevice, x, y, endX, endY float64) (*http.Response, error) {
+func appiumSwipe(device *models.Device, x, y, endX, endY float64) (*http.Response, error) {
 	appiumRequestURL := "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/actions"
 
 	// Generate the struct object for the Appium actions JSON request
@@ -199,7 +199,7 @@ func appiumSwipe(device *models.LocalDevice, x, y, endX, endY float64) (*http.Re
 	return swipeResponse, nil
 }
 
-func appiumSource(device *models.LocalDevice) (*http.Response, error) {
+func appiumSource(device *models.Device) (*http.Response, error) {
 	sourceURL := "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/source"
 
 	req, err := http.NewRequest(http.MethodGet, sourceURL, nil)
@@ -215,7 +215,7 @@ func appiumSource(device *models.LocalDevice) (*http.Response, error) {
 	return sourceResponse, nil
 }
 
-func appiumScreenshot(device *models.LocalDevice) (*http.Response, error) {
+func appiumScreenshot(device *models.Device) (*http.Response, error) {
 	screenshotURL := "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/screenshot"
 
 	req, err := http.NewRequest(http.MethodGet, screenshotURL, nil)
@@ -237,7 +237,7 @@ type ActiveElementData struct {
 	} `json:"value"`
 }
 
-func appiumTypeText(device *models.LocalDevice, text string) (*http.Response, error) {
+func appiumTypeText(device *models.Device, text string) (*http.Response, error) {
 	activeElementRequestURL := "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/active"
 
 	activeElReq, err := http.NewRequest(http.MethodGet, activeElementRequestURL, nil)
@@ -281,7 +281,7 @@ func appiumTypeText(device *models.LocalDevice, text string) (*http.Response, er
 	return setValueResponse, nil
 }
 
-func appiumClearText(device *models.LocalDevice) (*http.Response, error) {
+func appiumClearText(device *models.Device) (*http.Response, error) {
 	activeElementRequestURL := "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/element/active"
 
 	activeElReq, err := http.NewRequest(http.MethodGet, activeElementRequestURL, nil)
@@ -322,19 +322,19 @@ func appiumClearText(device *models.LocalDevice) (*http.Response, error) {
 	return clearValueResponse, nil
 }
 
-func appiumHome(device *models.LocalDevice) (*http.Response, error) {
+func appiumHome(device *models.Device) (*http.Response, error) {
 	var homeURL string
-	switch device.Device.OS {
+	switch device.OS {
 	case "android":
 		homeURL = "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/appium/device/press_keycode"
 	case "ios":
 		homeURL = "http://localhost:" + device.WDAPort + "/wda/homescreen"
 	default:
-		return nil, fmt.Errorf("Unsupported device OS: %s", device.Device.OS)
+		return nil, fmt.Errorf("Unsupported device OS: %s", device.OS)
 	}
 
 	requestBody := ""
-	if device.Device.OS == "android" {
+	if device.OS == "android" {
 		requestBody = `{"keycode": 3}`
 	}
 

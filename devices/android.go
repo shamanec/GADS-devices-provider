@@ -34,9 +34,9 @@ func removeAdbForwardedPorts() {
 }
 
 // Check if the GADS-stream service is running on the device
-func isGadsStreamServiceRunning(device *models.LocalDevice) (bool, error) {
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "dumpsys", "activity", "services", "com.shamanec.stream/.ScreenCaptureService")
-	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Checking if GADS-stream is already running on device `%v`", device.Device.UDID))
+func isGadsStreamServiceRunning(device *models.Device) (bool, error) {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "shell", "dumpsys", "activity", "services", "com.shamanec.stream/.ScreenCaptureService")
+	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Checking if GADS-stream is already running on device `%v`", device.UDID))
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -52,9 +52,9 @@ func isGadsStreamServiceRunning(device *models.LocalDevice) (bool, error) {
 }
 
 // Install gads-stream.apk on the device
-func installGadsStream(device *models.LocalDevice) error {
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "install", "-r", "./apps/gads-stream.apk")
-	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Installing GADS-stream apk on device `%v`", device.Device.UDID))
+func installGadsStream(device *models.Device) error {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "install", "-r", "./apps/gads-stream.apk")
+	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Installing GADS-stream apk on device `%v`", device.UDID))
 
 	err := cmd.Run()
 	if err != nil {
@@ -65,9 +65,9 @@ func installGadsStream(device *models.LocalDevice) error {
 }
 
 // Add recording permissions to gads-stream app to avoid popup on start
-func addGadsStreamRecordingPermissions(device *models.LocalDevice) error {
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "appops", "set", "com.shamanec.stream", "PROJECT_MEDIA", "allow")
-	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Adding GADS-stream recording permissions on device `%v`", device.Device.UDID))
+func addGadsStreamRecordingPermissions(device *models.Device) error {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "shell", "appops", "set", "com.shamanec.stream", "PROJECT_MEDIA", "allow")
+	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Adding GADS-stream recording permissions on device `%v`", device.UDID))
 
 	err := cmd.Run()
 	if err != nil {
@@ -78,9 +78,9 @@ func addGadsStreamRecordingPermissions(device *models.LocalDevice) error {
 }
 
 // Start the gads-stream app using adb
-func startGadsStreamApp(device *models.LocalDevice) error {
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "am", "start", "-n", "com.shamanec.stream/com.shamanec.stream.ScreenCaptureActivity")
-	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Starting GADS-stream app on device `%v` with command `%v`", device.Device.UDID, cmd.Path))
+func startGadsStreamApp(device *models.Device) error {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "shell", "am", "start", "-n", "com.shamanec.stream/com.shamanec.stream.ScreenCaptureActivity")
+	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Starting GADS-stream app on device `%v` with command `%v`", device.UDID, cmd.Path))
 
 	err := cmd.Run()
 	if err != nil {
@@ -91,19 +91,19 @@ func startGadsStreamApp(device *models.LocalDevice) error {
 }
 
 // Press the Home button using adb to hide the transparent gads-stream activity
-func pressHomeButton(device *models.LocalDevice) {
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "input", "keyevent", "KEYCODE_HOME")
-	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Pressing Home button with adb on device `%v`", device.Device.UDID))
+func pressHomeButton(device *models.Device) {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "shell", "input", "keyevent", "KEYCODE_HOME")
+	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Pressing Home button with adb on device `%v`", device.UDID))
 
 	err := cmd.Run()
 	if err != nil {
-		logger.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not 'press' Home button with `adb` on device - `%v`, you need to press it yourself to hide the transparent activity of GADS-stream:\n %v", device.Device.UDID, err))
+		logger.ProviderLogger.LogError("android_device_setup", fmt.Sprintf("Could not 'press' Home button with `adb` on device - `%v`, you need to press it yourself to hide the transparent activity of GADS-stream:\n %v", device.UDID, err))
 	}
 }
 
-func forwardGadsStream(device *models.LocalDevice) error {
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "forward", "tcp:"+device.StreamPort, "tcp:1991")
-	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Forwarding GADS-stream port(1991) to host port `%v` for device `%v`", device.StreamPort, device.Device.UDID))
+func forwardGadsStream(device *models.Device) error {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "forward", "tcp:"+device.StreamPort, "tcp:1991")
+	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Forwarding GADS-stream port(1991) to host port `%v` for device `%v`", device.StreamPort, device.UDID))
 
 	err := cmd.Run()
 	if err != nil {
@@ -113,8 +113,8 @@ func forwardGadsStream(device *models.LocalDevice) error {
 	return nil
 }
 
-func updateAndroidScreenSizeADB(device *models.LocalDevice) error {
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "wm", "size")
+func updateAndroidScreenSizeADB(device *models.Device) error {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "shell", "wm", "size")
 
 	var outBuffer bytes.Buffer
 	cmd.Stdout = &outBuffer
@@ -135,8 +135,8 @@ func updateAndroidScreenSizeADB(device *models.LocalDevice) error {
 		splitOutput := strings.Split(lines[0], ": ")
 		screenDimensions := strings.Split(splitOutput[1], "x")
 
-		device.Device.ScreenWidth = strings.TrimSpace(screenDimensions[0])
-		device.Device.ScreenHeight = strings.TrimSpace(screenDimensions[1])
+		device.ScreenWidth = strings.TrimSpace(screenDimensions[0])
+		device.ScreenHeight = strings.TrimSpace(screenDimensions[1])
 	}
 
 	// If the split lines are 3 then we have two sizes returned
@@ -146,16 +146,16 @@ func updateAndroidScreenSizeADB(device *models.LocalDevice) error {
 		splitOutput := strings.Split(lines[1], ": ")
 		screenDimensions := strings.Split(splitOutput[1], "x")
 
-		device.Device.ScreenWidth = strings.TrimSpace(screenDimensions[0])
-		device.Device.ScreenHeight = strings.TrimSpace(screenDimensions[1])
+		device.ScreenWidth = strings.TrimSpace(screenDimensions[0])
+		device.ScreenHeight = strings.TrimSpace(screenDimensions[1])
 	}
 
 	return nil
 }
 
-func getInstalledAppsAndroid(device *models.LocalDevice) []string {
+func getInstalledAppsAndroid(device *models.Device) []string {
 	var installedApps = []string{}
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "shell", "cmd", "package", "list", "packages", "-3")
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "shell", "cmd", "package", "list", "packages", "-3")
 
 	var outBuffer bytes.Buffer
 	cmd.Stdout = &outBuffer
@@ -178,8 +178,8 @@ func getInstalledAppsAndroid(device *models.LocalDevice) []string {
 	return installedApps
 }
 
-func uninstallAppAndroid(device *models.LocalDevice, packageName string) error {
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "uninstall", packageName)
+func uninstallAppAndroid(device *models.Device, packageName string) error {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "uninstall", packageName)
 
 	if err := cmd.Run(); err != nil {
 		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed executing adb uninstall for package name `%s` - %v", packageName, err))
@@ -189,8 +189,8 @@ func uninstallAppAndroid(device *models.LocalDevice, packageName string) error {
 	return nil
 }
 
-func installAppAndroid(device *models.LocalDevice, appName string) error {
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.Device.UDID, "install", "-r", "./apps/"+appName)
+func installAppAndroid(device *models.Device, appName string) error {
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "install", "-r", "./apps/"+appName)
 
 	if err := cmd.Run(); err != nil {
 		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed executing adb install for app `%s` - %v", appName, err))

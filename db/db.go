@@ -73,9 +73,8 @@ func GetProviderFromDB(nickname string) (models.ProviderDB, error) {
 	return provider, nil
 }
 
-func GetConfiguredDevices() ([]*models.LocalDevice, error) {
-	var devicesList []*models.LocalDevice
-	var deviceInfoList []*models.Device
+func GetConfiguredDevices() ([]*models.Device, error) {
+	var devicesList []*models.Device
 	ctx, cancel := context.WithTimeout(mongoClientCtx, 10*time.Second)
 	defer cancel()
 
@@ -86,16 +85,12 @@ func GetConfiguredDevices() ([]*models.LocalDevice, error) {
 	}
 	defer cursor.Close(ctx)
 
-	if err := cursor.All(ctx, &deviceInfoList); err != nil {
+	if err := cursor.All(ctx, &devicesList); err != nil {
 		return devicesList, fmt.Errorf("Could not get devices latest configured devices info from db cursor - %s", err)
 	}
 
 	if err := cursor.Err(); err != nil {
 		return devicesList, fmt.Errorf("Encountered db cursor error - %s", err)
-	}
-
-	for _, deviceInfo := range deviceInfoList {
-		devicesList = append(devicesList, &models.LocalDevice{Device: deviceInfo})
 	}
 
 	return devicesList, nil
