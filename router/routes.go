@@ -247,33 +247,6 @@ func ResetDevice(c *gin.Context) {
 }
 
 func AddNewDevice(c *gin.Context) {
-	var deviceData models.Device
-
-	payload, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
-		return
-	}
-
-	err = json.Unmarshal(payload, &deviceData)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
-		return
-	}
-	if deviceData.UDID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing `udid` field"})
-		return
-	}
-
-	err = db.UpsertDeviceDB(deviceData)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "Successfully added device"})
-}
-
-func AddNewDevice2(c *gin.Context) {
 	var device models.Device
 
 	payload, err := io.ReadAll(c.Request.Body)

@@ -27,7 +27,7 @@ func updateDevicesMongo() {
 // Upsert all devices data in Mongo
 func upsertDevicesMongo() {
 	for _, device := range DeviceMap {
-		filter := bson.M{"_id": device.UDID}
+		filter := bson.M{"udid": device.UDID}
 		if device.Connected {
 			device.LastUpdatedTimestamp = time.Now().UnixMilli()
 		}

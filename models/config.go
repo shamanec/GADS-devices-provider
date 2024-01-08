@@ -2,7 +2,6 @@ package models
 
 type ConfigJsonData struct {
 	EnvConfig ProviderDB `json:"env-config" bson:"env-config"`
-	Devices   []*Device  `json:"devices-config" bson:"devices-config"`
 }
 
 type ProviderDB struct {

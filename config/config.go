@@ -1,58 +1,20 @@
 package config
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"os"
-
 	"github.com/shamanec/GADS-devices-provider/db"
 	"github.com/shamanec/GADS-devices-provider/models"
-	log "github.com/sirupsen/logrus"
 )
 
 var Config models.ConfigJsonData
 
 func SetupConfig(nickname, folder string) {
-	err := getConfigJsonData(folder)
+	provider, err := db.GetProviderFromDB(nickname)
 	if err != nil {
-		panic(fmt.Sprintf("Could not get config data from config.json - %s", err))
+		panic("Could not get provider data from DB")
 	}
-
-	provider, _ := db.GetProviderFromDB(nickname)
 	if (provider == models.ProviderDB{}) {
 		panic("Provider with this nickname is not registered in the DB")
 	}
-	// Config.EnvConfig.ProviderFolder = folder
 	provider.ProviderFolder = folder
 	Config.EnvConfig = provider
-	fmt.Println("got config data")
-	fmt.Printf("%v\n", Config.Devices[0].UDID)
-}
-
-// Read the config.json file and initialize the configuration struct
-func getConfigJsonData(folder string) error {
-	jsonFile, err := os.Open(fmt.Sprintf("%s/config.json", folder))
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_config_data",
-		}).Error("Could not open config file: " + err.Error())
-		return err
-	}
-	defer jsonFile.Close()
-
-	bs, err := io.ReadAll(jsonFile)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_config_data",
-		}).Error("Could not read config file to byte slice: " + err.Error())
-		return err
-	}
-
-	err = json.Unmarshal(bs, &Config)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
