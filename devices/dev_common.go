@@ -17,6 +17,7 @@ import (
 	"github.com/danielpaulus/go-ios/ios"
 	"github.com/pelletier/go-toml"
 	"github.com/shamanec/GADS-devices-provider/config"
+	"github.com/shamanec/GADS-devices-provider/db"
 	"github.com/shamanec/GADS-devices-provider/logger"
 	"github.com/shamanec/GADS-devices-provider/models"
 	"github.com/shamanec/GADS-devices-provider/util"
@@ -79,6 +80,42 @@ func updateDevicesAnyOS() {
 	removeAdbForwardedPorts()
 
 	for {
+		dbDevices, _ := db.GetConfiguredDevices(config.Config.EnvConfig.Nickname)
+		// Update local devices map
+		for _, dbDevice := range dbDevices {
+			// If the device is not in the local device map
+			// Set it up and add it
+			if _, ok := DeviceMap[dbDevice.UDID]; !ok {
+				dbDevice.ProviderState = "init"
+				dbDevice.IsResetting = false
+
+				setContext(dbDevice)
+				dbDevice.HostAddress = config.Config.EnvConfig.HostAddress
+				dbDevice.Provider = config.Config.EnvConfig.Nickname
+				dbDevice.Model = "N/A"
+				dbDevice.OSVersion = "N/A"
+				DeviceMap[dbDevice.UDID] = dbDevice
+
+				if config.Config.EnvConfig.UseSeleniumGrid {
+					createGridTOML(dbDevice)
+				}
+
+				// Create logs directory for each device if it doesn't already exist
+				if _, err := os.Stat("./logs/device_" + dbDevice.UDID); os.IsNotExist(err) {
+					err = os.Mkdir("./logs/device_"+dbDevice.UDID, os.ModePerm)
+					if err != nil {
+						panic(fmt.Sprintf("Could not create logs folder for device `%s` - %s\n", dbDevice.UDID, err))
+					}
+				}
+
+				logger, err := logger.CreateCustomLogger(fmt.Sprintf("%s/logs/device_%s/device.log", config.Config.EnvConfig.ProviderFolder, dbDevice.UDID), dbDevice.UDID)
+				if err != nil {
+					panic(fmt.Sprintf("Could not create a customer logger for device `%s` - %s", dbDevice.UDID, err))
+				}
+				dbDevice.Logger = *logger
+			}
+		}
+
 		// Get all connected devices
 		connectedDevices := GetConnectedDevicesCommon()
 
@@ -121,7 +158,6 @@ func updateDevicesAnyOS() {
 					// Set connected as false
 					device.Connected = false
 				}
-
 			}
 		}
 		time.Sleep(10 * time.Second)
@@ -131,52 +167,13 @@ func updateDevicesAnyOS() {
 // Create Mongo collections for all devices for logging
 // Create a map of *device.LocalDevice for easier access across the code
 func Setup() {
-	getLocalDevices()
+	// getLocalDevices()
 	createMongoLogCollectionsForAllDevices()
 	if config.Config.EnvConfig.ProvideAndroid {
 		err := util.CheckGadsStreamAndDownload()
 		if err != nil {
 			panic(fmt.Sprintf("Could not check availability of and download GADS-stream latest release - %s", err))
 		}
-	}
-}
-
-// Read the devices from Config and create a new slice with "upgraded" LocalDevices that contain fields just for the local setup
-func getLocalDevices() {
-	for _, device := range config.Config.Devices {
-		// localDevice := models.Device{
-		// 	ProviderState: "init",
-		// 	IsResetting:   false,
-		// }
-		localDevice := *device
-		localDevice.UDID = device.UDID
-		localDevice.ProviderState = "init"
-		localDevice.IsResetting = false
-
-		setContext(&localDevice)
-		localDevice.HostAddress = config.Config.EnvConfig.HostAddress
-		localDevice.Provider = config.Config.EnvConfig.Nickname
-		localDevice.Model = "N/A"
-		localDevice.OSVersion = "N/A"
-		DeviceMap[localDevice.UDID] = &localDevice
-
-		if config.Config.EnvConfig.UseSeleniumGrid {
-			createGridTOML(&localDevice)
-		}
-
-		// Create logs directory for each device if it doesn't already exist
-		if _, err := os.Stat("./logs/device_" + device.UDID); os.IsNotExist(err) {
-			err = os.Mkdir("./logs/device_"+device.UDID, os.ModePerm)
-			if err != nil {
-				panic(fmt.Sprintf("Could not create logs folder for device `%s` - %s\n", device.UDID, err))
-			}
-		}
-
-		logger, err := logger.CreateCustomLogger(fmt.Sprintf("%s/logs/device_%s/device.log", config.Config.EnvConfig.ProviderFolder, device.UDID), device.UDID)
-		if err != nil {
-			panic(fmt.Sprintf("Could not create a customer logger for device `%s` - %s", device.UDID, err))
-		}
-		localDevice.Logger = *logger
 	}
 }
 

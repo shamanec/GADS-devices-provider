@@ -73,13 +73,14 @@ func GetProviderFromDB(nickname string) (models.ProviderDB, error) {
 	return provider, nil
 }
 
-func GetConfiguredDevices() ([]*models.Device, error) {
+func GetConfiguredDevices(providerName string) ([]*models.Device, error) {
 	var devicesList []*models.Device
 	ctx, cancel := context.WithTimeout(mongoClientCtx, 10*time.Second)
 	defer cancel()
 
-	collection := mongoClient.Database("gads").Collection("configured_devices")
-	cursor, err := collection.Find(ctx, bson.D{{}}, options.Find())
+	collection := mongoClient.Database("gads").Collection("devices")
+	filter := bson.D{{Key: "provider", Value: providerName}}
+	cursor, err := collection.Find(ctx, filter, options.Find())
 	if err != nil {
 		return devicesList, fmt.Errorf("Could not get db cursor when trying to get latest configured devices info from db - %s", err)
 	}
@@ -101,7 +102,7 @@ func GetConfiguredDevice(udid string) (models.Device, error) {
 	ctx, cancel := context.WithTimeout(mongoClientCtx, 10*time.Second)
 	defer cancel()
 
-	collection := mongoClient.Database("gads").Collection("configured_devices")
+	collection := mongoClient.Database("gads").Collection("devices")
 	filter := bson.D{{Key: "udid", Value: udid}}
 
 	err := collection.FindOne(ctx, filter).Decode(&deviceInfo)
@@ -115,7 +116,7 @@ func UpsertDeviceDB(device models.Device) error {
 	update := bson.M{
 		"$set": device,
 	}
-	coll := mongoClient.Database("gads").Collection("configured_devices")
+	coll := mongoClient.Database("gads").Collection("devices")
 	filter := bson.D{{Key: "udid", Value: device.UDID}}
 	opts := options.Update().SetUpsert(true)
 	_, err := coll.UpdateOne(mongoClientCtx, filter, update, opts)
