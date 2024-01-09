@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"sort"
 	"time"
 
 	"github.com/shamanec/GADS-devices-provider/config"
@@ -13,6 +14,7 @@ import (
 	"github.com/shamanec/GADS-devices-provider/devices"
 	_ "github.com/shamanec/GADS-devices-provider/docs"
 	"github.com/shamanec/GADS-devices-provider/logger"
+	"github.com/shamanec/GADS-devices-provider/models"
 	"github.com/shamanec/GADS-devices-provider/router"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -89,22 +91,38 @@ func main() {
 	// Start updating the provider in the DB to show 'availability'
 	go func() {
 		for {
+			// Get the collection
 			coll := db.MongoClient().Database("gads").Collection("providers")
+			// Filter the provider data by nickname
 			filter := bson.D{{Key: "nickname", Value: config.Config.EnvConfig.Nickname}}
 
+			// From the current local devices map create a slice
+			var providedDevices []models.Device
+			for _, mapDevice := range devices.DeviceMap {
+				providedDevices = append(providedDevices, *mapDevice)
+			}
+			// Sort the slice to keep getting the same order in DB
+			sort.Sort(models.ByName(providedDevices))
+
+			// Update the respective provider fields
+			// Add a timestamp to cover "availability"
+			// Add the currently connected devices for setup purposes
+			// Add the currently provided devices for administration purposes
 			update := bson.M{
 				"$set": bson.M{
-					"last_updated":            time.Now().UnixMilli(),
-					"provided_devices_count":  len(devices.DeviceMap),
-					"connected_devices_count": len(devices.GetConnectedDevicesCommon()),
+					"last_updated":      time.Now().UnixMilli(),
+					"connected_devices": devices.GetConnectedDevicesCommon(),
+					"provided_devices":  providedDevices,
 				},
 			}
+			// Set upsert to true so the entry gets updated
 			opts := options.Update().SetUpsert(true)
+			// Update the provider data
 			_, err := coll.UpdateOne(db.MongoCtx(), filter, update, opts)
 			if err != nil {
-
 				logger.ProviderLogger.LogError("update_provider", fmt.Sprintf("Failed to upsert provider in DB - %s", err))
 			}
+			// Update in DB each second for a close to real-time data update
 			time.Sleep(1 * time.Second)
 		}
 	}()
