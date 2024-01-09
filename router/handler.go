@@ -6,6 +6,9 @@ import (
 )
 
 func HandleRequests() *gin.Engine {
+	// Start sending live provider data
+	// to connected clients
+	go sendProviderLiveData()
 
 	r := gin.Default()
 	config := cors.DefaultConfig()

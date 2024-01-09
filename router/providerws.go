@@ -48,7 +48,6 @@ func GetProviderDataWS(c *gin.Context) {
 	providerClients[conn] = true
 	mu.Unlock()
 	go monitorConnClose(conn)
-	go sendProviderLiveData()
 }
 
 // Wait to receive a message on the connection.
@@ -69,12 +68,14 @@ func monitorConnClose(client net.Conn) {
 		}
 
 		// If we get Op.Code = 8, then we received a close frame and we can remove the client
-		if msg[0].OpCode == 8 {
-			client.Close()
-			mu.Lock()
-			delete(providerClients, client)
-			mu.Unlock()
-			return
+		if len(msg) != 0 {
+			if msg[0].OpCode == 8 {
+				client.Close()
+				mu.Lock()
+				delete(providerClients, client)
+				mu.Unlock()
+				return
+			}
 		}
 	}
 }
@@ -92,7 +93,6 @@ func sendProviderLiveData() {
 		providerData.DeviceData = deviceData
 
 		jsonData, _ := json.Marshal(&providerData)
-
 		for client := range providerClients {
 			err := wsutil.WriteServerText(client, jsonData)
 			if err != nil {
