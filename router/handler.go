@@ -14,6 +14,7 @@ func HandleRequests() *gin.Engine {
 	r.Use(cors.New(config))
 
 	r.GET("/info", GetProviderData)
+	r.GET("/info-ws", GetProviderDataWS)
 	r.GET("/devices", DevicesInfo)
 	r.POST("/uploadFile", UploadFile)
 	r.POST("/addDevice", AddNewDevice)

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -27,9 +28,11 @@ var netClient = &http.Client{
 	Timeout: time.Second * 120,
 }
 var DeviceMap = make(map[string]*models.Device)
+var ConnectedDevices []models.ConnectedDevice
 
 func UpdateDevices() {
 	Setup()
+
 	// Start updating devices each 10 seconds in a goroutine
 	go updateDevicesAnyOS()
 	// Start updating the local devices data to Mongo in a goroutine
@@ -117,11 +120,11 @@ func updateDevicesAnyOS() {
 		}
 
 		// Get all connected devices
-		connectedDevices := GetConnectedDevicesCommon()
+		ConnectedDevices = GetConnectedDevicesCommon()
 
 		// If there are no devices or all devices were disconnected
 		// Loop through the local devices and reset them
-		if len(connectedDevices) == 0 {
+		if len(ConnectedDevices) == 0 {
 			logger.ProviderLogger.LogDebug("provider", "No devices connected")
 
 			for _, device := range DeviceMap {
@@ -135,7 +138,7 @@ func updateDevicesAnyOS() {
 			for _, device := range DeviceMap {
 				// If a connected device is part of the provider devices
 			CONNECTED:
-				for _, connDevice := range connectedDevices {
+				for _, connDevice := range ConnectedDevices {
 					if connDevice.UDID == device.UDID {
 						// Set it as connected
 						device.Connected = true
@@ -167,12 +170,11 @@ func updateDevicesAnyOS() {
 // Create Mongo collections for all devices for logging
 // Create a map of *device.LocalDevice for easier access across the code
 func Setup() {
-	// getLocalDevices()
 	createMongoLogCollectionsForAllDevices()
 	if config.Config.EnvConfig.ProvideAndroid {
 		err := util.CheckGadsStreamAndDownload()
 		if err != nil {
-			panic(fmt.Sprintf("Could not check availability of and download GADS-stream latest release - %s", err))
+			log.Fatalf("Could not check availability of and download GADS-stream latest release - %s", err)
 		}
 	}
 }

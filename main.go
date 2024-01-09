@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"time"
 
 	"github.com/shamanec/GADS-devices-provider/config"
 	"github.com/shamanec/GADS-devices-provider/db"
@@ -13,6 +14,8 @@ import (
 	_ "github.com/shamanec/GADS-devices-provider/docs"
 	"github.com/shamanec/GADS-devices-provider/logger"
 	"github.com/shamanec/GADS-devices-provider/router"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
@@ -82,6 +85,29 @@ func main() {
 
 	// Handle the endpoints
 	r := router.HandleRequests()
+
+	// Start updating the provider in the DB to show 'availability'
+	go func() {
+		for {
+			coll := db.MongoClient().Database("gads").Collection("providers")
+			filter := bson.D{{Key: "nickname", Value: config.Config.EnvConfig.Nickname}}
+
+			update := bson.M{
+				"$set": bson.M{
+					"last_updated":            time.Now().UnixMilli(),
+					"provided_devices_count":  len(devices.DeviceMap),
+					"connected_devices_count": len(devices.GetConnectedDevicesCommon()),
+				},
+			}
+			opts := options.Update().SetUpsert(true)
+			_, err := coll.UpdateOne(db.MongoCtx(), filter, update, opts)
+			if err != nil {
+
+				logger.ProviderLogger.LogError("update_provider", fmt.Sprintf("Failed to upsert provider in DB - %s", err))
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}()
 
 	// Start the provider
 	r.Run(fmt.Sprintf(":%v", config.Config.EnvConfig.Port))
