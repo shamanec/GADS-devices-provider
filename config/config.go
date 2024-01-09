@@ -12,7 +12,7 @@ func SetupConfig(nickname, folder string) {
 	if err != nil {
 		panic("Could not get provider data from DB")
 	}
-	if (provider == models.ProviderDB{}) {
+	if provider.Nickname == "" {
 		panic("Provider with this nickname is not registered in the DB")
 	}
 	provider.ProviderFolder = folder
