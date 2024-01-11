@@ -20,7 +20,6 @@ func HandleRequests() *gin.Engine {
 	r.GET("/info-ws", GetProviderDataWS)
 	r.GET("/devices", DevicesInfo)
 	r.POST("/uploadFile", UploadFile)
-	r.POST("/addDevice", AddNewDevice)
 
 	deviceGroup := r.Group("/device")
 	deviceGroup.GET("/:udid/info", DeviceInfo)

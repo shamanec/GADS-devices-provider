@@ -14,7 +14,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/shamanec/GADS-devices-provider/config"
-	"github.com/shamanec/GADS-devices-provider/db"
 	"github.com/shamanec/GADS-devices-provider/devices"
 	"github.com/shamanec/GADS-devices-provider/models"
 	"github.com/shamanec/GADS-devices-provider/util"
@@ -244,49 +243,4 @@ func ResetDevice(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Device with udid `%s` does not exist", udid)})
-}
-
-func AddNewDevice(c *gin.Context) {
-	var device models.Device
-
-	payload, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
-		return
-	}
-
-	err = json.Unmarshal(payload, &device)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
-		return
-	}
-
-	// If device is not configured in DB or DB failed, need to handle better
-	configuredDevice, _ := db.GetConfiguredDevice(device.UDID)
-	if configuredDevice.UDID != "" {
-		// So if device is already configured just update the current provider data and dont change anything else
-		configuredDevice.Provider = config.Config.EnvConfig.Nickname
-		configuredDevice.HostAddress = config.Config.EnvConfig.HostAddress
-		err = db.UpsertDeviceDB(configuredDevice)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upsert device in DB"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "Updated device in DB for the current provider"})
-		return
-	}
-
-	// If the device is not configured in DB
-	device.Provider = config.Config.EnvConfig.Nickname
-	device.HostAddress = config.Config.EnvConfig.HostAddress
-	device.Connected = true
-
-	err = db.UpsertDeviceDB(device)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upsert device in DB"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Added device in DB for the current provider"})
 }
