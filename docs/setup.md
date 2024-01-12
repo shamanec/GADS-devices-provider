@@ -70,7 +70,7 @@ The MongoDB instance does not have to be on the same host as the provider or GAD
 ### WebDriverAgent - iOS only
 **NB** You need a Mac machine to do this!
 1. [Create](#prepare-webdriveragent-file---linux) a `WebDriverAgent.ipa` or `WebDriverAgent.app`  
-2. Copy the newly created `ipa/app` in the `/conf` folder with name `WebDriverAgent.ipa` or `WebDriverAgent.app` (exact name is important for the scripts)
+2. Copy the newly created `ipa/app` in the `/conf` folder with name `WebDriverAgent.ipa` or `WebDriverAgent.app` (exact name is important)
 
 ### Known limitations - iOS
 1. It is not possible to execute **driver.executeScript("mobile: startPerfRecord")** with Appium to record application performance since Xcode tools are not available.

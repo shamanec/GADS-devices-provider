@@ -334,8 +334,8 @@ func setupIOSDevice(device *models.Device) {
 		if config.Config.EnvConfig.OS == "darwin" {
 			wda_path = config.Config.EnvConfig.WdaRepoPath + "build/Build/Products/Debug-iphoneos/WebDriverAgentRunner-Runner.app"
 		} else {
-			// If on Linux or Windows use the prebuilt and provided WebDriverAgent.ipa file
-			wda_path = fmt.Sprintf("%s/conf/WebDriverAgent.ipa", config.Config.EnvConfig.ProviderFolder)
+			// If on Linux or Windows use the prebuilt and provided WebDriverAgent.ipa/app file
+			wda_path = fmt.Sprintf("%s/conf/%s", config.Config.EnvConfig.ProviderFolder, config.Config.EnvConfig.WebDriverBinary)
 		}
 		err = InstallAppWithDevice(device, wda_path)
 		if err != nil {

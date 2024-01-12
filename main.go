@@ -67,7 +67,7 @@ func main() {
 	logger.SetupLogging(*log_level)
 	logger.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", config.Config.EnvConfig.Port))
 
-	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa
+	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa/app
 	if config.Config.EnvConfig.OS != "macos" && config.Config.EnvConfig.ProvideIOS {
 		// Check for WDA ipa, then WDA app availability
 		_, err := os.Stat(fmt.Sprintf("%s/conf/WebDriverAgent.ipa", *provider_folder))
@@ -79,14 +79,6 @@ func main() {
 			config.Config.EnvConfig.WebDriverBinary = "WebDriverAgent.app"
 		} else {
 			config.Config.EnvConfig.WebDriverBinary = "WebDriverAgent.ipa"
-		}
-	}
-
-	// If Android devices provision enabled check for gads-stream.apk
-	if config.Config.EnvConfig.ProvideAndroid {
-		_, err := os.Stat(fmt.Sprintf("%s/conf/gads-stream.apk", *provider_folder))
-		if os.IsNotExist(err) {
-			log.Fatalf("You should put gads-stream.apk file in the `conf` folder in `%s`", *provider_folder)
 		}
 	}
 
