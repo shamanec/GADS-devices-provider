@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/shamanec/GADS-devices-provider/config"
@@ -39,6 +40,9 @@ func main() {
 	fmt.Printf("Will use `%s` as address for MongoDB instance, use the --mongo-db flag to change it\n", *mongo_db)
 	fmt.Printf("Will use `%s` as provider folder, use the --provider-folder flag to change it\n", *provider_folder)
 
+	// Remove trailing slash if provided, all code assumes its not there
+	*provider_folder, _ = strings.CutSuffix(*provider_folder, "/")
+
 	// Create a connection to Mongo
 	db.InitMongoClient(fmt.Sprintf("%v", *mongo_db))
 	// Set up the provider configuration
@@ -47,40 +51,44 @@ func main() {
 	// Defer closing the Mongo connection on provider stopped
 	defer db.CloseMongoConn()
 
-	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa
-	if config.Config.EnvConfig.OS != "macos" && config.Config.EnvConfig.ProvideIOS {
-		// Check for WDA ipa, then WDA app availability
-		_, err := os.Stat(fmt.Sprintf("%s/apps/WebDriverAgent.ipa", *provider_folder))
-		if err != nil {
-			_, err = os.Stat(fmt.Sprintf("%s/apps/WebDriverAgent.app", *provider_folder))
-			if os.IsNotExist(err) {
-				log.Fatalf("You should put signed WebDriverAgent.ipa file in the `apps` folder in `%s`", *provider_folder)
-			}
-		}
-	}
-
-	// If Android devices provision enabled check for gads-stream.apk
-	if config.Config.EnvConfig.ProvideAndroid {
-		_, err := os.Stat(fmt.Sprintf("%s/apps/gads-stream.apk", *provider_folder))
-		if os.IsNotExist(err) {
-			log.Fatalf("You should put gads-stream.apk file in the `apps` folder in `%s`", *provider_folder)
-		}
-	}
-
-	// Create logs folder if it doesn't exist
+	// Check if logs folder exists in given provider folder and attempt to create it if it doesn't exist
 	_, err := os.Stat(fmt.Sprintf("%s/logs", *provider_folder))
 	if os.IsNotExist(err) {
+		logger.ProviderLogger.LogWarn("setup", fmt.Sprintf("`logs` folder does not exist in `%s` provider folder, attempting to create it", *provider_folder))
 		err = os.Mkdir(fmt.Sprintf("%s/logs", *provider_folder), os.ModePerm)
 		if err != nil {
-			log.Fatal("Could not create logs folder - " + err.Error())
+			log.Fatalf("Could not create `logs` folder in `%s` provider folder - %s", *provider_folder, err)
 		}
 	} else if err != nil {
-		log.Fatal("Could not create logs folder - " + err.Error())
+		log.Fatalf("Could not stat `logs` folder in `%s` provider folder - %s", *provider_folder, err)
 	}
 
 	// Setup logging for the provider itself
 	logger.SetupLogging(*log_level)
 	logger.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", config.Config.EnvConfig.Port))
+
+	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa
+	if config.Config.EnvConfig.OS != "macos" && config.Config.EnvConfig.ProvideIOS {
+		// Check for WDA ipa, then WDA app availability
+		_, err := os.Stat(fmt.Sprintf("%s/conf/WebDriverAgent.ipa", *provider_folder))
+		if err != nil {
+			_, err = os.Stat(fmt.Sprintf("%s/conf/WebDriverAgent.app", *provider_folder))
+			if os.IsNotExist(err) {
+				log.Fatalf("You should put signed WebDriverAgent.ipa/app file in the `conf` folder in `%s`", *provider_folder)
+			}
+			config.Config.EnvConfig.WebDriverBinary = "WebDriverAgent.app"
+		} else {
+			config.Config.EnvConfig.WebDriverBinary = "WebDriverAgent.ipa"
+		}
+	}
+
+	// If Android devices provision enabled check for gads-stream.apk
+	if config.Config.EnvConfig.ProvideAndroid {
+		_, err := os.Stat(fmt.Sprintf("%s/conf/gads-stream.apk", *provider_folder))
+		if os.IsNotExist(err) {
+			log.Fatalf("You should put gads-stream.apk file in the `conf` folder in `%s`", *provider_folder)
+		}
+	}
 
 	// Start a goroutine that will update devices on provider start
 	go devices.UpdateDevices()
@@ -102,7 +110,7 @@ func main() {
 				providedDevices = append(providedDevices, *mapDevice)
 			}
 			// Sort the slice to keep getting the same order in DB
-			sort.Sort(models.ByName(providedDevices))
+			sort.Sort(models.ByUDID(providedDevices))
 
 			// Update the respective provider fields
 			// Add a timestamp to cover "availability"

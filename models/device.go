@@ -45,11 +45,11 @@ type Device struct {
 	WDAPort              string             `json:"wda_port" bson:"-"`
 }
 
-type ByName []Device
+type ByUDID []Device
 
-func (a ByName) Len() int           { return len(a) }
-func (a ByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByName) Less(i, j int) bool { return a[i].Name < a[j].Name }
+func (a ByUDID) Len() int           { return len(a) }
+func (a ByUDID) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByUDID) Less(i, j int) bool { return a[i].UDID < a[j].UDID }
 
 type IOSModelData struct {
 	Width  string

@@ -179,7 +179,7 @@ func updateWebDriverAgent(device *models.Device) error {
 func updateWebDriverAgentStreamSettings(device *models.Device) error {
 	// Set 30 frames per second, without any scaling, half the original screenshot quality
 	// TODO should make this configurable in some way, although can be easily updated the same way
-	requestString := `{"settings": {"mjpegServerFramerate": 30, "mjpegServerScreenshotQuality": 75, "mjpegScalingFactor": 100}}`
+	requestString := `{"settings": {"mjpegServerFramerate": 60, "mjpegServerScreenshotQuality": 75, "mjpegScalingFactor": 100}}`
 
 	// Post the mjpeg server settings
 	response, err := http.Post("http://localhost:"+device.WDAPort+"/session/"+device.WDASessionID+"/appium/settings", "application/json", strings.NewReader(requestString))

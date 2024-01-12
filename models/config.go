@@ -20,6 +20,7 @@ type ProviderDB struct {
 	LastUpdatedTimestamp int64             `json:"last_updated" bson:"last_updated"`
 	ConnectedDevices     []ConnectedDevice `json:"connected_devices" bson:"connected_devices"`
 	ProvidedDevices      int               `json:"provided_devices_count" bson:"provided_devices_count"`
+	WebDriverBinary      string            `json:"-" bson:"-"`
 }
 
 type ProviderData struct {

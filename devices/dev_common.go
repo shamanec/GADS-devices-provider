@@ -623,7 +623,7 @@ func createGridTOML(device *models.Device) {
 
 func startGridNode(device *models.Device) {
 	// time.Sleep(5 * time.Second)
-	// cmd := exec.CommandContext(device.Context, "java", "-jar", fmt.Sprintf("%s/apps%s", config.Config.EnvConfig.ProviderFolder, config.Config.EnvConfig.SeleniumJar), "node", "--config", util.ProjectDir+"/config/"+device.Device.UDID+".toml", "--grid-url", config.Config.EnvConfig.SeleniumGrid)
+	// cmd := exec.CommandContext(device.Context, "java", "-jar", fmt.Sprintf("%s/conf%s", config.Config.EnvConfig.ProviderFolder, config.Config.EnvConfig.SeleniumJar), "node", "--config", util.ProjectDir+"/config/"+device.Device.UDID+".toml", "--grid-url", config.Config.EnvConfig.SeleniumGrid)
 
 	// stdout, err := cmd.StdoutPipe()
 	// if err != nil {

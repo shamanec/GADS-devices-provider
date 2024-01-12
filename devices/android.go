@@ -54,7 +54,7 @@ func isGadsStreamServiceRunning(device *models.Device) (bool, error) {
 
 // Install gads-stream.apk on the device
 func installGadsStream(device *models.Device) error {
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "install", "-r", fmt.Sprintf("%s/apps/gads-stream.apk", config.Config.EnvConfig.ProviderFolder))
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "install", "-r", fmt.Sprintf("%s/conf/gads-stream.apk", config.Config.EnvConfig.ProviderFolder))
 	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Installing GADS-stream apk on device `%v`", device.UDID))
 
 	err := cmd.Run()
