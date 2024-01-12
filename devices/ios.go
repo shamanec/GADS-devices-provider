@@ -284,9 +284,8 @@ func startWdaWithGoIOS(device *models.Device) {
 	}
 }
 
-// Mount the developer disk images downloading them automatically in /opt/DeveloperDiskImages
 func mountDeveloperImageIOS(device *models.Device) error {
-	basedir := "./devimages"
+	basedir := fmt.Sprintf("%s/devimages", config.Config.EnvConfig.ProviderFolder)
 
 	var err error
 	path, err := imagemounter.DownloadImageFor(device.GoIOSDeviceEntry, basedir)
@@ -305,9 +304,9 @@ func mountDeveloperImageIOS(device *models.Device) error {
 func pairIOS(device *models.Device) error {
 	logger.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Pairing device `%s`", device.UDID))
 
-	p12, err := os.ReadFile("./config/supervision.p12")
+	p12, err := os.ReadFile(fmt.Sprintf("%s/conf/supervision.p12", config.Config.EnvConfig.ProviderFolder))
 	if err != nil {
-		logger.ProviderLogger.LogWarn("ios_device_setup", fmt.Sprintf("Could not read /opt/supervision.p12 file when pairing device with UDID: %s, falling back to unsupervised pairing - %s", device.UDID, err))
+		logger.ProviderLogger.LogWarn("ios_device_setup", fmt.Sprintf("Could not read supervision.p12 file when pairing device with UDID: %s, falling back to unsupervised pairing - %s", device.UDID, err))
 		err = ios.Pair(device.GoIOSDeviceEntry)
 		if err != nil {
 			return fmt.Errorf("Could not perform unsupervised pairing successfully - %s", err)
@@ -370,7 +369,7 @@ func uninstallAppIOS(device *models.Device, bundleID string) error {
 }
 
 func installAppIOS(device *models.Device, appName string) error {
-	cmd := exec.CommandContext(device.Context, "ios", "install", "--path=./apps/"+appName, "--udid="+device.UDID)
+	cmd := exec.CommandContext(device.Context, "ios", "install", fmt.Sprintf("--path=%s/apps/%s", config.Config.EnvConfig.ProviderFolder, appName), "--udid="+device.UDID)
 	if err := cmd.Run(); err != nil {
 		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed executing go-ios install for app `%s` - %v", appName, err))
 		return err

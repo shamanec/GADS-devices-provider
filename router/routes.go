@@ -113,7 +113,7 @@ func UploadFile(c *gin.Context) {
 	}
 
 	// Specify the upload directory
-	uploadDir := "./apps/"
+	uploadDir := fmt.Sprintf("%s/apps/", config.Config.EnvConfig.ProviderFolder)
 	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
 		os.Mkdir(uploadDir, os.ModePerm)
 	}

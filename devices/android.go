@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/shamanec/GADS-devices-provider/config"
 	"github.com/shamanec/GADS-devices-provider/logger"
 	"github.com/shamanec/GADS-devices-provider/models"
 )
@@ -53,7 +54,7 @@ func isGadsStreamServiceRunning(device *models.Device) (bool, error) {
 
 // Install gads-stream.apk on the device
 func installGadsStream(device *models.Device) error {
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "install", "-r", "./apps/gads-stream.apk")
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "install", "-r", fmt.Sprintf("%s/apps/gads-stream.apk", config.Config.EnvConfig.ProviderFolder))
 	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Installing GADS-stream apk on device `%v`", device.UDID))
 
 	err := cmd.Run()
@@ -195,7 +196,7 @@ func uninstallAppAndroid(device *models.Device, packageName string) error {
 }
 
 func installAppAndroid(device *models.Device, appName string) error {
-	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "install", "-r", "./apps/"+appName)
+	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "install", "-r", fmt.Sprintf("%s/apps/%s/", config.Config.EnvConfig.ProviderFolder, appName))
 
 	if err := cmd.Run(); err != nil {
 		device.Logger.LogError("get_installed_apps", fmt.Sprintf("Failed executing adb install for app `%s` - %v", appName, err))

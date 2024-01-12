@@ -41,8 +41,8 @@ func UpdateDevices() {
 
 func updateDevicesAnyOS() {
 	// Create common logs directory if it doesn't already exist
-	if _, err := os.Stat("./logs"); os.IsNotExist(err) {
-		os.Mkdir("./logs", os.ModePerm)
+	if _, err := os.Stat(fmt.Sprintf("%s/logs", config.Config.EnvConfig.ProviderFolder)); os.IsNotExist(err) {
+		os.Mkdir(fmt.Sprintf("%s/logs", config.Config.EnvConfig.ProviderFolder), os.ModePerm)
 	}
 
 	// If we want to provide Android devices check if adb is available on PATH
@@ -104,8 +104,8 @@ func updateDevicesAnyOS() {
 				}
 
 				// Create logs directory for each device if it doesn't already exist
-				if _, err := os.Stat("./logs/device_" + dbDevice.UDID); os.IsNotExist(err) {
-					err = os.Mkdir("./logs/device_"+dbDevice.UDID, os.ModePerm)
+				if _, err := os.Stat(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, dbDevice.UDID)); os.IsNotExist(err) {
+					err = os.Mkdir(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, dbDevice.UDID), os.ModePerm)
 					if err != nil {
 						panic(fmt.Sprintf("Could not create logs folder for device `%s` - %s\n", dbDevice.UDID, err))
 					}
@@ -335,7 +335,7 @@ func setupIOSDevice(device *models.Device) {
 			wda_path = config.Config.EnvConfig.WdaRepoPath + "build/Build/Products/Debug-iphoneos/WebDriverAgentRunner-Runner.app"
 		} else {
 			// If on Linux or Windows use the prebuilt and provided WebDriverAgent.ipa file
-			wda_path = "./apps/WebDriverAgent.ipa"
+			wda_path = fmt.Sprintf("%s/conf/WebDriverAgent.ipa", config.Config.EnvConfig.ProviderFolder)
 		}
 		err = InstallAppWithDevice(device, wda_path)
 		if err != nil {
@@ -368,7 +368,7 @@ func setupIOSDevice(device *models.Device) {
 
 	go startAppium(device)
 	if config.Config.EnvConfig.UseSeleniumGrid {
-		startGridNode(device)
+		go startGridNode(device)
 	}
 
 	device.InstalledApps = getInstalledAppsIOS(device)
@@ -514,15 +514,6 @@ func startAppium(device *models.Device) {
 
 	capabilitiesJson, _ := json.Marshal(capabilities)
 
-	// Create a usbmuxd.log file for Stderr
-	appiumLog, err := os.Create("./logs/device_" + device.UDID + "/appium.log")
-	if err != nil {
-		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("Could not create appium.log file for device - %v, err - %v", device.UDID, err))
-		resetLocalDevice(device)
-		return
-	}
-	defer appiumLog.Close()
-
 	// Get a free port on the host for Appium server
 	appiumPort, err := util.GetFreePort()
 	if err != nil {
@@ -595,7 +586,7 @@ func createGridTOML(device *models.Device) {
 	url := fmt.Sprintf("http://%s:%v/device/%s/appium", config.Config.EnvConfig.HostAddress, config.Config.EnvConfig.Port, device.UDID)
 	configs := fmt.Sprintf(`{"appium:deviceName": "%s", "platformName": "%s", "appium:platformVersion": "%s", "appium:automationName": "%s"}`, device.Name, device.OS, device.OSVersion, automationName)
 
-	config := AppiumTomlConfig{
+	conf := AppiumTomlConfig{
 		Server: AppiumTomlServer{
 			Port: 5555 + port_counter,
 		},
@@ -612,12 +603,12 @@ func createGridTOML(device *models.Device) {
 		},
 	}
 
-	res, err := toml.Marshal(config)
+	res, err := toml.Marshal(conf)
 	if err != nil {
 		panic(fmt.Sprintf("Failed marshalling TOML Appium config for device `%s` - %s", device.UDID, err))
 	}
 
-	file, err := os.Create("./config/" + device.UDID + ".toml")
+	file, err := os.Create(fmt.Sprintf("%s/config/%s.toml", config.Config.EnvConfig.ProviderFolder, device.UDID))
 	if err != nil {
 		panic(fmt.Sprintf("Failed creating TOML Appium config file for device `%s` - %s", device.UDID, err))
 	}
@@ -632,7 +623,7 @@ func createGridTOML(device *models.Device) {
 
 func startGridNode(device *models.Device) {
 	// time.Sleep(5 * time.Second)
-	// cmd := exec.CommandContext(device.Context, "java", "-jar", "./apps/"+config.Config.EnvConfig.SeleniumJar, "node", "--config", util.ProjectDir+"/config/"+device.Device.UDID+".toml", "--grid-url", config.Config.EnvConfig.SeleniumGrid)
+	// cmd := exec.CommandContext(device.Context, "java", "-jar", fmt.Sprintf("%s/apps%s", config.Config.EnvConfig.ProviderFolder, config.Config.EnvConfig.SeleniumJar), "node", "--config", util.ProjectDir+"/config/"+device.Device.UDID+".toml", "--grid-url", config.Config.EnvConfig.SeleniumGrid)
 
 	// stdout, err := cmd.StdoutPipe()
 	// if err != nil {

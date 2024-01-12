@@ -21,13 +21,13 @@ The MongoDB instance does not have to be on the same host as the provider or GAD
 1. Open the running `GADS` UI.
 2. Log in with an admin user
 3. Navigate to `Admin > Providers administration`
-4. Provide all needed data and add the new provider config.
+4. Set all required data and add the new provider configuration in the DB.
 
 ### Create provider data folder - optional
 **NB** This folder will be used to store logs, apps and get files needed by the provider. You can skip this step and then starting the provider will look for `apps` and `logs` folders relative to the folder where the provider binary is located. For example if you run the provider in `/Users/shamanec/Gads-provider` then it will look for `apps` and `logs` in `/Users/shamanec/Gads-provider/apps` and `/Users/shamanec/Gads-provider/logs` respectively. If you create a specific folder and provide it on startup - then the path will be relative to it.  
 
 1. Create a folder on your machine that will be accessible to the provider - name it any way you want.
-2. Open the newly created folder and inside create two more folders - `apps` and `logs`
+2. Open the newly created folder and inside create three more folders - `apps`, `logs`, `conf`
 
 ### Golang
 * Install Go 1.21 or higher
@@ -44,13 +44,13 @@ The MongoDB instance does not have to be on the same host as the provider or GAD
 * Install Appium with `npm install -g appium`
 * Install Appium drivers
     * iOS devices - `appium install driver xcuitestdriver`
-    * Android deviecs - `appium install driver uiautomator2`
+    * Android devices - `appium install driver uiautomator2`
 * Add any additional Appium dependencies like `ANDROID_HOME`(Android SDK) environment variable, etc.
 
 ### Set up go-ios - iOS only
 1. Download the latest release of [go-ios](https://github.com/danielpaulus/go-ios) and unzip it
-* On Macos - Add it to `/usr/local/bin` with `sudo cp ios /usr/local/bin`
-* On Linux - Add it to `/usr/local/bin` with `sudo cp ios /usr/local/bin`
+* On Macos - Add it to `/usr/local/bin` with `sudo cp ios /usr/local/bin` or to PATH
+* On Linux - Add it to `/usr/local/bin` with `sudo cp ios /usr/local/bin` or to PATH
 * On Windows - add it to system PATH so its available in Terminal
 
 ### Supervise devices - iOS only
@@ -61,7 +61,7 @@ The MongoDB instance does not have to be on the same host as the provider or GAD
 **NB** You can skip supervising the devices and you should trust manually on first pair attempt by the provider but it is preferable to have supervised the devices in advance and provided supervision file and password to make setup more autonomous.  
 
 ### GADS Android stream - Android only
-1. Starting the provider will automatically download the latests GADS-stream release and put the `apk` file in the `./apps` folder  
+1. Starting the provider will automatically download the latests GADS-stream release and put the `apk` file in the `./conf` folder  
 
 ## Linux
 ### Usbmuxd
@@ -69,8 +69,8 @@ The MongoDB instance does not have to be on the same host as the provider or GAD
 
 ### WebDriverAgent - iOS only
 **NB** You need a Mac machine to do this!
-1. [Create](#prepare-webdriveragent-file---linux) a `WebDriverAgent.ipa` file
-2. Copy the newly created `ipa` file in the `/apps` folder with name `WebDriverAgent.ipa` (exact name is important for the scripts)
+1. [Create](#prepare-webdriveragent-file---linux) a `WebDriverAgent.ipa` or `WebDriverAgent.app`  
+2. Copy the newly created `ipa/app` in the `/conf` folder with name `WebDriverAgent.ipa` or `WebDriverAgent.app` (exact name is important for the scripts)
 
 ### Known limitations - iOS
 1. It is not possible to execute **driver.executeScript("mobile: startPerfRecord")** with Appium to record application performance since Xcode tools are not available.
@@ -78,7 +78,7 @@ The MongoDB instance does not have to be on the same host as the provider or GAD
 
 ## macOS
 ### Xcode - iOS only
-* Install latest stable Xcode release - for iOS 17 install latest beta release
+* Install latest stable Xcode release.
 * Install command line tools with `xcode-select --install`
 
 ### WebDriverAgent - iOS only
@@ -90,33 +90,25 @@ The MongoDB instance does not have to be on the same host as the provider or GAD
 
 ## Windows
 ### iTunes - iOS only
-* Install `iTunes` to be able to provision iOS < 17 devices - NOT READY YET, CAN BE SKIPPED
+* Install `iTunes` to be able to provision iOS < 17 devices
 
-# Configuration JSON setup
-The provider uses `config.json` located in `./config` folder for configuration. It contains config data for Appium, general environment and provisioned devices.
+# Configuration setup
+The provider can be initialy set up or updated via the GADS UI.  
 
 ## Common
-#### Selenium Grid - to do
-Devices can be automatically connected to Selenium Grid 4 instance. You need to create the Selenium Grid instance yourself and then setup the provider to connect to it.  
-To setup the provider download the latest Selenium server jar [release](https://github.com/SeleniumHQ/selenium/releases). Copy the downloaded jar and put it in the provider `./apps` folder.  
-Open the `config.json` file and in `env-config`:  
-* Set `selenium_jar` to the name of the jar you just pasted in `./apps`. Example: `selenium-server-4.14.0.jar`
-
 ### Devices config
-Each device should have a JSON object in `devices-config` like:
-```
-{
-      "os": "ios",
-      "name": "iPhone_11",
-      "udid": "00008030000418C136FB8022"
-}
-```
-For each device set: 
-  * `os` - should be `android` or `ios`  
-  * `name` - use to differentiate devices if needed if multiple devices with the same brand and model available  
-  * `udid` - UDID of the Android or iOS device  
-    * For Android can get it with `adb devices`  
-    * For iOS can get it with Xcode through `Devices & Simulators` on MacOS or using `go-ios` or a similar tool (tidevice, gidevice, pymobiledevice3) on Linux/Windows  
+Each device can be configured for the provider through the GADS UI.
+1. Start the provider.
+2. Connect the devices to the provider host
+3. Open the admin panel in the UI.
+4. Go to provider administration and open the respective provider tab.
+5. You will see a list of connected devices and information if they are configured in the DB.
+6. Click the `Configure` button for each new device.
+7. It should be registered in the DB for the provider and you should expected to see locally set up devices data in the UI shortly.
+
+### Selenium Grid - to do
+Devices can be automatically connected to Selenium Grid 4 instance. You need to create the Selenium Grid instance yourself and then setup the provider to connect to it.  
+To setup the provider download the latest Selenium server jar [release](https://github.com/SeleniumHQ/selenium/releases). Copy the downloaded jar and put it in the provider `./conf` folder.  
 
 # Additional setup notes
 ## Prepare WebDriverAgent file - Linux, Windows
@@ -128,17 +120,17 @@ You need a paid Apple Developer account to build and sign `WebDriverAgent`. With
 2. Open `WebDriverAgent.xcodeproj` in Xcode.  
 3. Ensure a team is selected before building the application. To do this go to: *Targets* and select each target one at a time. There should be a field for assigning teams certificates to the target.  
 4. Remove your `WebDriverAgent` folder from `DerivedData` and run `Clean build folder` (just in case)  
-5. Next build the application by selecting the `WebDriverAgentRunner` target and build for `Generic iOS Device`. Run `Product => Build for testing`. This will create a `Products/Debug-iphoneos` in the specified project directory.  
+5. Next build the application by selecting the `WebDriverAgentRunner` target and build for `Generic iOS Device`. Run `Product => Build for testing`. This will create a `Products/Debug-iphoneos` folder in the specified project directory.  
  `Example`: **/Users/<username>/Library/Developer/Xcode/DerivedData/WebDriverAgent-dzxbpamuepiwamhdbyvyfkbecyer/Build/Products/Debug-iphoneos**  
 6. Open `iOS App Signer`  
 7. Select `WebDriverAgentRunner-Runner.app`.  
 8. Generate the WebDriverAgent *.ipa file.  
 
-**or zip it manually into an IPA yourself, I had some issues last time I did it :(**
+Alternatively:
+7. Copy the `WebDriverAgentRunner-Runner.app` instead of bundling to IPA. `go-ios` allows us to install `app` as well as `ipa` so it might be more painless.
 
 ## Supervise the iOS devices - Linux, macOS, Windows
-This is a non-mandatory but a preferable step - it will reduce the needed device provisioning manual interactions
-
+This is a non-mandatory but a preferable step - it will reduce the needed device provisioning manual interactions  
 1. Install Apple Configurator 2 on your Mac.
 2. Attach your first device.
 3. Set it up for supervision using a new(or existing) supervision identity. You can do that for free without having a paid MDM account.
@@ -147,15 +139,17 @@ This is a non-mandatory but a preferable step - it will reduce the needed device
 6. Save your new supervision identity file in the project `./config` folder as `supervision.p12`.
 7. Open `config.json` and set your `supervision_password` in `env-config`
 
-**Note** You can also Trust manually when device provisioning is running but this is not optimal.
+**Note** You can also Trust manually when device provisioning is running but this is not optimal.  
+
+[] TODO - see if supervising can be automated with `go-ios` to skip this step and make set up more autonomous
 
 # Running the provider
 1. Execute `go build .`
 2. Execute `./GADS-devices-provider` while providing the flags:  
 * `--nickname` - this is used to get the correct provider configuration from MongoDB
 * `--mongo-db` - address and port of the MongoDB instance
-* `--provider-folder` - optional, folder where provider should store logs and apps and get needed files for setup. Can be 1) relative path to the folder where provider binary is located or 2) full path on the host
-* `--log-level` - optiona, how verbose should the provider logs be, use `debug` for more info, default is `info`
+* `--provider-folder` - optional, folder where provider should store logs and apps and get needed files for setup. Can be 1) relative path to the folder where provider binary is located or 2) full path on the host. Default is current binary folder
+* `--log-level` - optional, how verbose should the provider logs be, use `debug` for more verbose output, default is `info`
 
 Example default path: `./GADS-devices-provider --nickname=Provider1 --mongo-db=192.168.1.6:27017`  
 Example relative path: `./GADS-devices-provider --nickname=Provider1 --mongo-db=192.168.1.6:27017 --provider-folder==./provider-data --log-level=debug`  
