@@ -32,7 +32,7 @@ func main() {
 
 	//Nickname is mandatory, this is what we use to get the configuration from the DB
 	if *nickname == "" {
-		log.Fatal("Please provide --nickname=* flag")
+		log.Fatal("Please provide --nickname flag")
 	}
 
 	// Print out some info on startup, maybe a flag was missed
@@ -54,7 +54,7 @@ func main() {
 	// Check if logs folder exists in given provider folder and attempt to create it if it doesn't exist
 	_, err := os.Stat(fmt.Sprintf("%s/logs", *provider_folder))
 	if os.IsNotExist(err) {
-		logger.ProviderLogger.LogWarn("setup", fmt.Sprintf("`logs` folder does not exist in `%s` provider folder, attempting to create it", *provider_folder))
+		fmt.Printf("`logs` folder does not exist in `%s` provider folder, attempting to create it\n", *provider_folder)
 		err = os.Mkdir(fmt.Sprintf("%s/logs", *provider_folder), os.ModePerm)
 		if err != nil {
 			log.Fatalf("Could not create `logs` folder in `%s` provider folder - %s", *provider_folder, err)
@@ -63,12 +63,36 @@ func main() {
 		log.Fatalf("Could not stat `logs` folder in `%s` provider folder - %s", *provider_folder, err)
 	}
 
+	// Check if conf folder exists in given provider folder and attempt to create it if it doesn't exist
+	_, err = os.Stat(fmt.Sprintf("%s/conf", *provider_folder))
+	if os.IsNotExist(err) {
+		fmt.Printf("`conf` folder does not exist in `%s` provider folder, attempting to create it\n", *provider_folder)
+		err = os.Mkdir(fmt.Sprintf("%s/conf", *provider_folder), os.ModePerm)
+		if err != nil {
+			log.Fatalf("Could not create `conf` folder in `%s` provider folder - %s", *provider_folder, err)
+		}
+	} else if err != nil {
+		log.Fatalf("Could not stat `conf` folder in `%s` provider folder - %s", *provider_folder, err)
+	}
+
+	// Check if apps folder exists in given provider folder and attempt to create it if it doesn't exist
+	_, err = os.Stat(fmt.Sprintf("%s/apps", *provider_folder))
+	if os.IsNotExist(err) {
+		fmt.Printf("`apps` folder does not exist in `%s` provider folder, attempting to create it\n", *provider_folder)
+		err = os.Mkdir(fmt.Sprintf("%s/apps", *provider_folder), os.ModePerm)
+		if err != nil {
+			log.Fatalf("Could not create `conf` folder in `%s` provider folder - %s", *provider_folder, err)
+		}
+	} else if err != nil {
+		log.Fatalf("Could not stat `apps` folder in `%s` provider folder - %s", *provider_folder, err)
+	}
+
 	// Setup logging for the provider itself
 	logger.SetupLogging(*log_level)
 	logger.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", config.Config.EnvConfig.Port))
 
 	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa/app
-	if config.Config.EnvConfig.OS != "macos" && config.Config.EnvConfig.ProvideIOS {
+	if config.Config.EnvConfig.OS != "darwin" && config.Config.EnvConfig.ProvideIOS {
 		// Check for WDA ipa, then WDA app availability
 		_, err := os.Stat(fmt.Sprintf("%s/conf/WebDriverAgent.ipa", *provider_folder))
 		if err != nil {

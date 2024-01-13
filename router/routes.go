@@ -150,7 +150,12 @@ func DeviceInfo(c *gin.Context) {
 
 	if dev, ok := devices.DeviceMap[udid]; ok {
 		devices.UpdateInstalledApps(dev)
-		dev.InstallableApps = util.GetAllAppFiles()
+		appFiles := util.GetAllAppFiles()
+		if appFiles == nil {
+			dev.InstallableApps = []string{}
+		} else {
+			dev.InstallableApps = appFiles
+		}
 		c.JSON(http.StatusOK, dev)
 		return
 	}
