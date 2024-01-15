@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -85,6 +86,25 @@ func main() {
 		}
 	} else if err != nil {
 		log.Fatalf("Could not stat `apps` folder in `%s` provider folder - %s", *provider_folder, err)
+	}
+
+	if config.Config.EnvConfig.UseSeleniumGrid {
+		seleniumJarFile := ""
+
+		filepath.Walk(fmt.Sprintf("%s/conf", config.Config.EnvConfig.ProviderFolder), func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() && strings.Contains(info.Name(), "selenium") && filepath.Ext(path) == ".jar" {
+				seleniumJarFile = info.Name()
+				return nil
+			}
+			return nil
+		})
+		if seleniumJarFile == "" {
+			log.Fatalf("You have enabled Selenium Grid connection but no selenium jar file was found in the `conf` folder in `%s`", config.Config.EnvConfig.ProviderFolder)
+		}
+		config.Config.EnvConfig.SeleniumJarFile = seleniumJarFile
 	}
 
 	// Setup logging for the provider itself
