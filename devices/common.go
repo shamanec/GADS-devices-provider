@@ -28,16 +28,16 @@ var netClient = &http.Client{
 }
 var DeviceMap = make(map[string]*models.Device)
 
-func UpdateDevices() {
+func DevicesListener() {
 	Setup()
 
 	// Start updating devices each 10 seconds in a goroutine
-	go updateDevicesAnyOS()
+	go updateDevices()
 	// Start updating the local devices data to Mongo in a goroutine
 	go updateDevicesMongo()
 }
 
-func updateDevicesAnyOS() {
+func updateDevices() {
 	// Create common logs directory if it doesn't already exist
 	if _, err := os.Stat(fmt.Sprintf("%s/logs", config.Config.EnvConfig.ProviderFolder)); os.IsNotExist(err) {
 		os.Mkdir(fmt.Sprintf("%s/logs", config.Config.EnvConfig.ProviderFolder), os.ModePerm)

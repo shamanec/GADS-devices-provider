@@ -127,7 +127,7 @@ func main() {
 	}
 
 	// Start a goroutine that will update devices on provider start
-	go devices.UpdateDevices()
+	go devices.DevicesListener()
 
 	// Handle the endpoints
 	r := router.HandleRequests()

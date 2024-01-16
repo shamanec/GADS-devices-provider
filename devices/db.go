@@ -40,7 +40,7 @@ func upsertDevicesMongo() {
 		_, err := db.MongoClient().Database("gads").Collection("devices").UpdateOne(db.MongoCtx(), filter, update, opts)
 
 		if err != nil {
-			logger.ProviderLogger.LogError("provider", "Failed inserting device data in Mongo - "+err.Error())
+			logger.ProviderLogger.LogError("provider", "Failed upserting device data in Mongo - "+err.Error())
 		}
 	}
 }
