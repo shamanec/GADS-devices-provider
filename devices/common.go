@@ -18,13 +18,10 @@ import (
 	"github.com/danielpaulus/go-ios/ios"
 	"github.com/pelletier/go-toml"
 	"github.com/shamanec/GADS-devices-provider/config"
-	"github.com/shamanec/GADS-devices-provider/db"
 	"github.com/shamanec/GADS-devices-provider/logger"
 	"github.com/shamanec/GADS-devices-provider/models"
 	"github.com/shamanec/GADS-devices-provider/util"
 )
-
-var ConnectedDevices []models.ConnectedDevice
 
 var netClient = &http.Client{
 	Timeout: time.Second * 120,
@@ -83,87 +80,75 @@ func updateDevicesAnyOS() {
 	// Try to remove potentially hanging ports forwarded by adb
 	removeAdbForwardedPorts()
 
-	for {
-		dbDevices, _ := db.GetConfiguredDevices(config.Config.EnvConfig.Nickname)
-		// Update local devices map
-		for _, dbDevice := range dbDevices {
-			// If the device is not in the local device map
-			// Set it up and add it
-			if _, ok := DeviceMap[dbDevice.UDID]; !ok {
-				dbDevice.ProviderState = "init"
-				dbDevice.IsResetting = false
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
 
-				setContext(dbDevice)
-				dbDevice.HostAddress = config.Config.EnvConfig.HostAddress
-				dbDevice.Provider = config.Config.EnvConfig.Nickname
-				dbDevice.Model = "N/A"
-				dbDevice.OSVersion = "N/A"
-				DeviceMap[dbDevice.UDID] = dbDevice
+	for range ticker.C {
+		connectedDevices := GetConnectedDevicesCommon()
+
+		for _, connectedDevice := range connectedDevices {
+			if _, ok := DeviceMap[connectedDevice.UDID]; !ok {
+				newDevice := &models.Device{}
+				newDevice.UDID = connectedDevice.UDID
+				newDevice.OS = connectedDevice.OS
+				newDevice.ProviderState = "init"
+				newDevice.IsResetting = false
+				newDevice.Connected = true
+
+				setContext(newDevice)
+				newDevice.HostAddress = config.Config.EnvConfig.HostAddress
+				newDevice.Provider = config.Config.EnvConfig.Nickname
+				newDevice.Model = "N/A"
+				newDevice.OSVersion = "N/A"
+				DeviceMap[connectedDevice.UDID] = newDevice
 
 				if config.Config.EnvConfig.UseSeleniumGrid {
-					createGridTOML(dbDevice)
+					createGridTOML(newDevice)
 				}
 
 				// Create logs directory for each device if it doesn't already exist
-				if _, err := os.Stat(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, dbDevice.UDID)); os.IsNotExist(err) {
-					err = os.Mkdir(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, dbDevice.UDID), os.ModePerm)
+				if _, err := os.Stat(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, newDevice.UDID)); os.IsNotExist(err) {
+					err = os.Mkdir(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), os.ModePerm)
 					if err != nil {
-						panic(fmt.Sprintf("Could not create logs folder for device `%s` - %s\n", dbDevice.UDID, err))
+						logger.ProviderLogger.Errorf("Could not create logs folder for device `%s`, - %s\n", newDevice.UDID, err)
+						continue
 					}
 				}
 
-				logger, err := logger.CreateCustomLogger(fmt.Sprintf("%s/logs/device_%s/device.log", config.Config.EnvConfig.ProviderFolder, dbDevice.UDID), dbDevice.UDID)
+				logger, err := logger.CreateCustomLogger(fmt.Sprintf("%s/logs/device_%s/device.log", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), newDevice.UDID)
 				if err != nil {
-					panic(fmt.Sprintf("Could not create a customer logger for device `%s` - %s", dbDevice.UDID, err))
+					panic(fmt.Sprintf("Could not create a customer logger for device `%s` - %s", newDevice.UDID, err))
 				}
-				dbDevice.Logger = *logger
+				newDevice.Logger = *logger
 			}
 		}
 
-		ConnectedDevices = GetConnectedDevicesCommon()
-
-		// If there are no devices or all devices were disconnected
-		// Loop through the local devices and reset them
-		if len(ConnectedDevices) == 0 {
-			logger.ProviderLogger.LogDebug("provider", "No devices connected")
-
-			for _, device := range DeviceMap {
-				if device.Connected {
-					device.Connected = false
-					resetLocalDevice(device)
+		for _, localDevice := range DeviceMap {
+			isConnected := false
+			for _, connectedDevice := range connectedDevices {
+				if connectedDevice.UDID == localDevice.UDID {
+					isConnected = true
 				}
 			}
-		} else {
-			// Loop through the provider devices
-			for _, device := range DeviceMap {
-				// If a connected device is part of the provider devices
-			CONNECTED:
-				for _, connDevice := range ConnectedDevices {
-					if connDevice.UDID == device.UDID {
-						// Set it as connected
-						device.Connected = true
-						// If we are not already preparing the device or its not already prepared
-						if device.ProviderState != "preparing" && device.ProviderState != "live" {
-							// Setup the device
-							setContext(device)
-							if device.OS == "ios" {
-								device.WdaReadyChan = make(chan bool, 1)
-								go setupIOSDevice(device)
-							}
 
-							if device.OS == "android" {
-								go setupAndroidDevice(device)
-							}
-						}
-						break CONNECTED
-					}
-					// If local devices is not in the connected devices
-					// Set connected as false
-					device.Connected = false
+			if !isConnected {
+				delete(DeviceMap, localDevice.UDID)
+			}
+		}
+
+		for _, device := range DeviceMap {
+			// If we are not already preparing the device or its not already prepared
+			if device.ProviderState != "preparing" && device.ProviderState != "live" {
+				if device.OS == "ios" {
+					device.WdaReadyChan = make(chan bool, 1)
+					go setupIOSDevice(device)
+				}
+
+				if device.OS == "android" {
+					go setupAndroidDevice(device)
 				}
 			}
 		}
-		time.Sleep(10 * time.Second)
 	}
 }
 
