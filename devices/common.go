@@ -28,7 +28,6 @@ var netClient = &http.Client{
 	Timeout: time.Second * 120,
 }
 var DeviceMap = make(map[string]*models.Device)
-var ConnectedDevices []models.ConnectedDevice
 
 func UpdateDevices() {
 	Setup()
@@ -119,9 +118,6 @@ func updateDevicesAnyOS() {
 			}
 		}
 
-		// Get all connected devices
-		ConnectedDevices = GetConnectedDevicesCommon()
-
 		// If there are no devices or all devices were disconnected
 		// Loop through the local devices and reset them
 		if len(ConnectedDevices) == 0 {
@@ -190,8 +186,8 @@ func setupAndroidDevice(device *models.Device) {
 		resetLocalDevice(device)
 		return
 	}
-	updateModel(device)
-	updateOSVersion(device)
+	getModel(device)
+	getAndroidOSVersion(device)
 
 	isStreamAvailable, err := isGadsStreamServiceRunning(device)
 	if err != nil {
@@ -269,8 +265,14 @@ func setupIOSDevice(device *models.Device) {
 	device.ProviderState = "preparing"
 	logger.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Running setup for device `%v`", device.UDID))
 
-	// Get go-ios device entry for pairing/mounting images
-	getGoIOSDevice(device)
+	goIosDeviceEntry, err := ios.GetDevice(device.UDID)
+	if err != nil {
+		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not get `go-ios` DeviceEntry for device - %v, err - %v", device.UDID, err))
+		resetLocalDevice(device)
+		return
+	}
+
+	device.GoIOSDeviceEntry = goIosDeviceEntry
 
 	// Get device info with go-ios to get the hardware model
 	plistValues, err := ios.GetValuesPlist(device.GoIOSDeviceEntry)
@@ -291,7 +293,7 @@ func setupIOSDevice(device *models.Device) {
 		resetLocalDevice(device)
 		return
 	}
-	updateModel(device)
+	getModel(device)
 
 	wdaPort, err := util.GetFreePort()
 	if err != nil {
@@ -670,7 +672,7 @@ func updateScreenSize(device *models.Device) error {
 	return nil
 }
 
-func updateModel(device *models.Device) {
+func getModel(device *models.Device) {
 	if device.OS == "ios" {
 		if info, ok := util.IOSDeviceInfoMap[device.IOSProductType]; ok {
 			device.Model = info.Model
@@ -699,7 +701,7 @@ func updateModel(device *models.Device) {
 	}
 }
 
-func updateOSVersion(device *models.Device) {
+func getAndroidOSVersion(device *models.Device) {
 	if device.OS == "ios" {
 
 	} else {

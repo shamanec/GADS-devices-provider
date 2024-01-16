@@ -146,17 +146,6 @@ func startWdaWithXcodebuild(device *models.Device) {
 	}
 }
 
-// Get go-ios device entry to use library directly, instead of CLI binary
-func getGoIOSDevice(device *models.Device) {
-	goIosDevice, err := ios.GetDevice(device.UDID)
-	if err != nil {
-		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not get `go-ios` DeviceEntry for device - %v, err - %v", device.UDID, err))
-		resetLocalDevice(device)
-	}
-
-	device.GoIOSDeviceEntry = goIosDevice
-}
-
 // Create a new WebDriverAgent session and update stream settings
 func updateWebDriverAgent(device *models.Device) error {
 	logger.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Updating WebDriverAgent session and mjpeg stream settings for device `%s`", device.UDID))
