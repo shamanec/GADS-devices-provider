@@ -31,7 +31,6 @@ func GetProviderDataWS(c *gin.Context) {
 	}
 
 	var providerData models.ProviderData
-	providerData.ConnectedDevices = devices.GetConnectedDevicesCommon()
 	providerData.ProviderData = config.Config.EnvConfig
 	providerData.DeviceData = deviceData
 
@@ -88,7 +87,6 @@ func sendProviderLiveData() {
 		}
 
 		var providerData models.ProviderData
-		providerData.ConnectedDevices = devices.GetConnectedDevicesCommon()
 		providerData.ProviderData = config.Config.EnvConfig
 		providerData.DeviceData = deviceData
 

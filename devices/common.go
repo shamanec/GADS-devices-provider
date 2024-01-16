@@ -86,7 +86,10 @@ func updateDevicesAnyOS() {
 	for range ticker.C {
 		connectedDevices := GetConnectedDevicesCommon()
 
+		// Loop through the connected devices
 		for _, connectedDevice := range connectedDevices {
+			// If a connected device is not already in the local devices map
+			// Do the initial set up and add it
 			if _, ok := DeviceMap[connectedDevice.UDID]; !ok {
 				newDevice := &models.Device{}
 				newDevice.UDID = connectedDevice.UDID
@@ -95,34 +98,52 @@ func updateDevicesAnyOS() {
 				newDevice.IsResetting = false
 				newDevice.Connected = true
 
+				// Add default name for the device
+				if connectedDevice.OS == "ios" {
+					newDevice.Name = "iPhone"
+				} else {
+					newDevice.Name = "Android"
+				}
+
 				setContext(newDevice)
 				newDevice.HostAddress = config.Config.EnvConfig.HostAddress
 				newDevice.Provider = config.Config.EnvConfig.Nickname
+				// Set N/A for model and OS version because we will set those during the device set up
 				newDevice.Model = "N/A"
 				newDevice.OSVersion = "N/A"
-				DeviceMap[connectedDevice.UDID] = newDevice
 
+				// If Selenium Grid is used attempt to create a TOML file for the grid connection
 				if config.Config.EnvConfig.UseSeleniumGrid {
-					createGridTOML(newDevice)
-				}
-
-				// Create logs directory for each device if it doesn't already exist
-				if _, err := os.Stat(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, newDevice.UDID)); os.IsNotExist(err) {
-					err = os.Mkdir(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), os.ModePerm)
+					err := createGridTOML(newDevice)
 					if err != nil {
-						logger.ProviderLogger.Errorf("Could not create logs folder for device `%s`, - %s\n", newDevice.UDID, err)
+						logger.ProviderLogger.Errorf("Selenium Grid use is enabled but couldn't create TOML for device `%s` - %s", connectedDevice.UDID, err)
 						continue
 					}
 				}
 
-				logger, err := logger.CreateCustomLogger(fmt.Sprintf("%s/logs/device_%s/device.log", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), newDevice.UDID)
-				if err != nil {
-					panic(fmt.Sprintf("Could not create a customer logger for device `%s` - %s", newDevice.UDID, err))
+				// Create logs directory for the device if it doesn't already exist
+				if _, err := os.Stat(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, newDevice.UDID)); os.IsNotExist(err) {
+					err = os.Mkdir(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), os.ModePerm)
+					if err != nil {
+						logger.ProviderLogger.Errorf("Could not create logs folder for device `%s` - %s\n", newDevice.UDID, err)
+						continue
+					}
 				}
-				newDevice.Logger = *logger
+
+				// Create a custom logger and attach it to the local device
+				deviceLogger, err := logger.CreateCustomLogger(fmt.Sprintf("%s/logs/device_%s/device.log", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), newDevice.UDID)
+				if err != nil {
+					logger.ProviderLogger.Errorf("Could not create custom logger for device `%s` - %s\n", newDevice.UDID, err)
+					continue
+				}
+				newDevice.Logger = *deviceLogger
+
+				// Add the new local device to the map
+				DeviceMap[connectedDevice.UDID] = newDevice
 			}
 		}
 
+		// Loop through the local devices map to remove any no longer connected devices
 		for _, localDevice := range DeviceMap {
 			isConnected := false
 			for _, connectedDevice := range connectedDevices {
@@ -131,11 +152,15 @@ func updateDevicesAnyOS() {
 				}
 			}
 
+			// If the device is no longer connected
+			// Reset its set up in case something is lingering and delete it from the map
 			if !isConnected {
+				resetLocalDevice(localDevice)
 				delete(DeviceMap, localDevice.UDID)
 			}
 		}
 
+		// Loop through the final local device map and set up the devices if they are not already being set up or live
 		for _, device := range DeviceMap {
 			// If we are not already preparing the device or its not already prepared
 			if device.ProviderState != "preparing" && device.ProviderState != "live" {
@@ -564,9 +589,7 @@ type AppiumTomlConfig struct {
 	Relay  AppiumTomlRelay  `toml:"relay"`
 }
 
-var port_counter = 0
-
-func createGridTOML(device *models.Device) {
+func createGridTOML(device *models.Device) error {
 	automationName := ""
 	if device.OS == "ios" {
 		automationName = "XCUITest"
@@ -597,20 +620,21 @@ func createGridTOML(device *models.Device) {
 
 	res, err := toml.Marshal(conf)
 	if err != nil {
-		panic(fmt.Sprintf("Failed marshalling TOML Appium config for device `%s` - %s", device.UDID, err))
+		return fmt.Errorf("Failed marshalling TOML Appium config - %s", device.UDID, err)
 	}
 
 	file, err := os.Create(fmt.Sprintf("%s/conf/%s.toml", config.Config.EnvConfig.ProviderFolder, device.UDID))
 	if err != nil {
-		panic(fmt.Sprintf("Failed creating TOML Appium config file for device `%s` - %s", device.UDID, err))
+		return fmt.Errorf("Failed creating TOML Appium config file - %s", device.UDID, err)
 	}
 	defer file.Close()
 
 	_, err = io.WriteString(file, string(res))
 	if err != nil {
-		panic(fmt.Sprintf("Failed writing to TOML Appium config file for device `%s` - %s", device.UDID, err))
+		return fmt.Errorf("Failed writing to TOML Appium config file - %s", device.UDID, err)
 	}
-	port_counter++
+
+	return nil
 }
 
 func startGridNode(device *models.Device) {

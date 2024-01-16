@@ -154,9 +154,8 @@ func main() {
 			// Add the currently provided devices for administration purposes
 			update := bson.M{
 				"$set": bson.M{
-					"last_updated":      time.Now().UnixMilli(),
-					"connected_devices": devices.GetConnectedDevicesCommon(),
-					"provided_devices":  providedDevices,
+					"last_updated":     time.Now().UnixMilli(),
+					"provided_devices": providedDevices,
 				},
 			}
 			// Set upsert to true so the entry gets updated

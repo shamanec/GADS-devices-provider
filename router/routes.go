@@ -129,8 +129,6 @@ func UploadFile(c *gin.Context) {
 }
 
 func GetProviderData(c *gin.Context) {
-
-	connectedDevices := devices.GetConnectedDevicesCommon()
 	var providerData models.ProviderData
 
 	deviceData := []*models.Device{}
@@ -138,7 +136,6 @@ func GetProviderData(c *gin.Context) {
 		deviceData = append(deviceData, device)
 	}
 
-	providerData.ConnectedDevices = connectedDevices
 	providerData.ProviderData = config.Config.EnvConfig
 	providerData.DeviceData = deviceData
 
