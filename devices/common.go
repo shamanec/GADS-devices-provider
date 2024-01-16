@@ -24,6 +24,8 @@ import (
 	"github.com/shamanec/GADS-devices-provider/util"
 )
 
+var ConnectedDevices []models.ConnectedDevice
+
 var netClient = &http.Client{
 	Timeout: time.Second * 120,
 }
@@ -117,6 +119,8 @@ func updateDevicesAnyOS() {
 				dbDevice.Logger = *logger
 			}
 		}
+
+		ConnectedDevices = GetConnectedDevicesCommon()
 
 		// If there are no devices or all devices were disconnected
 		// Loop through the local devices and reset them
