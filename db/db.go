@@ -97,7 +97,7 @@ func GetConfiguredDevices(providerName string) ([]*models.Device, error) {
 	return devicesList, nil
 }
 
-func GetConfiguredDevice(udid string) (models.Device, error) {
+func GetConfiguredDevice(udid string) (*models.Device, error) {
 	var deviceInfo models.Device
 	ctx, cancel := context.WithTimeout(mongoClientCtx, 10*time.Second)
 	defer cancel()
@@ -107,9 +107,9 @@ func GetConfiguredDevice(udid string) (models.Device, error) {
 
 	err := collection.FindOne(ctx, filter).Decode(&deviceInfo)
 	if err != nil {
-		return models.Device{}, err
+		return &models.Device{}, err
 	}
-	return deviceInfo, nil
+	return &deviceInfo, nil
 }
 
 func UpsertDeviceDB(device models.Device) error {

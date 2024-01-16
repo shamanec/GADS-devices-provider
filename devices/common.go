@@ -401,11 +401,11 @@ func GetConnectedDevicesCommon() []models.ConnectedDevice {
 	iosDevices := []models.ConnectedDevice{}
 
 	if config.Config.EnvConfig.ProvideAndroid {
-		androidDevices = GetConnectedDevicesAndroid()
+		androidDevices = getConnectedDevicesAndroid()
 	}
 
 	if config.Config.EnvConfig.ProvideIOS {
-		iosDevices = GetConnectedDevicesIOS()
+		iosDevices = getConnectedDevicesIOS()
 	}
 
 	connectedDevices = append(connectedDevices, iosDevices...)
@@ -415,7 +415,7 @@ func GetConnectedDevicesCommon() []models.ConnectedDevice {
 }
 
 // Gets the connected iOS devices using the `go-ios` library
-func GetConnectedDevicesIOS() []models.ConnectedDevice {
+func getConnectedDevicesIOS() []models.ConnectedDevice {
 	var connectedDevices []models.ConnectedDevice
 
 	deviceList, err := ios.ListDevices()
@@ -431,7 +431,7 @@ func GetConnectedDevicesIOS() []models.ConnectedDevice {
 }
 
 // Gets the connected android devices using `adb`
-func GetConnectedDevicesAndroid() []models.ConnectedDevice {
+func getConnectedDevicesAndroid() []models.ConnectedDevice {
 	var connectedDevices []models.ConnectedDevice
 
 	cmd := exec.Command("adb", "devices")
@@ -466,7 +466,6 @@ func GetConnectedDevicesAndroid() []models.ConnectedDevice {
 }
 
 func resetLocalDevice(device *models.Device) {
-
 	if !device.IsResetting {
 		logger.ProviderLogger.LogInfo("provider", fmt.Sprintf("Resetting LocalDevice for device `%v` after error. Cancelling context, setting ProviderState to `init`, Healthy to `false` and updating the DB", device.UDID))
 
