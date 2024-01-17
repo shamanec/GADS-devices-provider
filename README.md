@@ -8,10 +8,10 @@
 
 ## Features
 * Straighforward setup
-* Automatic provisioning when registered devices are connected
+* Automatic provisioning when devices are connected
   * Dependencies automatically installed on devices
   * Appium server set up and started for each device
-  * Optionally Selenium Grid 4 node can be registered for each device Appium server
+  * Optionally Selenium Grid 4 node can be registered for each device Appium server - NOT WORKING
 * [GADS-UI](https://github.com/shamanec/GADS) remote control support
   * iOS video stream using [WebDriverAgent](https://github.com/appium/WebDriverAgent)
   * Android video stream using [GADS-Android-stream](https://github.com/shamanec/GADS-Android-stream)
