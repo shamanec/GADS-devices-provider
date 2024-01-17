@@ -239,7 +239,11 @@ func ResetDevice(c *gin.Context) {
 	udid := c.Param("udid")
 
 	if device, ok := devices.DeviceMap[udid]; ok {
+		device.IsResetting = true
 		device.CtxCancel()
+		device.ProviderState = "init"
+		device.IsResetting = false
+
 		c.JSON(http.StatusOK, gin.H{"message": "Initiate setup reset on device"})
 		return
 	}

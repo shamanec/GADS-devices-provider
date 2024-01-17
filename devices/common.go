@@ -105,7 +105,6 @@ func updateDevices() {
 					newDevice.Name = "Android"
 				}
 
-				setContext(newDevice)
 				newDevice.HostAddress = config.Config.EnvConfig.HostAddress
 				newDevice.Provider = config.Config.EnvConfig.Nickname
 				// Set N/A for model and OS version because we will set those during the device set up
@@ -164,6 +163,7 @@ func updateDevices() {
 		for _, device := range DeviceMap {
 			// If we are not already preparing the device or its not already prepared
 			if device.ProviderState != "preparing" && device.ProviderState != "live" {
+				setContext(device)
 				if device.OS == "ios" {
 					device.WdaReadyChan = make(chan bool, 1)
 					go setupIOSDevice(device)
@@ -474,7 +474,6 @@ func resetLocalDevice(device *models.Device) {
 		device.ProviderState = "init"
 		device.IsResetting = false
 	}
-
 }
 
 // Set a context for a device to enable cancelling running goroutines related to that device when its disconnected
