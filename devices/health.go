@@ -1,4 +1,4 @@
-package device
+package devices
 
 import (
 	"bytes"
@@ -6,23 +6,24 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/shamanec/GADS-devices-provider/models"
 	"github.com/shamanec/GADS-devices-provider/util"
 )
 
 // Check if a device is healthy by checking Appium and WebDriverAgent(for iOS) services
-func (device *LocalDevice) GetDeviceHealth() (bool, error) {
-	err := device.checkAppiumSession()
+func GetDeviceHealth(device *models.Device) (bool, error) {
+	err := checkAppiumSession(device)
 	if err != nil {
 		return false, err
 	}
 
-	return device.Device.Connected, nil
+	return device.Connected, nil
 }
 
-func (device *LocalDevice) checkAppiumSession() error {
-	response, err := http.Get("http://localhost:" + device.Device.AppiumPort + "/sessions")
+func checkAppiumSession(device *models.Device) error {
+	response, err := http.Get("http://localhost:" + device.AppiumPort + "/sessions")
 	if err != nil {
-		device.Device.AppiumSessionID = ""
+		device.AppiumSessionID = ""
 		return err
 	}
 	responseBody, _ := io.ReadAll(response.Body)
@@ -30,29 +31,29 @@ func (device *LocalDevice) checkAppiumSession() error {
 	var responseJson AppiumGetSessionsResponse
 	err = util.UnmarshalJSONString(string(responseBody), &responseJson)
 	if err != nil {
-		device.Device.AppiumSessionID = ""
+		device.AppiumSessionID = ""
 		return err
 	}
 
 	if len(responseJson.Value) == 0 {
-		sessionID, err := device.createAppiumSession()
+		sessionID, err := createAppiumSession(device)
 		if err != nil {
-			device.Device.AppiumSessionID = ""
+			device.AppiumSessionID = ""
 			return err
 		}
-		device.Device.AppiumSessionID = sessionID
+		device.AppiumSessionID = sessionID
 		return nil
 	}
 
-	device.Device.AppiumSessionID = responseJson.Value[0].ID
+	device.AppiumSessionID = responseJson.Value[0].ID
 	return nil
 }
 
-func (device *LocalDevice) createAppiumSession() (string, error) {
+func createAppiumSession(device *models.Device) (string, error) {
 	var automationName = "UiAutomator2"
 	var platformName = "Android"
 	var waitForIdleTimeout = 10
-	if device.Device.OS == "ios" {
+	if device.OS == "ios" {
 		automationName = "XCUITest"
 		platformName = "iOS"
 		waitForIdleTimeout = 0
@@ -81,7 +82,7 @@ func (device *LocalDevice) createAppiumSession() (string, error) {
 		return "", err
 	}
 
-	response, err := http.Post("http://localhost:"+device.Device.AppiumPort+"/session", "application/json", bytes.NewBuffer(jsonString))
+	response, err := http.Post("http://localhost:"+device.AppiumPort+"/session", "application/json", bytes.NewBuffer(jsonString))
 	if err != nil {
 		return "", err
 	}

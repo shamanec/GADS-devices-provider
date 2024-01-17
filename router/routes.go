@@ -13,7 +13,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shamanec/GADS-devices-provider/device"
+	"github.com/shamanec/GADS-devices-provider/config"
+	"github.com/shamanec/GADS-devices-provider/devices"
 	"github.com/shamanec/GADS-devices-provider/models"
 	"github.com/shamanec/GADS-devices-provider/util"
 )
@@ -65,9 +66,9 @@ func AppiumReverseProxy(c *gin.Context) {
 	}()
 
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
-	target := "http://localhost:" + device.Device.AppiumPort
+	target := "http://localhost:" + device.AppiumPort
 	path := c.Param("proxyPath")
 
 	proxy := newAppiumProxy(target, path)
@@ -112,7 +113,7 @@ func UploadFile(c *gin.Context) {
 	}
 
 	// Specify the upload directory
-	uploadDir := "./apps/"
+	uploadDir := fmt.Sprintf("%s/apps/", config.Config.EnvConfig.ProviderFolder)
 	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
 		os.Mkdir(uploadDir, os.ModePerm)
 	}
@@ -127,23 +128,16 @@ func UploadFile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully", "status": "success", "apps": util.GetAllAppFiles()})
 }
 
-type ProviderData struct {
-	ProviderData            models.EnvConfig               `json:"provider"`
-	ConnectedAndroidDevices []string                       `json:"connected_android_devices"`
-	ConnectedIOSDevices     []string                       `json:"connected_ios_devices"`
-	DeviceData              map[string]*device.LocalDevice `json:"device_data"`
-}
-
 func GetProviderData(c *gin.Context) {
-	connectedAndroid := device.GetConnectedDevicesAndroid()
-	connectedIOS := device.GetConnectedDevicesIOS()
+	var providerData models.ProviderData
 
-	var providerData ProviderData
+	deviceData := []*models.Device{}
+	for _, device := range devices.DeviceMap {
+		deviceData = append(deviceData, device)
+	}
 
-	providerData.ConnectedAndroidDevices = connectedAndroid
-	providerData.ConnectedIOSDevices = connectedIOS
-	providerData.ProviderData = util.Config.EnvConfig
-	providerData.DeviceData = device.DeviceMap
+	providerData.ProviderData = config.Config.EnvConfig
+	providerData.DeviceData = deviceData
 
 	c.JSON(http.StatusOK, providerData)
 }
@@ -151,10 +145,15 @@ func GetProviderData(c *gin.Context) {
 func DeviceInfo(c *gin.Context) {
 	udid := c.Param("udid")
 
-	if device, ok := device.DeviceMap[udid]; ok {
-		device.UpdateInstalledApps()
-		device.InstallableApps = util.GetAllAppFiles()
-		c.JSON(http.StatusOK, device)
+	if dev, ok := devices.DeviceMap[udid]; ok {
+		devices.UpdateInstalledApps(dev)
+		appFiles := util.GetAllAppFiles()
+		if appFiles == nil {
+			dev.InstallableApps = []string{}
+		} else {
+			dev.InstallableApps = appFiles
+		}
+		c.JSON(http.StatusOK, dev)
 		return
 	}
 
@@ -162,13 +161,13 @@ func DeviceInfo(c *gin.Context) {
 }
 
 func DevicesInfo(c *gin.Context) {
-	devices := []*device.LocalDevice{}
+	deviceList := []*models.Device{}
 
-	for _, device := range device.DeviceMap {
-		devices = append(devices, device)
+	for _, device := range devices.DeviceMap {
+		deviceList = append(deviceList, device)
 	}
 
-	c.JSON(http.StatusOK, devices)
+	c.JSON(http.StatusOK, deviceList)
 }
 
 type ProcessApp struct {
@@ -178,7 +177,7 @@ type ProcessApp struct {
 func UninstallApp(c *gin.Context) {
 	udid := c.Param("udid")
 
-	if device, ok := device.DeviceMap[udid]; ok {
+	if dev, ok := devices.DeviceMap[udid]; ok {
 		payload, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
@@ -192,8 +191,8 @@ func UninstallApp(c *gin.Context) {
 			return
 		}
 
-		if slices.Contains(device.Device.InstalledApps, payloadJson.App) {
-			err = device.UninstallApp(payloadJson.App)
+		if slices.Contains(dev.InstalledApps, payloadJson.App) {
+			err = devices.UninstallApp(dev, payloadJson.App)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to uninstall app `%s`", payloadJson.App)})
 				return
@@ -211,7 +210,7 @@ func UninstallApp(c *gin.Context) {
 func InstallApp(c *gin.Context) {
 	udid := c.Param("udid")
 
-	if device, ok := device.DeviceMap[udid]; ok {
+	if dev, ok := devices.DeviceMap[udid]; ok {
 		payload, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
@@ -224,7 +223,7 @@ func InstallApp(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
 			return
 		}
-		err = device.InstallApp(payloadJson.App)
+		err = devices.InstallApp(dev, payloadJson.App)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to install app `%s`", payloadJson.App)})
 			return
@@ -239,7 +238,7 @@ func InstallApp(c *gin.Context) {
 func ResetDevice(c *gin.Context) {
 	udid := c.Param("udid")
 
-	if device, ok := device.DeviceMap[udid]; ok {
+	if device, ok := devices.DeviceMap[udid]; ok {
 		device.CtxCancel()
 		c.JSON(http.StatusOK, gin.H{"message": "Initiate setup reset on device"})
 		return

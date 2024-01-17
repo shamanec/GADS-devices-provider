@@ -10,12 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shamanec/GADS-devices-provider/models"
-	log "github.com/sirupsen/logrus"
+	"github.com/shamanec/GADS-devices-provider/config"
+	"github.com/shamanec/GADS-devices-provider/logger"
 )
 
 var ProjectDir string
-var Config models.ConfigJsonData
 var mu sync.Mutex
 var usedPorts = make(map[int]bool)
 var gadsStreamURL = "https://github.com/shamanec/GADS-Android-stream/releases/latest/download/gads-stream.apk"
@@ -41,19 +40,6 @@ func UnmarshalJSONString(jsonString string, v interface{}) error {
 	return nil
 }
 
-func SetupConfig() {
-	var err error
-	ProjectDir, err = os.Getwd()
-	if err != nil {
-		panic(fmt.Sprintf("Could not get project dir with os.Getwd() - %s", err))
-	}
-
-	err = getConfigJsonData()
-	if err != nil {
-		panic(fmt.Sprintf("Could not get config data from config.json - %s", err))
-	}
-}
-
 func GetFreePort() (port int, err error) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -74,46 +60,9 @@ func GetFreePort() (port int, err error) {
 	return
 }
 
-// Read the config.json file and initialize the configuration struct
-func getConfigJsonData() error {
-	bs, err := getConfigJsonBytes()
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(bs, &Config)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Read the config.json file into a byte slice
-func getConfigJsonBytes() ([]byte, error) {
-	jsonFile, err := os.Open("./config/config.json")
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_config_data",
-		}).Error("Could not open config file: " + err.Error())
-		return nil, err
-	}
-	defer jsonFile.Close()
-
-	bs, err := io.ReadAll(jsonFile)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"event": "get_config_data",
-		}).Error("Could not read config file to byte slice: " + err.Error())
-		return nil, err
-	}
-
-	return bs, err
-}
-
 func CheckGadsStreamAndDownload() error {
 	if isGadsStreamApkAvailable() {
-		ProviderLogger.LogInfo("provider", "GADS-stream apk is available in the provider ./apps folder, it will not be downloaded. If you want to get the latest release, delete the file from ./apps folder and re-run the provider")
+		logger.ProviderLogger.LogInfo("provider", "GADS-stream apk is available in the provider `conf` folder, it will not be downloaded. If you want to get the latest release, delete the file from conf folder and re-run the provider")
 		return nil
 	}
 
@@ -126,12 +75,12 @@ func CheckGadsStreamAndDownload() error {
 		return fmt.Errorf("GADS-stream download was reported successful but the .apk was not actually downloaded")
 	}
 
-	ProviderLogger.LogInfo("provider", "Latest GADS-stream release apk was successfully downloaded")
+	logger.ProviderLogger.LogInfo("provider", "Latest GADS-stream release apk was successfully downloaded")
 	return nil
 }
 
 func isGadsStreamApkAvailable() bool {
-	_, err := os.Stat("./apps/gads-stream.apk")
+	_, err := os.Stat(fmt.Sprintf("%s/conf/gads-stream.apk", config.Config.EnvConfig.ProviderFolder))
 	if os.IsNotExist(err) {
 		return false
 	}
@@ -139,10 +88,10 @@ func isGadsStreamApkAvailable() bool {
 }
 
 func downloadGadsStreamApk() error {
-	ProviderLogger.LogInfo("provider", "Downloading latest GADS-stream release apk file")
-	outFile, err := os.Create("./apps/gads-stream.apk")
+	logger.ProviderLogger.LogInfo("provider", "Downloading latest GADS-stream release apk file")
+	outFile, err := os.Create(fmt.Sprintf("%s/conf/gads-stream.apk", config.Config.EnvConfig.ProviderFolder))
 	if err != nil {
-		return fmt.Errorf("Could not create file at ./apps/gads-stream.apk - %s", err)
+		return fmt.Errorf("Could not create file at %s/conf/gads-stream.apk - %s", config.Config.EnvConfig.ProviderFolder, err)
 	}
 	defer outFile.Close()
 
@@ -166,23 +115,23 @@ func downloadGadsStreamApk() error {
 
 	_, err = io.Copy(outFile, resp.Body)
 	if err != nil {
-		return fmt.Errorf("Could not copy the response data to the file at ./apps/gads-stream.apk - %s", err)
+		return fmt.Errorf("Could not copy the response data to the file at apps/gads-stream.apk - %s", err)
 	}
 
 	return nil
 }
 
 func GetAllAppFiles() []string {
-	file, err := os.Open("./apps")
+	file, err := os.Open(fmt.Sprintf("%s/apps", config.Config.EnvConfig.ProviderFolder))
 	if err != nil {
-		ProviderLogger.LogError("provider", fmt.Sprintf("Could not os.Open() ./apps directory - %s", err))
+		logger.ProviderLogger.LogError("provider", fmt.Sprintf("Could not os.Open() apps directory - %s", err))
 		return []string{}
 	}
 	defer file.Close()
 
 	fileList, err := file.Readdir(-1)
 	if err != nil {
-		ProviderLogger.LogError("provider", fmt.Sprintf("Could not Readdir on the ./apps directory - %s", err))
+		logger.ProviderLogger.LogError("provider", fmt.Sprintf("Could not Readdir on the apps directory - %s", err))
 		return []string{}
 	}
 

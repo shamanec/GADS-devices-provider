@@ -14,12 +14,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
-	"github.com/shamanec/GADS-devices-provider/device"
+	"github.com/shamanec/GADS-devices-provider/devices"
 )
 
 func AndroidStreamProxy(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
 	conn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
 	if err != nil {
@@ -28,7 +28,7 @@ func AndroidStreamProxy(c *gin.Context) {
 
 	defer conn.Close()
 
-	u := url.URL{Scheme: "ws", Host: "localhost:" + device.Device.StreamPort, Path: ""}
+	u := url.URL{Scheme: "ws", Host: "localhost:" + device.StreamPort, Path: ""}
 	destConn, _, _, err := ws.DefaultDialer.Dial(context.Background(), u.String())
 	if err != nil {
 		log.Println("Destination WebSocket connection error:", err)
@@ -67,7 +67,7 @@ func AndroidStreamProxy(c *gin.Context) {
 
 func IosStreamProxy(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
 	conn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
 	if err != nil {
@@ -75,7 +75,7 @@ func IosStreamProxy(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	url := "http://localhost:" + device.Device.StreamPort
+	url := "http://localhost:" + device.StreamPort
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
