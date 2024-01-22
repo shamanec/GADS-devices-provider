@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/shamanec/GADS-devices-provider/devices"
+	"github.com/shamanec/GADS-devices-provider/models"
 )
 
 // Copy the headers from the original endpoint to the proxied endpoint
@@ -176,43 +177,11 @@ func DeviceAppiumSource(c *gin.Context) {
 //=======================================
 // ACTIONS
 
-type actionData struct {
-	X          float64 `json:"x,omitempty"`
-	Y          float64 `json:"y,omitempty"`
-	EndX       float64 `json:"endX,omitempty"`
-	EndY       float64 `json:"endY,omitempty"`
-	TextToType string  `json:"text,omitempty"`
-}
-
-type deviceAction struct {
-	Type     string  `json:"type"`
-	Duration int     `json:"duration"`
-	X        float64 `json:"x,omitempty"`
-	Y        float64 `json:"y,omitempty"`
-	Button   int     `json:"button"`
-	Origin   string  `json:"origin,omitempty"`
-}
-
-type deviceActionParameters struct {
-	PointerType string `json:"pointerType"`
-}
-
-type devicePointerAction struct {
-	Type       string                 `json:"type"`
-	ID         string                 `json:"id"`
-	Parameters deviceActionParameters `json:"parameters"`
-	Actions    []deviceAction         `json:"actions"`
-}
-
-type devicePointerActions struct {
-	Actions []devicePointerAction `json:"actions"`
-}
-
 func DeviceTypeText(c *gin.Context) {
 	udid := c.Param("udid")
 	device := devices.DeviceMap[udid]
 
-	var requestBody actionData
+	var requestBody models.ActionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
 		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to type text to active element - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
@@ -270,7 +239,7 @@ func DeviceTap(c *gin.Context) {
 	udid := c.Param("udid")
 	device := devices.DeviceMap[udid]
 
-	var requestBody actionData
+	var requestBody models.ActionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -303,7 +272,7 @@ func DeviceTouchAndHold(c *gin.Context) {
 	udid := c.Param("udid")
 	device := devices.DeviceMap[udid]
 
-	var requestBody actionData
+	var requestBody models.ActionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -336,7 +305,7 @@ func DeviceSwipe(c *gin.Context) {
 	udid := c.Param("udid")
 	device := devices.DeviceMap[udid]
 
-	var requestBody actionData
+	var requestBody models.ActionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
 		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to decode request body when performing swipe - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())

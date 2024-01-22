@@ -38,15 +38,15 @@ func appiumTap(device *models.Device, x float64, y float64) (*http.Response, err
 	appiumRequestURL := "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/actions"
 
 	// Generate the struct object for the Appium actions JSON request
-	action := devicePointerActions{
-		[]devicePointerAction{
+	action := models.DevicePointerActions{
+		Actions: []models.DevicePointerAction{
 			{
 				Type: "pointer",
 				ID:   "finger1",
-				Parameters: deviceActionParameters{
+				Parameters: models.DeviceActionParameters{
 					PointerType: "touch",
 				},
-				Actions: []deviceAction{
+				Actions: []models.DeviceAction{
 					{
 						Type:     "pointerMove",
 						Duration: 0,
@@ -92,15 +92,15 @@ func appiumTouchAndHold(device *models.Device, x float64, y float64) (*http.Resp
 	appiumRequestURL := "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/actions"
 
 	// Generate the struct object for the Appium actions JSON request
-	action := devicePointerActions{
-		[]devicePointerAction{
+	action := models.DevicePointerActions{
+		Actions: []models.DevicePointerAction{
 			{
 				Type: "pointer",
 				ID:   "finger1",
-				Parameters: deviceActionParameters{
+				Parameters: models.DeviceActionParameters{
 					PointerType: "touch",
 				},
-				Actions: []deviceAction{
+				Actions: []models.DeviceAction{
 					{
 						Type:     "pointerMove",
 						Duration: 0,
@@ -146,15 +146,15 @@ func appiumSwipe(device *models.Device, x, y, endX, endY float64) (*http.Respons
 	appiumRequestURL := "http://localhost:" + device.AppiumPort + "/session/" + device.AppiumSessionID + "/actions"
 
 	// Generate the struct object for the Appium actions JSON request
-	action := devicePointerActions{
-		[]devicePointerAction{
+	action := models.DevicePointerActions{
+		Actions: []models.DevicePointerAction{
 			{
 				Type: "pointer",
 				ID:   "finger1",
-				Parameters: deviceActionParameters{
+				Parameters: models.DeviceActionParameters{
 					PointerType: "touch",
 				},
-				Actions: []deviceAction{
+				Actions: []models.DeviceAction{
 					{
 						Type:     "pointerMove",
 						Duration: 0,
