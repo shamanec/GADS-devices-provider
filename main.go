@@ -23,9 +23,69 @@ import (
 )
 
 func main() {
+	// Parse command line flags
+	log_level, nickname, mongo_db, provider_folder := parseFlags()
 
-	// Flags for the provider startup
-	log_level := flag.String("log-level", "info", "The log level of the provider app - debug, info or error")
+	// Create a connection to Mongo
+	db.InitMongoClient(mongo_db)
+	// Set up the provider configuration
+	config.SetupConfig(nickname, provider_folder)
+	config.Config.EnvConfig.OS = runtime.GOOS
+	// Defer closing the Mongo connection on provider stopped
+	defer db.CloseMongoConn()
+
+	// Check if logs folder exists in given provider folder and attempt to create it if it doesn't exist
+	createFolderIfNotExist(provider_folder, "logs")
+	// Check if conf folder exists in given provider folder and attempt to create it if it doesn't exist
+	createFolderIfNotExist(provider_folder, "conf")
+	// Check if apps folder exists in given provider folder and attempt to create it if it doesn't exist
+	createFolderIfNotExist(provider_folder, "apps")
+
+	// Finalize grid configuration if Selenium Grid usage enabled
+	if config.Config.EnvConfig.UseSeleniumGrid {
+		configureSeleniumSettings(provider_folder)
+	}
+
+	// Setup logging for the provider itself
+	logger.SetupLogging(log_level)
+	logger.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", config.Config.EnvConfig.Port))
+
+	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa/app
+	configureWebDriverBinary(provider_folder)
+
+	// Start a goroutine that will update devices on provider start
+	go devices.DevicesListener()
+
+	// Start the provider
+	startHTTPServer()
+}
+
+func startHTTPServer() {
+	// Handle the endpoints
+	r := router.HandleRequests()
+	// Start periodically updating the provider data in the DB
+	go updateProviderInDB()
+	// Start the provider
+	r.Run(fmt.Sprintf(":%v", config.Config.EnvConfig.Port))
+}
+
+// Create a required provider folder if it doesn't exist
+func createFolderIfNotExist(baseFolder, subFolder string) {
+	folderPath := fmt.Sprintf("%s/%s", baseFolder, subFolder)
+	_, err := os.Stat(folderPath)
+	if os.IsNotExist(err) {
+		fmt.Printf("`%s` folder does not exist in `%s` provider folder, attempting to create it\n", subFolder, baseFolder)
+		err = os.Mkdir(folderPath, os.ModePerm)
+		if err != nil {
+			log.Fatalf("Could not create `%s` folder in `%s` provider folder - %s", subFolder, baseFolder, err)
+		}
+	} else if err != nil {
+		log.Fatalf("Could not stat `%s` folder in `%s` provider folder - %s", subFolder, baseFolder, err)
+	}
+}
+
+func parseFlags() (string, string, string, string) {
+	log_level := flag.String("log-level", "info", "The log level of the provider app - debug, info, or error")
 	nickname := flag.String("nickname", "", "The nickname of the provider")
 	mongo_db := flag.String("mongo-db", "localhost:27017", "The address of the MongoDB instance")
 	provider_folder := flag.String("provider-folder", ".", "The folder where logs and apps are stored")
@@ -43,102 +103,48 @@ func main() {
 
 	// Remove trailing slash if provided, all code assumes its not there
 	*provider_folder, _ = strings.CutSuffix(*provider_folder, "/")
+	return *log_level, *nickname, *mongo_db, *provider_folder
+}
 
-	// Create a connection to Mongo
-	db.InitMongoClient(fmt.Sprintf("%v", *mongo_db))
-	// Set up the provider configuration
-	config.SetupConfig(fmt.Sprintf("%v", *nickname), fmt.Sprintf("%v", *provider_folder))
-	config.Config.EnvConfig.OS = runtime.GOOS
-	// Defer closing the Mongo connection on provider stopped
-	defer db.CloseMongoConn()
-
-	// Check if logs folder exists in given provider folder and attempt to create it if it doesn't exist
-	_, err := os.Stat(fmt.Sprintf("%s/logs", *provider_folder))
-	if os.IsNotExist(err) {
-		fmt.Printf("`logs` folder does not exist in `%s` provider folder, attempting to create it\n", *provider_folder)
-		err = os.Mkdir(fmt.Sprintf("%s/logs", *provider_folder), os.ModePerm)
+// Check for and set up selenium jar file for creating Appium grid nodes in config
+func configureSeleniumSettings(providerFolder string) {
+	seleniumJarFile := ""
+	filepath.Walk(fmt.Sprintf("%s/conf", config.Config.EnvConfig.ProviderFolder), func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Fatalf("Could not create `logs` folder in `%s` provider folder - %s", *provider_folder, err)
+			return err
 		}
-	} else if err != nil {
-		log.Fatalf("Could not stat `logs` folder in `%s` provider folder - %s", *provider_folder, err)
-	}
-
-	// Check if conf folder exists in given provider folder and attempt to create it if it doesn't exist
-	_, err = os.Stat(fmt.Sprintf("%s/conf", *provider_folder))
-	if os.IsNotExist(err) {
-		fmt.Printf("`conf` folder does not exist in `%s` provider folder, attempting to create it\n", *provider_folder)
-		err = os.Mkdir(fmt.Sprintf("%s/conf", *provider_folder), os.ModePerm)
-		if err != nil {
-			log.Fatalf("Could not create `conf` folder in `%s` provider folder - %s", *provider_folder, err)
-		}
-	} else if err != nil {
-		log.Fatalf("Could not stat `conf` folder in `%s` provider folder - %s", *provider_folder, err)
-	}
-
-	// Check if apps folder exists in given provider folder and attempt to create it if it doesn't exist
-	_, err = os.Stat(fmt.Sprintf("%s/apps", *provider_folder))
-	if os.IsNotExist(err) {
-		fmt.Printf("`apps` folder does not exist in `%s` provider folder, attempting to create it\n", *provider_folder)
-		err = os.Mkdir(fmt.Sprintf("%s/apps", *provider_folder), os.ModePerm)
-		if err != nil {
-			log.Fatalf("Could not create `conf` folder in `%s` provider folder - %s", *provider_folder, err)
-		}
-	} else if err != nil {
-		log.Fatalf("Could not stat `apps` folder in `%s` provider folder - %s", *provider_folder, err)
-	}
-
-	if config.Config.EnvConfig.UseSeleniumGrid {
-		seleniumJarFile := ""
-
-		filepath.Walk(fmt.Sprintf("%s/conf", config.Config.EnvConfig.ProviderFolder), func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if !info.IsDir() && strings.Contains(info.Name(), "selenium") && filepath.Ext(path) == ".jar" {
-				seleniumJarFile = info.Name()
-				return nil
-			}
+		if !info.IsDir() && strings.Contains(info.Name(), "selenium") && filepath.Ext(path) == ".jar" {
+			seleniumJarFile = info.Name()
 			return nil
-		})
-		if seleniumJarFile == "" {
-			log.Fatalf("You have enabled Selenium Grid connection but no selenium jar file was found in the `conf` folder in `%s`", config.Config.EnvConfig.ProviderFolder)
 		}
-		config.Config.EnvConfig.SeleniumJarFile = seleniumJarFile
+		return nil
+	})
+	if seleniumJarFile == "" {
+		log.Fatalf("You have enabled Selenium Grid connection but no selenium jar file was found in the `conf` folder in `%s`", config.Config.EnvConfig.ProviderFolder)
 	}
+	config.Config.EnvConfig.SeleniumJarFile = seleniumJarFile
+}
 
-	// Setup logging for the provider itself
-	logger.SetupLogging(*log_level)
-	logger.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", config.Config.EnvConfig.Port))
-
-	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa/app
+// Check for and set up WebDriverAgent.ipa/app binary in config
+func configureWebDriverBinary(providerFolder string) {
 	if config.Config.EnvConfig.OS != "darwin" && config.Config.EnvConfig.ProvideIOS {
 		// Check for WDA ipa, then WDA app availability
-		_, err := os.Stat(fmt.Sprintf("%s/conf/WebDriverAgent.ipa", *provider_folder))
+		ipaPath := fmt.Sprintf("%s/conf/WebDriverAgent.ipa", providerFolder)
+		_, err := os.Stat(ipaPath)
 		if err != nil {
-			_, err = os.Stat(fmt.Sprintf("%s/conf/WebDriverAgent.app", *provider_folder))
+			appPath := fmt.Sprintf("%s/conf/WebDriverAgent.app", providerFolder)
+			_, err = os.Stat(appPath)
 			if os.IsNotExist(err) {
-				log.Fatalf("You should put signed WebDriverAgent.ipa/app file in the `conf` folder in `%s`", *provider_folder)
+				log.Fatalf("You should put signed WebDriverAgent.ipa/app file in the `conf` folder in `%s`", providerFolder)
 			}
 			config.Config.EnvConfig.WebDriverBinary = "WebDriverAgent.app"
 		} else {
 			config.Config.EnvConfig.WebDriverBinary = "WebDriverAgent.ipa"
 		}
 	}
-
-	// Start a goroutine that will update devices on provider start
-	go devices.DevicesListener()
-
-	// Handle the endpoints
-	r := router.HandleRequests()
-
-	// Start updating the provider in the DB to show 'availability'
-	go updateProviderInDB()
-
-	// Start the provider
-	r.Run(fmt.Sprintf(":%v", config.Config.EnvConfig.Port))
 }
 
+// Periodically send current provider data updates to MongoDB
 func updateProviderInDB() {
 	for {
 		coll := db.MongoClient().Database("gads").Collection("providers")

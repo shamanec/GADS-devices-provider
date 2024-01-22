@@ -5,7 +5,7 @@ import (
 	"github.com/shamanec/GADS-devices-provider/models"
 )
 
-var Config models.ConfigJsonData
+var Config *models.ConfigJsonData = &models.ConfigJsonData{}
 
 func SetupConfig(nickname, folder string) {
 	provider, err := db.GetProviderFromDB(nickname)
