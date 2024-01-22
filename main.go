@@ -133,43 +133,34 @@ func main() {
 	r := router.HandleRequests()
 
 	// Start updating the provider in the DB to show 'availability'
-	go func() {
-		for {
-			// Get the collection
-			coll := db.MongoClient().Database("gads").Collection("providers")
-			// Filter the provider data by nickname
-			filter := bson.D{{Key: "nickname", Value: config.Config.EnvConfig.Nickname}}
-
-			// From the current local devices map create a slice
-			var providedDevices []models.Device
-			for _, mapDevice := range devices.DeviceMap {
-				providedDevices = append(providedDevices, *mapDevice)
-			}
-			// Sort the slice to keep getting the same order in DB
-			sort.Sort(models.ByUDID(providedDevices))
-
-			// Update the respective provider fields
-			// Add a timestamp to cover "availability"
-			// Add the currently connected devices for setup purposes
-			// Add the currently provided devices for administration purposes
-			update := bson.M{
-				"$set": bson.M{
-					"last_updated":     time.Now().UnixMilli(),
-					"provided_devices": providedDevices,
-				},
-			}
-			// Set upsert to true so the entry gets updated
-			opts := options.Update().SetUpsert(true)
-			// Update the provider data
-			_, err := coll.UpdateOne(db.MongoCtx(), filter, update, opts)
-			if err != nil {
-				logger.ProviderLogger.LogError("update_provider", fmt.Sprintf("Failed to upsert provider in DB - %s", err))
-			}
-			// Update in DB each second for a close to real-time data update
-			time.Sleep(1 * time.Second)
-		}
-	}()
+	go updateProviderInDB()
 
 	// Start the provider
 	r.Run(fmt.Sprintf(":%v", config.Config.EnvConfig.Port))
+}
+
+func updateProviderInDB() {
+	for {
+		coll := db.MongoClient().Database("gads").Collection("providers")
+		filter := bson.D{{Key: "nickname", Value: config.Config.EnvConfig.Nickname}}
+
+		var providedDevices []models.Device
+		for _, mapDevice := range devices.DeviceMap {
+			providedDevices = append(providedDevices, *mapDevice)
+		}
+		sort.Sort(models.ByUDID(providedDevices))
+
+		update := bson.M{
+			"$set": bson.M{
+				"last_updated":     time.Now().UnixMilli(),
+				"provided_devices": providedDevices,
+			},
+		}
+		opts := options.Update().SetUpsert(true)
+		_, err := coll.UpdateOne(db.MongoCtx(), filter, update, opts)
+		if err != nil {
+			logger.ProviderLogger.LogError("update_provider", fmt.Sprintf("Failed to upsert provider in DB - %s", err))
+		}
+		time.Sleep(1 * time.Second)
+	}
 }
