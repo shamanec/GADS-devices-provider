@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -537,7 +538,7 @@ func startAppium(device *models.Device) {
 	}
 	device.AppiumPort = fmt.Sprint(appiumPort)
 
-	cmd := exec.CommandContext(device.Context, "appium", "-p", device.AppiumPort, "--log-timestamp", "--session-override", "--default-capabilities", string(capabilitiesJson))
+	cmd := exec.CommandContext(device.Context, "appium", "-p", device.AppiumPort, "--log-timestamp", "--session-override", "--log-no-colors", "--default-capabilities", string(capabilitiesJson))
 
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
@@ -558,7 +559,22 @@ func startAppium(device *models.Device) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		device.Logger.LogDebug("appium", strings.TrimSpace(line))
+		finalLog := ""
+		fmt.Println(line)
+
+		// Get the Appium log type, e.g. Appium, HTTP, XCUITestDriver
+		re := regexp.MustCompile(`\[([^\[\]]*)\]`)
+		match := re.FindStringSubmatch(line)
+		if match != nil {
+			finalLog += match[1] + " "
+		}
+
+		splitValues := strings.Split(line, "]")
+		finalLog += splitValues[1]
+		finalLog = strings.Replace(finalLog, "-->", "", -1)
+		finalLog = strings.Replace(finalLog, "<--", "", -1)
+
+		device.Logger.LogDebug("appium", finalLog)
 	}
 
 	if err := cmd.Wait(); err != nil {
