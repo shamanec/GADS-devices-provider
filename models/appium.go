@@ -31,3 +31,17 @@ type DevicePointerAction struct {
 type DevicePointerActions struct {
 	Actions []DevicePointerAction `json:"actions"`
 }
+
+type ActiveElementData struct {
+	Value struct {
+		Element string `json:"ELEMENT"`
+	} `json:"value"`
+}
+
+type AppiumTypeText struct {
+	Text string `json:"text"`
+}
+
+type AndroidKeycodePayload struct {
+	Keycode int `json:"keycode"`
+}
