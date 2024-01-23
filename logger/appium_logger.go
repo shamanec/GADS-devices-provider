@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
+	"strings"
+	"time"
 
 	"github.com/shamanec/GADS-devices-provider/db"
 	"github.com/shamanec/GADS-devices-provider/models"
@@ -17,7 +20,28 @@ type AppiumLogger struct {
 	mongoCollection *mongo.Collection
 }
 
-func (logger *AppiumLogger) Log(logData models.AppiumLog) {
+func (logger *AppiumLogger) Log(logLine string) {
+	var logData models.AppiumLog
+
+	// Get the Appium log type, e.g. Appium, HTTP, XCUITestDriver
+	re := regexp.MustCompile(`\[([^\[\]]*)\]`)
+	match := re.FindStringSubmatch(logLine)
+	if match != nil {
+		logData.Type = match[1]
+	} else {
+		logData.Type = "Unknown"
+	}
+
+	timestampSplit := strings.Split(logLine, " -")
+	logData.AppiumTS = timestampSplit[0]
+
+	messageSplit := strings.Split(logLine, "] ")
+	logData.Message = messageSplit[1]
+
+	logData.SystemTS = time.Now().UnixMilli()
+
+	fmt.Println(logData)
+
 	err := appiumLogToFile(logger, logData)
 	if err != nil {
 		fmt.Printf("Failed writing Appium log to file - %s\n", err)

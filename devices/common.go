@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -566,29 +565,9 @@ func startAppium(device *models.Device) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		var logData models.AppiumLog
 		fmt.Println(line)
 
-		// Get the Appium log type, e.g. Appium, HTTP, XCUITestDriver
-		re := regexp.MustCompile(`\[([^\[\]]*)\]`)
-		match := re.FindStringSubmatch(line)
-		if match != nil {
-			logData.Type = match[1]
-		} else {
-			logData.Type = "Unknown"
-		}
-
-		timestampSplit := strings.Split(line, " -")
-		logData.AppiumTS = timestampSplit[0]
-
-		messageSplit := strings.Split(line, "] ")
-		logData.Message = messageSplit[1]
-
-		logData.SystemTS = time.Now().UnixMilli()
-
-		fmt.Println(logData)
-
-		device.AppiumLogger.Log(logData)
+		device.AppiumLogger.Log(line)
 	}
 
 	if err := cmd.Wait(); err != nil {
