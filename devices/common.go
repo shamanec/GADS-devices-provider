@@ -137,7 +137,7 @@ func updateDevices() {
 				}
 				newDevice.Logger = *deviceLogger
 
-				appiumLogger, err := logger.CreateAppiumLogger(fmt.Sprintf("%s/logs/device_%s/appium.log", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), newDevice.UDID)
+				appiumLogger, err := logger.NewAppiumLogger(fmt.Sprintf("%s/logs/device_%s/appium.log", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), newDevice.UDID)
 				if err != nil {
 					logger.ProviderLogger.Errorf("Could not create Appium logger for device `%s` - %s\n", newDevice.UDID, err)
 					continue
@@ -565,9 +565,7 @@ func startAppium(device *models.Device) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Println(line)
-
-		device.AppiumLogger.Log(line)
+		device.AppiumLogger.Log(device, line)
 	}
 
 	if err := cmd.Wait(); err != nil {

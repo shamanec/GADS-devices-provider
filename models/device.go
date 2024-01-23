@@ -16,7 +16,7 @@ type CustomLogger interface {
 }
 
 type AppiumLogger interface {
-	Log(logLine string)
+	Log(device *Device, logLine string)
 }
 
 type Device struct {
