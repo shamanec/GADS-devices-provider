@@ -138,6 +138,13 @@ func updateDevices() {
 				}
 				newDevice.Logger = *deviceLogger
 
+				appiumLogger, err := logger.CreateAppiumLogger(fmt.Sprintf("%s/logs/device_%s/appium.log", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), newDevice.UDID)
+				if err != nil {
+					logger.ProviderLogger.Errorf("Could not create Appium logger for device `%s` - %s\n", newDevice.UDID, err)
+					continue
+				}
+				newDevice.AppiumLogger = appiumLogger
+
 				// Add the new local device to the map
 				DeviceMap[connectedDevice.UDID] = newDevice
 			}
@@ -559,22 +566,29 @@ func startAppium(device *models.Device) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		finalLog := ""
+		var logData models.AppiumLog
 		fmt.Println(line)
 
 		// Get the Appium log type, e.g. Appium, HTTP, XCUITestDriver
 		re := regexp.MustCompile(`\[([^\[\]]*)\]`)
 		match := re.FindStringSubmatch(line)
 		if match != nil {
-			finalLog += match[1] + " "
+			logData.Type = match[1]
+		} else {
+			logData.Type = "Unknown"
 		}
 
-		splitValues := strings.Split(line, "]")
-		finalLog += splitValues[1]
-		finalLog = strings.Replace(finalLog, "-->", "", -1)
-		finalLog = strings.Replace(finalLog, "<--", "", -1)
+		timestampSplit := strings.Split(line, " -")
+		logData.AppiumTS = timestampSplit[0]
 
-		device.Logger.LogDebug("appium", finalLog)
+		messageSplit := strings.Split(line, "] ")
+		logData.Message = messageSplit[1]
+
+		logData.SystemTS = time.Now().UnixMilli()
+
+		fmt.Println(logData)
+
+		device.AppiumLogger.Log(logData)
 	}
 
 	if err := cmd.Wait(); err != nil {

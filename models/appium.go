@@ -45,3 +45,10 @@ type AppiumTypeText struct {
 type AndroidKeycodePayload struct {
 	Keycode int `json:"keycode"`
 }
+
+type AppiumLog struct {
+	SystemTS int64  `json:"ts" bson:"ts"`
+	Message  string `json:"msg" bson:"msg"`
+	AppiumTS string `json:"appium_ts" bson:"appium_ts"`
+	Type     string `json:"log_type" bson:"log_type"`
+}

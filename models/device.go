@@ -15,6 +15,10 @@ type CustomLogger interface {
 	LogPanic(event_name string, message string)
 }
 
+type AppiumLogger interface {
+	Log(logData AppiumLog)
+}
+
 type Device struct {
 	Connected            bool               `json:"connected" bson:"connected"`
 	UDID                 string             `json:"udid" bson:"udid"`
@@ -43,6 +47,7 @@ type Device struct {
 	AppiumPort           string             `json:"appium_port" bson:"-"`
 	StreamPort           string             `json:"stream_port" bson:"-"`
 	WDAPort              string             `json:"wda_port" bson:"-"`
+	AppiumLogger         AppiumLogger       `json"-" bson:"-"`
 }
 
 type ByUDID []Device
