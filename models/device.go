@@ -26,7 +26,7 @@ type Device struct {
 	Name                 string             `json:"name" bson:"name"`
 	OSVersion            string             `json:"os_version" bson:"os_version"`
 	Model                string             `json:"model" bson:"model"`
-	HostAddress          string             `json:"host_address" bson:"host_address"`
+	Host                 string             `json:"host" bson:"host"`
 	Provider             string             `json:"provider" bson:"provider"`
 	ScreenWidth          string             `json:"screen_width" bson:"screen_width"`
 	ScreenHeight         string             `json:"screen_height" bson:"screen_height"`

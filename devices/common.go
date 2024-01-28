@@ -18,6 +18,8 @@ import (
 	"github.com/danielpaulus/go-ios/ios"
 	"github.com/pelletier/go-toml"
 	"github.com/shamanec/GADS-devices-provider/config"
+	"github.com/shamanec/GADS-devices-provider/constants"
+	"github.com/shamanec/GADS-devices-provider/db"
 	"github.com/shamanec/GADS-devices-provider/logger"
 	"github.com/shamanec/GADS-devices-provider/models"
 	"github.com/shamanec/GADS-devices-provider/util"
@@ -105,11 +107,27 @@ func updateDevices() {
 					newDevice.Name = "Android"
 				}
 
-				newDevice.HostAddress = config.Config.EnvConfig.HostAddress
+				newDevice.Host = fmt.Sprintf("%s:%v", config.Config.EnvConfig.HostAddress, config.Config.EnvConfig.Port)
 				newDevice.Provider = config.Config.EnvConfig.Nickname
 				// Set N/A for model and OS version because we will set those during the device set up
 				newDevice.Model = "N/A"
 				newDevice.OSVersion = "N/A"
+
+				exists, err := db.CollectionExists("appium_logs", newDevice.UDID)
+				if err != nil {
+					logger.ProviderLogger.Warnf("Could not check if collection exists in `appium_logs` db, will attempt to create it either way - %s", newDevice.UDID, err)
+				}
+
+				if !exists {
+					err = db.CreateCappedCollection("appium_logs", newDevice.UDID, 30000, 30)
+					if err != nil {
+						logger.ProviderLogger.Errorf("Failed to create capped collection for device `%s` - %s", connectedDevice.UDID, err)
+						continue
+					}
+				}
+
+				db.AddCollectionIndex("appium_logs", newDevice.UDID, "ts", constants.Ascending)
+				db.AddCollectionIndex("appium_logs", newDevice.UDID, "log_type", constants.Ascending)
 
 				// If Selenium Grid is used attempt to create a TOML file for the grid connection
 				if config.Config.EnvConfig.UseSeleniumGrid {

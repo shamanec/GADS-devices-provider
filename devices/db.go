@@ -86,28 +86,3 @@ func createMongoLogCollectionsForAllDevices() {
 		}
 	}
 }
-
-func createCappedCollection(dbName, collectionName string, maxDocuments, mb int64) {
-	database := db.MongoClient().Database(dbName)
-	collections, err := database.ListCollectionNames(context.Background(), bson.M{})
-	if err != nil {
-		panic(fmt.Sprintf("Could not get the list of collection names in the `%s` database in Mongo - %s\n", dbName, err))
-	}
-
-	if slices.Contains(collections, collectionName) {
-		return
-	}
-
-	// Create capped collection options with limit of documents or 20 mb size limit
-	// Seems reasonable for now, I have no idea what is a proper amount
-	collectionOptions := options.CreateCollection()
-	collectionOptions.SetCapped(true)
-	collectionOptions.SetMaxDocuments(maxDocuments)
-	collectionOptions.SetSizeInBytes(mb * 1024 * 1024)
-
-	// Create the actual collection
-	err = database.CreateCollection(db.MongoCtx(), collectionName, collectionOptions)
-	if err != nil {
-		panic(fmt.Sprintf("Could not create collection `%s` - %s\n", collectionName, err))
-	}
-}
