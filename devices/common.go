@@ -134,7 +134,7 @@ func updateDevices() {
 						{
 							Key: "ts", Value: constants.SortAscending},
 						{
-							Key: "log_type", Value: constants.SortAscending,
+							Key: "session_id", Value: constants.SortAscending,
 						},
 					},
 				}
