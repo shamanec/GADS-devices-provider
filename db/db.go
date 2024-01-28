@@ -8,7 +8,6 @@ import (
 
 	"slices"
 
-	"github.com/shamanec/GADS-devices-provider/constants"
 	"github.com/shamanec/GADS-devices-provider/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -171,12 +170,7 @@ func CollectionExists(dbName, collectionName string) (bool, error) {
 	return false, nil
 }
 
-func AddCollectionIndex(dbName, collectionName, key string, order constants.IndexSort) error {
-	// Define an index model for the respective key and index order
-	indexModel := mongo.IndexModel{
-		Keys: bson.M{key: order},
-	}
-
+func AddCollectionIndex(dbName, collectionName string, indexModel mongo.IndexModel) error {
 	ctx, cancel := context.WithCancel(MongoCtx())
 	defer cancel()
 
