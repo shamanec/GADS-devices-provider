@@ -18,9 +18,13 @@ import (
 	"github.com/danielpaulus/go-ios/ios"
 	"github.com/pelletier/go-toml"
 	"github.com/shamanec/GADS-devices-provider/config"
+	"github.com/shamanec/GADS-devices-provider/constants"
+	"github.com/shamanec/GADS-devices-provider/db"
 	"github.com/shamanec/GADS-devices-provider/logger"
 	"github.com/shamanec/GADS-devices-provider/models"
 	"github.com/shamanec/GADS-devices-provider/util"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var netClient = &http.Client{
@@ -105,11 +109,36 @@ func updateDevices() {
 					newDevice.Name = "Android"
 				}
 
-				newDevice.HostAddress = config.Config.EnvConfig.HostAddress
+				newDevice.Host = fmt.Sprintf("%s:%v", config.Config.EnvConfig.HostAddress, config.Config.EnvConfig.Port)
 				newDevice.Provider = config.Config.EnvConfig.Nickname
 				// Set N/A for model and OS version because we will set those during the device set up
 				newDevice.Model = "N/A"
 				newDevice.OSVersion = "N/A"
+
+				exists, err := db.CollectionExists("appium_logs", newDevice.UDID)
+				if err != nil {
+					logger.ProviderLogger.Warnf("Could not check if collection exists in `appium_logs` db, will attempt to create it either way - %s", newDevice.UDID, err)
+				}
+
+				if !exists {
+					err = db.CreateCappedCollection("appium_logs", newDevice.UDID, 30000, 30)
+					if err != nil {
+						logger.ProviderLogger.Errorf("Failed to create capped collection for device `%s` - %s", connectedDevice.UDID, err)
+						continue
+					}
+				}
+
+				// Create an index model and add it on the respective device Appium log collection
+				appiumCollectionIndexModel := mongo.IndexModel{
+					Keys: bson.D{
+						{
+							Key: "ts", Value: constants.SortAscending},
+						{
+							Key: "session_id", Value: constants.SortAscending,
+						},
+					},
+				}
+				db.AddCollectionIndex("appium_logs", newDevice.UDID, appiumCollectionIndexModel)
 
 				// If Selenium Grid is used attempt to create a TOML file for the grid connection
 				if config.Config.EnvConfig.UseSeleniumGrid {
@@ -136,6 +165,13 @@ func updateDevices() {
 					continue
 				}
 				newDevice.Logger = *deviceLogger
+
+				appiumLogger, err := logger.NewAppiumLogger(fmt.Sprintf("%s/logs/device_%s/appium.log", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), newDevice.UDID)
+				if err != nil {
+					logger.ProviderLogger.Errorf("Could not create Appium logger for device `%s` - %s\n", newDevice.UDID, err)
+					continue
+				}
+				newDevice.AppiumLogger = appiumLogger
 
 				// Add the new local device to the map
 				DeviceMap[connectedDevice.UDID] = newDevice
@@ -537,7 +573,7 @@ func startAppium(device *models.Device) {
 	}
 	device.AppiumPort = fmt.Sprint(appiumPort)
 
-	cmd := exec.CommandContext(device.Context, "appium", "-p", device.AppiumPort, "--log-timestamp", "--session-override", "--default-capabilities", string(capabilitiesJson))
+	cmd := exec.CommandContext(device.Context, "appium", "-p", device.AppiumPort, "--log-timestamp", "--session-override", "--log-no-colors", "--default-capabilities", string(capabilitiesJson))
 
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
@@ -558,7 +594,7 @@ func startAppium(device *models.Device) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		device.Logger.LogDebug("appium", strings.TrimSpace(line))
+		device.AppiumLogger.Log(device, line)
 	}
 
 	if err := cmd.Wait(); err != nil {
@@ -667,7 +703,7 @@ func startGridNode(device *models.Device) {
 
 func updateScreenSize(device *models.Device) error {
 	if device.OS == "ios" {
-		if dimensions, ok := util.IOSDeviceInfoMap[device.IOSProductType]; ok {
+		if dimensions, ok := constants.IOSDeviceInfoMap[device.IOSProductType]; ok {
 			device.ScreenHeight = dimensions.Height
 			device.ScreenWidth = dimensions.Width
 		} else {
@@ -685,7 +721,7 @@ func updateScreenSize(device *models.Device) error {
 
 func getModel(device *models.Device) {
 	if device.OS == "ios" {
-		if info, ok := util.IOSDeviceInfoMap[device.IOSProductType]; ok {
+		if info, ok := constants.IOSDeviceInfoMap[device.IOSProductType]; ok {
 			device.Model = info.Model
 		} else {
 			device.Model = "Unknown iOS device"
@@ -723,7 +759,7 @@ func getAndroidOSVersion(device *models.Device) {
 			device.OSVersion = "N/A"
 		}
 		sdkVersion := strings.TrimSpace(outBuffer.String())
-		if osVersion, ok := util.AndroidVersionToSDK[sdkVersion]; ok {
+		if osVersion, ok := constants.AndroidVersionToSDK[sdkVersion]; ok {
 			device.OSVersion = osVersion
 		} else {
 			device.OSVersion = "N/A"

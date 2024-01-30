@@ -27,6 +27,7 @@ func updateDevicesMongo() {
 // Upsert all devices data in Mongo
 func upsertDevicesMongo() {
 	for _, device := range DeviceMap {
+		ctx, _ := context.WithCancel(db.MongoCtx())
 		filter := bson.M{"udid": device.UDID}
 		if device.Connected {
 			device.LastUpdatedTimestamp = time.Now().UnixMilli()
@@ -37,7 +38,7 @@ func upsertDevicesMongo() {
 		}
 		opts := options.Update().SetUpsert(true)
 
-		_, err := db.MongoClient().Database("gads").Collection("devices").UpdateOne(db.MongoCtx(), filter, update, opts)
+		_, err := db.MongoClient().Database("gads").Collection("devices").UpdateOne(ctx, filter, update, opts)
 
 		if err != nil {
 			logger.ProviderLogger.LogError("provider", "Failed upserting device data in Mongo - "+err.Error())
@@ -46,7 +47,7 @@ func upsertDevicesMongo() {
 }
 
 func createMongoLogCollectionsForAllDevices() {
-	ctx, cancel := context.WithTimeout(db.MongoCtx(), 10*time.Second)
+	ctx, cancel := context.WithCancel(db.MongoCtx())
 	defer cancel()
 
 	db := db.MongoClient().Database("logs")
@@ -84,30 +85,5 @@ func createMongoLogCollectionsForAllDevices() {
 		if err != nil {
 			panic(fmt.Sprintf("Could not add index on a capped collection for device `%s` - %s\n", device.UDID, err))
 		}
-	}
-}
-
-func createCappedCollection(dbName, collectionName string, maxDocuments, mb int64) {
-	database := db.MongoClient().Database(dbName)
-	collections, err := database.ListCollectionNames(context.Background(), bson.M{})
-	if err != nil {
-		panic(fmt.Sprintf("Could not get the list of collection names in the `%s` database in Mongo - %s\n", dbName, err))
-	}
-
-	if slices.Contains(collections, collectionName) {
-		return
-	}
-
-	// Create capped collection options with limit of documents or 20 mb size limit
-	// Seems reasonable for now, I have no idea what is a proper amount
-	collectionOptions := options.CreateCollection()
-	collectionOptions.SetCapped(true)
-	collectionOptions.SetMaxDocuments(maxDocuments)
-	collectionOptions.SetSizeInBytes(mb * 1024 * 1024)
-
-	// Create the actual collection
-	err = database.CreateCollection(db.MongoCtx(), collectionName, collectionOptions)
-	if err != nil {
-		panic(fmt.Sprintf("Could not create collection `%s` - %s\n", collectionName, err))
 	}
 }

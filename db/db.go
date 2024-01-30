@@ -6,6 +6,8 @@ import (
 	"log"
 	"time"
 
+	"slices"
+
 	"github.com/shamanec/GADS-devices-provider/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -14,13 +16,14 @@ import (
 
 var mongoClient *mongo.Client
 var mongoClientCtx context.Context
+var mongoClientCtxCancel context.CancelFunc
 
 func InitMongoClient(mongo_db string) {
 	var err error
 	connectionString := "mongodb://" + mongo_db + "/?keepAlive=true"
 
 	// Set up a context for the connection.
-	mongoClientCtx = context.TODO()
+	mongoClientCtx, mongoClientCtxCancel = context.WithCancel(context.Background())
 
 	// Create a MongoDB client with options.
 	clientOptions := options.Client().ApplyURI(connectionString)
@@ -42,6 +45,10 @@ func CloseMongoConn() {
 
 func MongoCtx() context.Context {
 	return mongoClientCtx
+}
+
+func MongoCtxCancel() context.CancelFunc {
+	return mongoClientCtxCancel
 }
 
 func checkDBConnection() {
@@ -123,5 +130,60 @@ func UpsertDeviceDB(device models.Device) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func CreateCappedCollection(dbName, collectionName string, maxDocuments, mb int64) error {
+
+	database := MongoClient().Database(dbName)
+	collections, err := database.ListCollectionNames(context.Background(), bson.M{})
+	if err != nil {
+		return err
+	}
+
+	if slices.Contains(collections, collectionName) {
+		return err
+	}
+
+	// Create capped collection options with limit of documents or 20 mb size limit
+	// Seems reasonable for now, I have no idea what is a proper amount
+	collectionOptions := options.CreateCollection()
+	collectionOptions.SetCapped(true)
+	collectionOptions.SetMaxDocuments(maxDocuments)
+	collectionOptions.SetSizeInBytes(mb * 1024 * 1024)
+
+	// Create the actual collection
+	err = database.CreateCollection(MongoCtx(), collectionName, collectionOptions)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func CollectionExists(dbName, collectionName string) (bool, error) {
+	database := MongoClient().Database(dbName)
+	collections, err := database.ListCollectionNames(context.Background(), bson.M{})
+	if err != nil {
+		return false, err
+	}
+
+	if slices.Contains(collections, collectionName) {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func AddCollectionIndex(dbName, collectionName string, indexModel mongo.IndexModel) error {
+	ctx, cancel := context.WithCancel(MongoCtx())
+	defer cancel()
+
+	db := MongoClient().Database(dbName)
+	_, err := db.Collection(collectionName).Indexes().CreateOne(ctx, indexModel)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
