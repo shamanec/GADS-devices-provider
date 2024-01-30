@@ -53,3 +53,39 @@ type AppiumLog struct {
 	Type      string `json:"log_type" bson:"log_type"`
 	SessionID string `json:"session_id" bson:"session_id"`
 }
+
+type AppiumServerCapabilities struct {
+	UDID                  string `json:"appium:udid"`
+	WdaMjpegPort          string `json:"appium:mjpegServerPort,omitempty"`
+	ClearSystemFiles      string `json:"appium:clearSystemFiles,omitempty"`
+	WdaURL                string `json:"appium:webDriverAgentUrl,omitempty"`
+	PreventWdaAttachments string `json:"appium:preventWDAAttachments,omitempty"`
+	SimpleIsVisibleCheck  string `json:"appium:simpleIsVisibleCheck,omitempty"`
+	WdaLocalPort          string `json:"appium:wdaLocalPort,omitempty"`
+	PlatformVersion       string `json:"appium:platformVersion,omitempty"`
+	AutomationName        string `json:"appium:automationName"`
+	PlatformName          string `json:"platformName"`
+	DeviceName            string `json:"appium:deviceName"`
+	WdaLaunchTimeout      string `json:"appium:wdaLaunchTimeout,omitempty"`
+	WdaConnectionTimeout  string `json:"appium:wdaConnectionTimeout,omitempty"`
+}
+
+type AppiumTomlNode struct {
+	DetectDrivers bool `toml:"detect-drivers"`
+}
+
+type AppiumTomlServer struct {
+	Port int `toml:"port"`
+}
+
+type AppiumTomlRelay struct {
+	URL            string   `toml:"url"`
+	StatusEndpoint string   `toml:"status-endpoint"`
+	Configs        []string `toml:"configs"`
+}
+
+type AppiumTomlConfig struct {
+	Server AppiumTomlServer `toml:"server"`
+	Node   AppiumTomlNode   `toml:"node"`
+	Relay  AppiumTomlRelay  `toml:"relay"`
+}
