@@ -22,7 +22,7 @@ func GetDeviceHealth(device *models.Device) (bool, error) {
 }
 
 func checkAppiumSession(device *models.Device) error {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:%sv/sessions", device.AppiumPort), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:%s/sessions", device.AppiumPort), nil)
 	if err != nil {
 		device.AppiumSessionID = ""
 		return fmt.Errorf("checkAppiumSession: Failed creating request - %s", err)
