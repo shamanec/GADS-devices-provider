@@ -3,6 +3,7 @@ package devices
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -21,10 +22,16 @@ func GetDeviceHealth(device *models.Device) (bool, error) {
 }
 
 func checkAppiumSession(device *models.Device) error {
-	response, err := http.Get("http://localhost:" + device.AppiumPort + "/sessions")
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:%sv/sessions", device.AppiumPort), nil)
 	if err != nil {
 		device.AppiumSessionID = ""
-		return err
+		return fmt.Errorf("checkAppiumSession: Failed creating request - %s", err)
+	}
+
+	response, err := netClient.Do(req)
+	if err != nil {
+		device.AppiumSessionID = ""
+		return fmt.Errorf("checkAppiumSession: Failed executing request `%s` - %s", req.URL, err)
 	}
 	responseBody, _ := io.ReadAll(response.Body)
 
@@ -32,14 +39,14 @@ func checkAppiumSession(device *models.Device) error {
 	err = util.UnmarshalJSONString(string(responseBody), &responseJson)
 	if err != nil {
 		device.AppiumSessionID = ""
-		return err
+		return fmt.Errorf("checkAppiumSession: Failed unmarshaling response json - %s", err)
 	}
 
 	if len(responseJson.Value) == 0 {
 		sessionID, err := createAppiumSession(device)
 		if err != nil {
 			device.AppiumSessionID = ""
-			return err
+			return fmt.Errorf("checkAppiumSession: Could not create new Appium session - %s", err)
 		}
 		device.AppiumSessionID = sessionID
 		return nil
@@ -79,19 +86,25 @@ func createAppiumSession(device *models.Device) (string, error) {
 
 	jsonString, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("createAppiumSession: Failed marshalling payload json - %s", err)
 	}
 
-	response, err := http.Post("http://localhost:"+device.AppiumPort+"/session", "application/json", bytes.NewBuffer(jsonString))
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:%v/session", device.AppiumPort), bytes.NewBuffer(jsonString))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("createAppiumSession: Failed creating request for Appium session - %s", err)
 	}
+
+	response, err := netClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("createAppiumSession: Failed executing request `%s` - %s", req.URL, err)
+	}
+	defer response.Body.Close()
 
 	responseBody, _ := io.ReadAll(response.Body)
 	var responseJson AppiumCreateSessionResponse
 	err = util.UnmarshalJSONString(string(responseBody), &responseJson)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("createAppiumSession: Failed unmarshalling Appium session response - %s", err)
 	}
 
 	return responseJson.Value.SessionID, nil
