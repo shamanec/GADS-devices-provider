@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -28,6 +29,7 @@ func main() {
 
 	// Create a connection to Mongo
 	db.InitMongoClient(mongo_db)
+	defer db.MongoCtxCancel()
 	// Set up the provider configuration
 	config.SetupConfig(nickname, provider_folder)
 	config.Config.EnvConfig.OS = runtime.GOOS
@@ -163,7 +165,8 @@ func updateProviderInDB() {
 			},
 		}
 		opts := options.Update().SetUpsert(true)
-		_, err := coll.UpdateOne(db.MongoCtx(), filter, update, opts)
+		ctx, _ := context.WithCancel(db.MongoCtx())
+		_, err := coll.UpdateOne(ctx, filter, update, opts)
 		if err != nil {
 			logger.ProviderLogger.LogError("update_provider", fmt.Sprintf("Failed to upsert provider in DB - %s", err))
 		}

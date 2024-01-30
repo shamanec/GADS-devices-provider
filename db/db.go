@@ -16,13 +16,14 @@ import (
 
 var mongoClient *mongo.Client
 var mongoClientCtx context.Context
+var mongoClientCtxCancel context.CancelFunc
 
 func InitMongoClient(mongo_db string) {
 	var err error
 	connectionString := "mongodb://" + mongo_db + "/?keepAlive=true"
 
 	// Set up a context for the connection.
-	mongoClientCtx = context.TODO()
+	mongoClientCtx, mongoClientCtxCancel = context.WithCancel(context.Background())
 
 	// Create a MongoDB client with options.
 	clientOptions := options.Client().ApplyURI(connectionString)
@@ -44,6 +45,10 @@ func CloseMongoConn() {
 
 func MongoCtx() context.Context {
 	return mongoClientCtx
+}
+
+func MongoCtxCancel() context.CancelFunc {
+	return mongoClientCtxCancel
 }
 
 func checkDBConnection() {

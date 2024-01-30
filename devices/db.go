@@ -27,6 +27,7 @@ func updateDevicesMongo() {
 // Upsert all devices data in Mongo
 func upsertDevicesMongo() {
 	for _, device := range DeviceMap {
+		ctx, _ := context.WithCancel(db.MongoCtx())
 		filter := bson.M{"udid": device.UDID}
 		if device.Connected {
 			device.LastUpdatedTimestamp = time.Now().UnixMilli()
@@ -37,7 +38,7 @@ func upsertDevicesMongo() {
 		}
 		opts := options.Update().SetUpsert(true)
 
-		_, err := db.MongoClient().Database("gads").Collection("devices").UpdateOne(db.MongoCtx(), filter, update, opts)
+		_, err := db.MongoClient().Database("gads").Collection("devices").UpdateOne(ctx, filter, update, opts)
 
 		if err != nil {
 			logger.ProviderLogger.LogError("provider", "Failed upserting device data in Mongo - "+err.Error())
@@ -46,7 +47,7 @@ func upsertDevicesMongo() {
 }
 
 func createMongoLogCollectionsForAllDevices() {
-	ctx, cancel := context.WithTimeout(db.MongoCtx(), 10*time.Second)
+	ctx, cancel := context.WithCancel(db.MongoCtx())
 	defer cancel()
 
 	db := db.MongoClient().Database("logs")
