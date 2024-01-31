@@ -58,7 +58,7 @@ func (logger *AppiumLogger) Log(device *models.Device, logLine string) {
 	// We get the Appium log type, e.g. Appium, HTTP, XCUITestDriver
 	// Its on each line in square brackets, e.g. [Appium], [HTTP]
 	// Should be always there but just in case we have a fallback to `Unknown`
-	re := regexp.MustCompile(`\[([^\[\]]*)\]`)
+	re := regexp.MustCompile(`\[([^\[\]]*)]`)
 	match := re.FindStringSubmatch(logLine)
 	if match != nil {
 		logData.Type = match[1]

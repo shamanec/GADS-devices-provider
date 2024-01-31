@@ -56,7 +56,7 @@ func main() {
 	configureWebDriverBinary(providerFolder)
 
 	// Start a goroutine that will update devices on provider start
-	go devices.DevicesListener()
+	go devices.Listener()
 
 	// Start the provider
 	err := startHTTPServer()

@@ -135,7 +135,7 @@ func updateAndroidScreenSizeADB(device *models.Device) error {
 	output := outBuffer.String()
 	// Some devices return more than one line with device screen info
 	// Physical size and Override size
-	// Thats why we'll process the response respectively
+	// That's why we'll process the response respectively
 	// Specifically this was applied when caught on Samsung S20 and S9, might apply for others
 	lines := strings.Split(output, "\n")
 	// If the split lines are 2 then we have only one size returned
@@ -163,7 +163,7 @@ func updateAndroidScreenSizeADB(device *models.Device) error {
 }
 
 func getInstalledAppsAndroid(device *models.Device) []string {
-	var installedApps = []string{}
+	var installedApps []string
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "shell", "cmd", "package", "list", "packages", "-3")
 
 	var outBuffer bytes.Buffer

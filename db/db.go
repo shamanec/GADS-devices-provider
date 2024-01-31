@@ -18,9 +18,9 @@ var mongoClient *mongo.Client
 var mongoClientCtx context.Context
 var mongoClientCtxCancel context.CancelFunc
 
-func InitMongoClient(mongo_db string) {
+func InitMongoClient(mongoDb string) {
 	var err error
-	connectionString := "mongodb://" + mongo_db + "/?keepAlive=true"
+	connectionString := "mongodb://" + mongoDb + "/?keepAlive=true"
 
 	// Set up a context for the connection.
 	mongoClientCtx, mongoClientCtxCancel = context.WithCancel(context.Background())
@@ -40,7 +40,10 @@ func MongoClient() *mongo.Client {
 }
 
 func CloseMongoConn() {
-	mongoClient.Disconnect(mongoClientCtx)
+	err := mongoClient.Disconnect(mongoClientCtx)
+	if err != nil {
+		log.Fatalf("Failed to close mongo connection when stopping provider - %s", err)
+	}
 }
 
 func MongoCtx() context.Context {

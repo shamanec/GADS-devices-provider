@@ -314,7 +314,7 @@ func pairIOS(device *models.Device) error {
 }
 
 func getInstalledAppsIOS(device *models.Device) []string {
-	var installedApps = []string{}
+	var installedApps []string
 	cmd := exec.CommandContext(device.Context, "ios", "apps", "--udid="+device.UDID)
 
 	device.InstalledApps = []string{}
@@ -329,9 +329,9 @@ func getInstalledAppsIOS(device *models.Device) []string {
 	// Get the command output json string
 	jsonString := strings.TrimSpace(outBuffer.String())
 
-	var appsData = []struct {
+	var appsData []struct {
 		BundleID string `json:"CFBundleIdentifier"`
-	}{}
+	}
 
 	err := json.Unmarshal([]byte(jsonString), &appsData)
 	if err != nil {

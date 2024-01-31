@@ -32,7 +32,7 @@ var netClient = &http.Client{
 }
 var DeviceMap = make(map[string]*models.Device)
 
-func DevicesListener() {
+func Listener() {
 	Setup()
 
 	// Start updating devices each 10 seconds in a goroutine
@@ -56,7 +56,7 @@ func updateDevices() {
 		}
 	}
 
-	// If running on MacOS
+	// If running on macOS
 	if config.Config.EnvConfig.OS == "darwin" && config.Config.EnvConfig.ProvideIOS {
 		// Check if xcodebuild is available - Xcode and command line tools should be installed
 		if !xcodebuildAvailable() {
@@ -198,7 +198,7 @@ func updateDevices() {
 
 		// Loop through the final local device map and set up the devices if they are not already being set up or live
 		for _, device := range DeviceMap {
-			// If we are not already preparing the device or its not already prepared
+			// If we are not already preparing the device, or it's not already prepared
 			if device.ProviderState != "preparing" && device.ProviderState != "live" {
 				setContext(device)
 				if device.OS == "ios" {
@@ -382,15 +382,15 @@ func setupIOSDevice(device *models.Device) {
 		// Start WebDriverAgent with `xcodebuild`
 		go startWdaWithXcodebuild(device)
 	} else {
-		wda_path := ""
-		// If on MacOS use the WebDriverAgent app from the xcodebuild output
+		wdaPath := ""
+		// If on macOS use the WebDriverAgent app from the xcodebuild output
 		if config.Config.EnvConfig.OS == "darwin" {
-			wda_path = config.Config.EnvConfig.WdaRepoPath + "build/Build/Products/Debug-iphoneos/WebDriverAgentRunner-Runner.app"
+			wdaPath = config.Config.EnvConfig.WdaRepoPath + "build/Build/Products/Debug-iphoneos/WebDriverAgentRunner-Runner.app"
 		} else {
 			// If on Linux or Windows use the prebuilt and provided WebDriverAgent.ipa/app file
-			wda_path = fmt.Sprintf("%s/conf/%s", config.Config.EnvConfig.ProviderFolder, config.Config.EnvConfig.WebDriverBinary)
+			wdaPath = fmt.Sprintf("%s/conf/%s", config.Config.EnvConfig.ProviderFolder, config.Config.EnvConfig.WebDriverBinary)
 		}
-		err = InstallAppWithDevice(device, wda_path)
+		err = InstallAppWithDevice(device, wdaPath)
 		if err != nil {
 			logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not install WebDriverAgent on device `%s` - %s", device.UDID, err))
 			resetLocalDevice(device)
@@ -432,10 +432,10 @@ func setupIOSDevice(device *models.Device) {
 
 // Gets all connected iOS and Android devices to the host
 func GetConnectedDevicesCommon() []models.ConnectedDevice {
-	connectedDevices := []models.ConnectedDevice{}
+	var connectedDevices []models.ConnectedDevice
 
-	androidDevices := []models.ConnectedDevice{}
-	iosDevices := []models.ConnectedDevice{}
+	var androidDevices []models.ConnectedDevice
+	var iosDevices []models.ConnectedDevice
 
 	if config.Config.EnvConfig.ProvideAndroid {
 		androidDevices = getConnectedDevicesAndroid()
@@ -623,18 +623,18 @@ func createGridTOML(device *models.Device) error {
 
 	res, err := toml.Marshal(conf)
 	if err != nil {
-		return fmt.Errorf("Failed marshalling TOML Appium config - %s", device.UDID, err)
+		return fmt.Errorf("Failed marshalling TOML Appium config - %s", err)
 	}
 
 	file, err := os.Create(fmt.Sprintf("%s/conf/%s.toml", config.Config.EnvConfig.ProviderFolder, device.UDID))
 	if err != nil {
-		return fmt.Errorf("Failed creating TOML Appium config file - %s", device.UDID, err)
+		return fmt.Errorf("Failed creating TOML Appium config file - %s", err)
 	}
 	defer file.Close()
 
 	_, err = io.WriteString(file, string(res))
 	if err != nil {
-		return fmt.Errorf("Failed writing to TOML Appium config file - %s", device.UDID, err)
+		return fmt.Errorf("Failed writing to TOML Appium config file - %s", err)
 	}
 
 	return nil

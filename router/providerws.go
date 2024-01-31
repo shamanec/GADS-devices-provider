@@ -25,7 +25,7 @@ func GetProviderDataWS(c *gin.Context) {
 		fmt.Println(err)
 	}
 
-	deviceData := []*models.Device{}
+	var deviceData []*models.Device
 	for _, device := range devices.DeviceMap {
 		deviceData = append(deviceData, device)
 	}
@@ -81,7 +81,7 @@ func monitorConnClose(client net.Conn) {
 
 func sendProviderLiveData() {
 	for {
-		deviceData := []*models.Device{}
+		var deviceData []*models.Device
 		for _, device := range devices.DeviceMap {
 			deviceData = append(deviceData, device)
 		}

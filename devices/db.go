@@ -27,8 +27,10 @@ func updateDevicesMongo() {
 
 // Upsert all devices data in Mongo
 func upsertDevicesMongo() {
+	ctx, cancel := context.WithCancel(db.MongoCtx())
+	defer cancel()
+
 	for _, device := range DeviceMap {
-		ctx, _ := context.WithCancel(db.MongoCtx())
 		filter := bson.M{"udid": device.UDID}
 		if device.Connected {
 			device.LastUpdatedTimestamp = time.Now().UnixMilli()
@@ -51,8 +53,8 @@ func createMongoLogCollectionsForAllDevices() {
 	ctx, cancel := context.WithCancel(db.MongoCtx())
 	defer cancel()
 
-	db := db.MongoClient().Database("logs")
-	collections, err := db.ListCollectionNames(ctx, bson.M{})
+	database := db.MongoClient().Database("logs")
+	collections, err := database.ListCollectionNames(ctx, bson.M{})
 	if err != nil {
 		log.Fatalf("createMongoLogCollectionsForAllDevices: Could not get the list of collection names in the `logs` database in Mongo - %s", err)
 	}
@@ -71,7 +73,7 @@ func createMongoLogCollectionsForAllDevices() {
 		collectionOptions.SetSizeInBytes(10 * 1024 * 1024)
 
 		// Create the actual collection
-		err = db.CreateCollection(ctx, device.UDID, collectionOptions)
+		err = database.CreateCollection(ctx, device.UDID, collectionOptions)
 		if err != nil {
 			log.Fatalf("createMongoLogCollectionsForAllDevices: Could not create capped collection for device `%s` - %s", device.UDID, err)
 		}
@@ -82,7 +84,7 @@ func createMongoLogCollectionsForAllDevices() {
 		}
 
 		// Add the index on the respective device collection
-		_, err = db.Collection(device.UDID).Indexes().CreateOne(ctx, indexModel)
+		_, err = database.Collection(device.UDID).Indexes().CreateOne(ctx, indexModel)
 		if err != nil {
 			log.Fatalf("createMongoLogCollectionsForAllDevices: Could not add index on a capped collection for device `%s` - %s", device.UDID, err)
 		}
