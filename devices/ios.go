@@ -21,30 +21,6 @@ import (
 	"github.com/shamanec/GADS-devices-provider/models"
 )
 
-// Check if xcodebuild is available on the host by checking its version
-func xcodebuildAvailable() bool {
-	logger.ProviderLogger.LogDebug("provider", "Checking if xcodebuild is available on host")
-
-	cmd := exec.Command("xcodebuild", "-version")
-	if err := cmd.Run(); err != nil {
-		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("xcodebuildAvailable: xcodebuild is not available or command failed - %s", err))
-		return false
-	}
-	return true
-}
-
-// Check if go-ios binary is available
-func goIOSAvailable() bool {
-	logger.ProviderLogger.LogDebug("provider", "Checking if go-ios binary is available on host")
-
-	cmd := exec.Command("ios", "-h")
-	if err := cmd.Run(); err != nil {
-		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("goIOSAvailable: go-ios is not available on host or command failed - %s", err))
-		return false
-	}
-	return true
-}
-
 // Forward iOS device ports using `go-ios` CLI, for some reason using the library doesn't work properly
 func goIOSForward(device *models.Device, hostPort string, devicePort string) {
 	cmd := exec.CommandContext(device.Context, "ios", "forward", hostPort, devicePort, "--udid="+device.UDID)
@@ -70,38 +46,6 @@ func goIOSForward(device *models.Device, hostPort string, devicePort string) {
 		resetLocalDevice(device)
 		return
 	}
-}
-
-// Build WebDriverAgent for testing with `xcodebuild`
-func buildWebDriverAgent() error {
-	cmd := exec.Command("xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "generic/platform=iOS", "build-for-testing", "-derivedDataPath", "./build")
-	cmd.Dir = config.Config.EnvConfig.WdaRepoPath
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-
-	logger.ProviderLogger.LogInfo("provider", fmt.Sprintf("Starting WebDriverAgent xcodebuild in path `%s` with command `%s` ", config.Config.EnvConfig.WdaRepoPath, cmd.String()))
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	// Create a scanner to read the command's output line by line
-	scanner := bufio.NewScanner(stdout)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		logger.ProviderLogger.LogDebug("webdriveragent_xcodebuild", line)
-	}
-
-	// Wait for the command to finish
-	if err := cmd.Wait(); err != nil {
-		logger.ProviderLogger.LogError("provider", fmt.Sprintf("buildWebDriverAgent: Error waiting for build WebDriverAgent with `xcodebuild` command to finish - %s", err))
-		logger.ProviderLogger.LogError("provider", "buildWebDriverAgent: Building WebDriverAgent for testing was unsuccessful")
-		os.Exit(1)
-	}
-	return nil
 }
 
 // Start the prebuilt WebDriverAgent with `xcodebuild`

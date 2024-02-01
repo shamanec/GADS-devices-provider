@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/shamanec/GADS-devices-provider/util"
 	"log"
 	"os"
 	"path/filepath"
@@ -43,14 +44,50 @@ func main() {
 	// Check if apps folder exists in given provider folder and attempt to create it if it doesn't exist
 	createFolderIfNotExist(providerFolder, "apps")
 
+	// Setup logging for the provider itself
+	logger.SetupLogging(logLevel)
+	logger.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", config.Config.EnvConfig.Port))
+
+	// If running on macOS
+	if config.Config.EnvConfig.OS == "darwin" && config.Config.EnvConfig.ProvideIOS {
+		// Check if xcodebuild is available - Xcode and command line tools should be installed
+		if !util.XcodebuildAvailable() {
+			log.Fatal("xcodebuild is not available, you need to set up the host as explained in the readme")
+		}
+
+		if !util.GoIOSAvailable() {
+			log.Fatal("provider", "go-ios is not available, you need to set up the host as explained in the readme")
+		}
+
+		// Check if provided WebDriverAgent repo path exists
+		_, err := os.Stat(config.Config.EnvConfig.WdaRepoPath)
+		if err != nil {
+			log.Fatalf("`%s` does not exist, you need to provide valid path to the WebDriverAgent repo in the provider configuration", config.Config.EnvConfig.WdaRepoPath)
+		}
+
+		// Build the WebDriverAgent using xcodebuild from the provided repo path
+		err = util.BuildWebDriverAgent()
+		if err != nil {
+			log.Fatalf("updateDevices: Could not build WebDriverAgent for testing - %s", err)
+		}
+	}
+
+	// If we want to provide Android devices check if adb is available on PATH
+	if config.Config.EnvConfig.ProvideAndroid {
+		if !util.AdbAvailable() {
+			logger.ProviderLogger.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
+			fmt.Println("adb is not available, you need to set up the host as explained in the readme")
+			os.Exit(1)
+		}
+	}
+
+	// Try to remove potentially hanging ports forwarded by adb
+	util.RemoveAdbForwardedPorts()
+
 	// Finalize grid configuration if Selenium Grid usage enabled
 	if config.Config.EnvConfig.UseSeleniumGrid {
 		configureSeleniumSettings()
 	}
-
-	// Setup logging for the provider itself
-	logger.SetupLogging(logLevel)
-	logger.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", config.Config.EnvConfig.Port))
 
 	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa/app
 	configureWebDriverBinary(providerFolder)

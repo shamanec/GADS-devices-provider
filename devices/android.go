@@ -11,31 +11,6 @@ import (
 	"github.com/shamanec/GADS-devices-provider/models"
 )
 
-// Check if adb is available on the host by starting the server
-func adbAvailable() bool {
-	logger.ProviderLogger.LogInfo("provider", "Checking if adb is available on host")
-
-	cmd := exec.Command("adb", "start-server")
-	err := cmd.Run()
-	if err != nil {
-		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("adbAvailable: Error executing `adb start-server`, `adb` is not available on host or command failed - %s", err))
-		return false
-	}
-
-	return true
-}
-
-// Remove all adb forwarded ports(if any) on provider start
-func removeAdbForwardedPorts() {
-	logger.ProviderLogger.LogInfo("provider", "Attempting to remove all `adb` forwarded ports on provider start")
-
-	cmd := exec.Command("adb", "forward", "--remove-all")
-	err := cmd.Run()
-	if err != nil {
-		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("removeAdbForwardedPorts: Could not remove `adb` forwarded ports, there was an error or no devices are connected - %s", err))
-	}
-}
-
 // Check if the GADS-stream service is running on the device
 func isGadsStreamServiceRunning(device *models.Device) (bool, error) {
 	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Checking if GADS-stream is already running on device `%v`", device.UDID))

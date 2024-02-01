@@ -42,47 +42,6 @@ func Listener() {
 }
 
 func updateDevices() {
-	// Create common logs directory if it doesn't already exist
-	if _, err := os.Stat(fmt.Sprintf("%s/logs", config.Config.EnvConfig.ProviderFolder)); os.IsNotExist(err) {
-		os.Mkdir(fmt.Sprintf("%s/logs", config.Config.EnvConfig.ProviderFolder), os.ModePerm)
-	}
-
-	// If we want to provide Android devices check if adb is available on PATH
-	if config.Config.EnvConfig.ProvideAndroid {
-		if !adbAvailable() {
-			logger.ProviderLogger.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
-			fmt.Println("adb is not available, you need to set up the host as explained in the readme")
-			os.Exit(1)
-		}
-	}
-
-	// If running on macOS
-	if config.Config.EnvConfig.OS == "darwin" && config.Config.EnvConfig.ProvideIOS {
-		// Check if xcodebuild is available - Xcode and command line tools should be installed
-		if !xcodebuildAvailable() {
-			log.Fatal("updateDevices: xcodebuild is not available, you need to set up the host as explained in the readme")
-		}
-
-		if !goIOSAvailable() {
-			log.Fatal("provider", "updateDevices: go-ios is not available, you need to set up the host as explained in the readme")
-		}
-
-		// Check if provided WebDriverAgent repo path exists
-		_, err := os.Stat(config.Config.EnvConfig.WdaRepoPath)
-		if err != nil {
-			log.Fatalf("updateDevices: %s does not exist, you need to provide valid path to the WebDriverAgent repo in the provider configuration", config.Config.EnvConfig.WdaRepoPath)
-		}
-
-		// Build the WebDriverAgent using xcodebuild from the provided repo path
-		err = buildWebDriverAgent()
-		if err != nil {
-			log.Fatalf("updateDevices: Could not build WebDriverAgent for testing - %s", err)
-		}
-	}
-
-	// Try to remove potentially hanging ports forwarded by adb
-	removeAdbForwardedPorts()
-
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 

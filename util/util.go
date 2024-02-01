@@ -1,12 +1,14 @@
 package util
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"sync"
 	"time"
 
@@ -58,6 +60,87 @@ func GetFreePort() (port int, err error) {
 		}
 	}
 	return
+}
+
+// Check if adb is available on the host by starting the server
+func AdbAvailable() bool {
+	logger.ProviderLogger.LogInfo("provider", "Checking if adb is available on host")
+
+	cmd := exec.Command("adb", "start-server")
+	err := cmd.Run()
+	if err != nil {
+		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("adbAvailable: Error executing `adb start-server`, `adb` is not available on host or command failed - %s", err))
+		return false
+	}
+
+	return true
+}
+
+// Check if xcodebuild is available on the host by checking its version
+func XcodebuildAvailable() bool {
+	logger.ProviderLogger.LogDebug("provider", "Checking if xcodebuild is available on host")
+
+	cmd := exec.Command("xcodebuild", "-version")
+	if err := cmd.Run(); err != nil {
+		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("xcodebuildAvailable: xcodebuild is not available or command failed - %s", err))
+		return false
+	}
+	return true
+}
+
+// Check if go-ios binary is available
+func GoIOSAvailable() bool {
+	logger.ProviderLogger.LogDebug("provider", "Checking if go-ios binary is available on host")
+
+	cmd := exec.Command("ios", "-h")
+	if err := cmd.Run(); err != nil {
+		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("goIOSAvailable: go-ios is not available on host or command failed - %s", err))
+		return false
+	}
+	return true
+}
+
+// Build WebDriverAgent for testing with `xcodebuild`
+func BuildWebDriverAgent() error {
+	cmd := exec.Command("xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "generic/platform=iOS", "build-for-testing", "-derivedDataPath", "./build")
+	cmd.Dir = config.Config.EnvConfig.WdaRepoPath
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+
+	logger.ProviderLogger.LogInfo("provider", fmt.Sprintf("Starting WebDriverAgent xcodebuild in path `%s` with command `%s` ", config.Config.EnvConfig.WdaRepoPath, cmd.String()))
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	// Create a scanner to read the command's output line by line
+	scanner := bufio.NewScanner(stdout)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		logger.ProviderLogger.LogDebug("webdriveragent_xcodebuild", line)
+	}
+
+	// Wait for the command to finish
+	if err := cmd.Wait(); err != nil {
+		logger.ProviderLogger.LogError("provider", fmt.Sprintf("buildWebDriverAgent: Error waiting for build WebDriverAgent with `xcodebuild` command to finish - %s", err))
+		logger.ProviderLogger.LogError("provider", "buildWebDriverAgent: Building WebDriverAgent for testing was unsuccessful")
+		os.Exit(1)
+	}
+	return nil
+}
+
+// Remove all adb forwarded ports(if any) on provider start
+func RemoveAdbForwardedPorts() {
+	logger.ProviderLogger.LogInfo("provider", "Attempting to remove all `adb` forwarded ports on provider start")
+
+	cmd := exec.Command("adb", "forward", "--remove-all")
+	err := cmd.Run()
+	if err != nil {
+		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("removeAdbForwardedPorts: Could not remove `adb` forwarded ports, there was an error or no devices are connected - %s", err))
+	}
 }
 
 func CheckGadsStreamAndDownload() error {
