@@ -349,7 +349,8 @@ func setupIOSDevice(device *models.Device) {
 			// If on Linux or Windows use the prebuilt and provided WebDriverAgent.ipa/app file
 			wdaPath = fmt.Sprintf("%s/conf/%s", config.Config.EnvConfig.ProviderFolder, config.Config.EnvConfig.WebDriverBinary)
 		}
-		err = InstallAppWithDevice(device, wdaPath)
+
+		err = installAppWithPathIOS(device, wdaPath)
 		if err != nil {
 			logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not install WebDriverAgent on device `%s` - %s", device.UDID, err))
 			resetLocalDevice(device)

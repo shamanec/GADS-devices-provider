@@ -304,6 +304,23 @@ func uninstallAppIOS(device *models.Device, bundleID string) error {
 	return nil
 }
 
+func installAppWithPathIOS(device *models.Device, path string) error {
+	if config.Config.EnvConfig.OS == "windows" {
+		if strings.HasPrefix(path, "./") {
+			path = strings.TrimPrefix(path, "./")
+		}
+	}
+
+	cmd := exec.CommandContext(device.Context, "ios", "install", fmt.Sprintf("--path=%s", path), "--udid="+device.UDID)
+	fmt.Println(cmd.Args)
+	if err := cmd.Run(); err != nil {
+		device.Logger.LogError("uninstall_app", fmt.Sprintf("Failed executing `%s` - %v", cmd.Path, err))
+		return err
+	}
+
+	return nil
+}
+
 func installAppIOS(device *models.Device, appName string) error {
 	cmd := exec.CommandContext(device.Context, "ios", "install", fmt.Sprintf("--path=%s/apps/%s", config.Config.EnvConfig.ProviderFolder, appName), "--udid="+device.UDID)
 	if err := cmd.Run(); err != nil {
