@@ -75,9 +75,9 @@ func IosStreamProxy(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	url := "http://localhost:" + device.StreamPort
+	streamUrl := "http://localhost:" + device.StreamPort
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", streamUrl, nil)
 	if err != nil {
 		fmt.Println("Error creating request:", err)
 		return
@@ -102,7 +102,7 @@ func IosStreamProxy(c *gin.Context) {
 	boundary := strings.Replace(params["boundary"], "--", "", -1)
 
 	// Should be multipart/x-mixed-replace
-	// We know its that one but check just in case
+	// We know it's that one but check just in case
 	if strings.HasPrefix(mediaType, "multipart/") {
 		// Create a multipart reader from the response using the cleaned boundary
 		mr := multipart.NewReader(resp.Body, boundary)

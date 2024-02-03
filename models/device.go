@@ -7,12 +7,12 @@ import (
 )
 
 type CustomLogger interface {
-	LogDebug(event_name string, message string)
-	LogInfo(event_name string, message string)
-	LogError(event_name string, message string)
-	LogWarn(event_name string, message string)
-	LogFatal(event_name string, message string)
-	LogPanic(event_name string, message string)
+	LogDebug(eventName string, message string)
+	LogInfo(eventName string, message string)
+	LogError(eventName string, message string)
+	LogWarn(eventName string, message string)
+	LogFatal(eventName string, message string)
+	LogPanic(eventName string, message string)
 }
 
 type AppiumLogger interface {

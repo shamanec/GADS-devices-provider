@@ -32,7 +32,7 @@ var netClient = &http.Client{
 }
 var DeviceMap = make(map[string]*models.Device)
 
-func DevicesListener() {
+func Listener() {
 	Setup()
 
 	// Start updating devices each 10 seconds in a goroutine
@@ -42,48 +42,6 @@ func DevicesListener() {
 }
 
 func updateDevices() {
-	// Create common logs directory if it doesn't already exist
-	if _, err := os.Stat(fmt.Sprintf("%s/logs", config.Config.EnvConfig.ProviderFolder)); os.IsNotExist(err) {
-		os.Mkdir(fmt.Sprintf("%s/logs", config.Config.EnvConfig.ProviderFolder), os.ModePerm)
-	}
-
-	// If we want to provide Android devices check if adb is available on PATH
-	if config.Config.EnvConfig.ProvideAndroid {
-		if !adbAvailable() {
-			logger.ProviderLogger.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
-			fmt.Println("adb is not available, you need to set up the host as explained in the readme")
-			os.Exit(1)
-		}
-	}
-
-	// If running on MacOS
-	if config.Config.EnvConfig.OS == "darwin" {
-		// Check if xcodebuild is available - Xcode and command line tools should be installed
-		if !xcodebuildAvailable() {
-			logger.ProviderLogger.LogError("provider", "xcodebuild is not available, you need to set up the host as explained in the readme")
-			os.Exit(1)
-		}
-
-		// Check if provided WebDriverAgent repo path exists
-		_, err := os.Stat(config.Config.EnvConfig.WdaRepoPath)
-		if err != nil {
-			logger.ProviderLogger.LogError("provider", config.Config.EnvConfig.WdaRepoPath+" does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
-			fmt.Println(config.Config.EnvConfig.WdaRepoPath + " does not exist, you need to provide valid path to the WebDriverAgent repo in config.json")
-			os.Exit(1)
-		}
-
-		// Build the WebDriverAgent using xcodebuild from the provided repo path
-		err = buildWebDriverAgent()
-		if err != nil {
-			logger.ProviderLogger.LogError("provider", fmt.Sprintf("Could not successfully build WebDriverAgent for testing - %s", err))
-			fmt.Println("Could not successfully build WebDriverAgent for testing - " + err.Error())
-			os.Exit(1)
-		}
-	}
-
-	// Try to remove potentially hanging ports forwarded by adb
-	removeAdbForwardedPorts()
-
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
@@ -115,20 +73,22 @@ func updateDevices() {
 				newDevice.Model = "N/A"
 				newDevice.OSVersion = "N/A"
 
+				// Check if a capped Appium logs collection already exists for the current device
 				exists, err := db.CollectionExists("appium_logs", newDevice.UDID)
 				if err != nil {
-					logger.ProviderLogger.Warnf("Could not check if collection exists in `appium_logs` db, will attempt to create it either way - %s", newDevice.UDID, err)
+					logger.ProviderLogger.Warnf("Could not check if device collection exists in `appium_logs` db, will attempt to create it either way - %s", err)
 				}
 
+				// If it doesn't exist - attempt to create it
 				if !exists {
 					err = db.CreateCappedCollection("appium_logs", newDevice.UDID, 30000, 30)
 					if err != nil {
-						logger.ProviderLogger.Errorf("Failed to create capped collection for device `%s` - %s", connectedDevice.UDID, err)
+						logger.ProviderLogger.Errorf("updateDevices: Failed to create capped collection for device `%s` - %s", connectedDevice.UDID, err)
 						continue
 					}
 				}
 
-				// Create an index model and add it on the respective device Appium log collection
+				// Create an index model and add it to the respective device Appium log collection
 				appiumCollectionIndexModel := mongo.IndexModel{
 					Keys: bson.D{
 						{
@@ -144,7 +104,7 @@ func updateDevices() {
 				if config.Config.EnvConfig.UseSeleniumGrid {
 					err := createGridTOML(newDevice)
 					if err != nil {
-						logger.ProviderLogger.Errorf("Selenium Grid use is enabled but couldn't create TOML for device `%s` - %s", connectedDevice.UDID, err)
+						logger.ProviderLogger.Errorf("updateDevices: Selenium Grid use is enabled but couldn't create TOML for device `%s` - %s", connectedDevice.UDID, err)
 						continue
 					}
 				}
@@ -153,7 +113,7 @@ func updateDevices() {
 				if _, err := os.Stat(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, newDevice.UDID)); os.IsNotExist(err) {
 					err = os.Mkdir(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), os.ModePerm)
 					if err != nil {
-						logger.ProviderLogger.Errorf("Could not create logs folder for device `%s` - %s\n", newDevice.UDID, err)
+						logger.ProviderLogger.Errorf("updateDevices: Could not create logs folder for device `%s` - %s\n", newDevice.UDID, err)
 						continue
 					}
 				}
@@ -161,14 +121,14 @@ func updateDevices() {
 				// Create a custom logger and attach it to the local device
 				deviceLogger, err := logger.CreateCustomLogger(fmt.Sprintf("%s/logs/device_%s/device.log", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), newDevice.UDID)
 				if err != nil {
-					logger.ProviderLogger.Errorf("Could not create custom logger for device `%s` - %s\n", newDevice.UDID, err)
+					logger.ProviderLogger.Errorf("updateDevices: Could not create custom logger for device `%s` - %s\n", newDevice.UDID, err)
 					continue
 				}
 				newDevice.Logger = *deviceLogger
 
 				appiumLogger, err := logger.NewAppiumLogger(fmt.Sprintf("%s/logs/device_%s/appium.log", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), newDevice.UDID)
 				if err != nil {
-					logger.ProviderLogger.Errorf("Could not create Appium logger for device `%s` - %s\n", newDevice.UDID, err)
+					logger.ProviderLogger.Errorf("updateDevices: Could not create Appium logger for device `%s` - %s\n", newDevice.UDID, err)
 					continue
 				}
 				newDevice.AppiumLogger = appiumLogger
@@ -197,7 +157,7 @@ func updateDevices() {
 
 		// Loop through the final local device map and set up the devices if they are not already being set up or live
 		for _, device := range DeviceMap {
-			// If we are not already preparing the device or its not already prepared
+			// If we are not already preparing the device, or it's not already prepared
 			if device.ProviderState != "preparing" && device.ProviderState != "live" {
 				setContext(device)
 				if device.OS == "ios" {
@@ -220,7 +180,7 @@ func Setup() {
 	if config.Config.EnvConfig.ProvideAndroid {
 		err := util.CheckGadsStreamAndDownload()
 		if err != nil {
-			log.Fatalf("Could not check availability of and download GADS-stream latest release - %s", err)
+			log.Fatalf("Setup: Could not check availability of and download GADS-stream latest release - %s", err)
 		}
 	}
 }
@@ -381,15 +341,16 @@ func setupIOSDevice(device *models.Device) {
 		// Start WebDriverAgent with `xcodebuild`
 		go startWdaWithXcodebuild(device)
 	} else {
-		wda_path := ""
-		// If on MacOS use the WebDriverAgent app from the xcodebuild output
+		wdaPath := ""
+		// If on macOS use the WebDriverAgent app from the xcodebuild output
 		if config.Config.EnvConfig.OS == "darwin" {
-			wda_path = config.Config.EnvConfig.WdaRepoPath + "build/Build/Products/Debug-iphoneos/WebDriverAgentRunner-Runner.app"
+			wdaPath = config.Config.EnvConfig.WdaRepoPath + "build/Build/Products/Debug-iphoneos/WebDriverAgentRunner-Runner.app"
 		} else {
 			// If on Linux or Windows use the prebuilt and provided WebDriverAgent.ipa/app file
-			wda_path = fmt.Sprintf("%s/conf/%s", config.Config.EnvConfig.ProviderFolder, config.Config.EnvConfig.WebDriverBinary)
+			wdaPath = fmt.Sprintf("%s/conf/%s", config.Config.EnvConfig.ProviderFolder, config.Config.EnvConfig.WebDriverBinary)
 		}
-		err = InstallAppWithDevice(device, wda_path)
+
+		err = installAppWithPathIOS(device, wdaPath)
 		if err != nil {
 			logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not install WebDriverAgent on device `%s` - %s", device.UDID, err))
 			resetLocalDevice(device)
@@ -431,10 +392,10 @@ func setupIOSDevice(device *models.Device) {
 
 // Gets all connected iOS and Android devices to the host
 func GetConnectedDevicesCommon() []models.ConnectedDevice {
-	connectedDevices := []models.ConnectedDevice{}
+	var connectedDevices []models.ConnectedDevice
 
-	androidDevices := []models.ConnectedDevice{}
-	iosDevices := []models.ConnectedDevice{}
+	var androidDevices []models.ConnectedDevice
+	var iosDevices []models.ConnectedDevice
 
 	if config.Config.EnvConfig.ProvideAndroid {
 		androidDevices = getConnectedDevicesAndroid()
@@ -456,7 +417,7 @@ func getConnectedDevicesIOS() []models.ConnectedDevice {
 
 	deviceList, err := ios.ListDevices()
 	if err != nil {
-		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("Could not get connected iOS devices with `go-ios` library, returning empty slice - %s", err))
+		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("getConnectedDevicesIOS: Could not get connected devices with `go-ios` library, returning empty slice - %s", err))
 		return connectedDevices
 	}
 
@@ -474,12 +435,13 @@ func getConnectedDevicesAndroid() []models.ConnectedDevice {
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("Could not get connected Android devices with `adb`, creating exec cmd StdoutPipe failed, returning empty slice - %s", err))
+		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("getConnectedDevicesAndroid: Creating exec cmd StdoutPipe failed, returning empty slice - %s", err))
 		return connectedDevices
 	}
 
-	if err := cmd.Start(); err != nil {
-		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("Could not get connected Android devices with `adb`, starting command failed, returning empty slice - %s", err))
+	err = cmd.Start()
+	if err != nil {
+		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("getConnectedDevicesAndroid: Error executing `%s` , returning empty slice - %s", cmd.Path, err))
 		return connectedDevices
 	}
 
@@ -493,11 +455,12 @@ func getConnectedDevicesAndroid() []models.ConnectedDevice {
 		}
 	}
 
-	// Wait for the command to finish
-	if err := cmd.Wait(); err != nil {
-		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("Could not get connected Android devices with `adb`, waiting for command to finish failed, returning empty slice - %s", err))
+	err = cmd.Wait()
+	if err != nil {
+		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("getConnectedDevicesAndroid: Waiting for `%s` command to finish failed, returning empty slice - %s", cmd.Path, err))
 		return []models.ConnectedDevice{}
 	}
+
 	return connectedDevices
 }
 
@@ -519,27 +482,11 @@ func setContext(device *models.Device) {
 	device.Context = ctx
 }
 
-type appiumCapabilities struct {
-	UDID                  string `json:"appium:udid"`
-	WdaMjpegPort          string `json:"appium:mjpegServerPort,omitempty"`
-	ClearSystemFiles      string `json:"appium:clearSystemFiles,omitempty"`
-	WdaURL                string `json:"appium:webDriverAgentUrl,omitempty"`
-	PreventWdaAttachments string `json:"appium:preventWDAAttachments,omitempty"`
-	SimpleIsVisibleCheck  string `json:"appium:simpleIsVisibleCheck,omitempty"`
-	WdaLocalPort          string `json:"appium:wdaLocalPort,omitempty"`
-	PlatformVersion       string `json:"appium:platformVersion,omitempty"`
-	AutomationName        string `json:"appium:automationName"`
-	PlatformName          string `json:"platformName"`
-	DeviceName            string `json:"appium:deviceName"`
-	WdaLaunchTimeout      string `json:"appium:wdaLaunchTimeout,omitempty"`
-	WdaConnectionTimeout  string `json:"appium:wdaConnectionTimeout,omitempty"`
-}
-
 func startAppium(device *models.Device) {
-	var capabilities appiumCapabilities
+	var capabilities models.AppiumServerCapabilities
 
 	if device.OS == "ios" {
-		capabilities = appiumCapabilities{
+		capabilities = models.AppiumServerCapabilities{
 			UDID:                  device.UDID,
 			WdaURL:                "http://localhost:" + device.WDAPort,
 			WdaMjpegPort:          device.StreamPort,
@@ -554,7 +501,7 @@ func startAppium(device *models.Device) {
 			DeviceName:            device.Name,
 		}
 	} else if device.OS == "android" {
-		capabilities = appiumCapabilities{
+		capabilities = models.AppiumServerCapabilities{
 			UDID:           device.UDID,
 			AutomationName: "UiAutomator2",
 			PlatformName:   "Android",
@@ -567,7 +514,7 @@ func startAppium(device *models.Device) {
 	// Get a free port on the host for Appium server
 	appiumPort, err := util.GetFreePort()
 	if err != nil {
-		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("Could not allocate free Appium host port for device - %v, err - %v", device.UDID, err))
+		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("startAppium: Could not allocate free Appium host port for device - %v, err - %v", device.UDID, err))
 		resetLocalDevice(device)
 		return
 	}
@@ -578,13 +525,14 @@ func startAppium(device *models.Device) {
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error creating stdoutpipe while running WebDriverAgent with xcodebuild for device `%v` - %v", device.UDID, err))
+		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("startAppium: Error creating stdoutpipe on `%s` for device `%v` - %v", cmd.Path, device.UDID, err))
 		resetLocalDevice(device)
 		return
 	}
 
-	if err := cmd.Start(); err != nil {
-		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("Could not start WebDriverAgent with xcodebuild for device `%v` - %v", device.UDID, err))
+	err = cmd.Start()
+	if err != nil {
+		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("startAppium: Error executing `%s` for device `%v` - %v", cmd.Path, device.UDID, err))
 		resetLocalDevice(device)
 		return
 	}
@@ -597,30 +545,11 @@ func startAppium(device *models.Device) {
 		device.AppiumLogger.Log(device, line)
 	}
 
-	if err := cmd.Wait(); err != nil {
-		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("Error waiting for Appium command to finish, it errored out or device `%v` was disconnected - %v", device.UDID, err))
+	err = cmd.Wait()
+	if err != nil {
+		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("startAppium: Error waiting for `%s` command to finish, it errored out or device `%v` was disconnected - %v", cmd.Path, device.UDID, err))
 		resetLocalDevice(device)
 	}
-}
-
-type AppiumTomlNode struct {
-	DetectDrivers bool `toml:"detect-drivers"`
-}
-
-type AppiumTomlServer struct {
-	Port int `toml:"port"`
-}
-
-type AppiumTomlRelay struct {
-	URL            string   `toml:"url"`
-	StatusEndpoint string   `toml:"status-endpoint"`
-	Configs        []string `toml:"configs"`
-}
-
-type AppiumTomlConfig struct {
-	Server AppiumTomlServer `toml:"server"`
-	Node   AppiumTomlNode   `toml:"node"`
-	Relay  AppiumTomlRelay  `toml:"relay"`
 }
 
 func createGridTOML(device *models.Device) error {
@@ -635,14 +564,14 @@ func createGridTOML(device *models.Device) error {
 	configs := fmt.Sprintf(`{"appium:deviceName": "%s", "platformName": "%s", "appium:platformVersion": "%s", "appium:automationName": "%s"}`, device.Name, device.OS, device.OSVersion, automationName)
 
 	port, _ := util.GetFreePort()
-	conf := AppiumTomlConfig{
-		Server: AppiumTomlServer{
+	conf := models.AppiumTomlConfig{
+		Server: models.AppiumTomlServer{
 			Port: port,
 		},
-		Node: AppiumTomlNode{
+		Node: models.AppiumTomlNode{
 			DetectDrivers: false,
 		},
-		Relay: AppiumTomlRelay{
+		Relay: models.AppiumTomlRelay{
 			URL:            url,
 			StatusEndpoint: "/status",
 			Configs: []string{
@@ -654,18 +583,18 @@ func createGridTOML(device *models.Device) error {
 
 	res, err := toml.Marshal(conf)
 	if err != nil {
-		return fmt.Errorf("Failed marshalling TOML Appium config - %s", device.UDID, err)
+		return fmt.Errorf("Failed marshalling TOML Appium config - %s", err)
 	}
 
 	file, err := os.Create(fmt.Sprintf("%s/conf/%s.toml", config.Config.EnvConfig.ProviderFolder, device.UDID))
 	if err != nil {
-		return fmt.Errorf("Failed creating TOML Appium config file - %s", device.UDID, err)
+		return fmt.Errorf("Failed creating TOML Appium config file - %s", err)
 	}
 	defer file.Close()
 
 	_, err = io.WriteString(file, string(res))
 	if err != nil {
-		return fmt.Errorf("Failed writing to TOML Appium config file - %s", device.UDID, err)
+		return fmt.Errorf("Failed writing to TOML Appium config file - %s", err)
 	}
 
 	return nil

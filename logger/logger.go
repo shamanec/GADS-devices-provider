@@ -38,39 +38,39 @@ func SetupLogging(level string) {
 	}
 }
 
-func (l CustomLogger) LogDebug(event_name string, message string) {
+func (l CustomLogger) LogDebug(eventName string, message string) {
 	l.WithFields(log.Fields{
-		"event": event_name,
+		"event": eventName,
 	}).Debug(message)
 }
 
-func (l CustomLogger) LogInfo(event_name string, message string) {
+func (l CustomLogger) LogInfo(eventName string, message string) {
 	l.WithFields(log.Fields{
-		"event": event_name,
+		"event": eventName,
 	}).Info(message)
 }
 
-func (l CustomLogger) LogError(event_name string, message string) {
+func (l CustomLogger) LogError(eventName string, message string) {
 	l.WithFields(log.Fields{
-		"event": event_name,
+		"event": eventName,
 	}).Error(message)
 }
 
-func (l CustomLogger) LogWarn(event_name string, message string) {
+func (l CustomLogger) LogWarn(eventName string, message string) {
 	l.WithFields(log.Fields{
-		"event": event_name,
+		"event": eventName,
 	}).Warn(message)
 }
 
-func (l CustomLogger) LogFatal(event_name string, message string) {
+func (l CustomLogger) LogFatal(eventName string, message string) {
 	l.WithFields(log.Fields{
-		"event": event_name,
+		"event": eventName,
 	}).Fatal(message)
 }
 
-func (l CustomLogger) LogPanic(event_name string, message string) {
+func (l CustomLogger) LogPanic(eventName string, message string) {
 	l.WithFields(log.Fields{
-		"event": event_name,
+		"event": eventName,
 	}).Panic(message)
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/shamanec/GADS-devices-provider/util"
 	"log"
 	"os"
 	"path/filepath"
@@ -25,50 +26,93 @@ import (
 
 func main() {
 	// Parse command line flags
-	log_level, nickname, mongo_db, provider_folder := parseFlags()
+	logLevel, nickname, mongoDb, providerFolder := parseFlags()
 
 	// Create a connection to Mongo
-	db.InitMongoClient(mongo_db)
+	db.InitMongoClient(mongoDb)
 	defer db.MongoCtxCancel()
 	// Set up the provider configuration
-	config.SetupConfig(nickname, provider_folder)
+	config.SetupConfig(nickname, providerFolder)
 	config.Config.EnvConfig.OS = runtime.GOOS
 	// Defer closing the Mongo connection on provider stopped
 	defer db.CloseMongoConn()
 
 	// Check if logs folder exists in given provider folder and attempt to create it if it doesn't exist
-	createFolderIfNotExist(provider_folder, "logs")
+	createFolderIfNotExist(providerFolder, "logs")
 	// Check if conf folder exists in given provider folder and attempt to create it if it doesn't exist
-	createFolderIfNotExist(provider_folder, "conf")
+	createFolderIfNotExist(providerFolder, "conf")
 	// Check if apps folder exists in given provider folder and attempt to create it if it doesn't exist
-	createFolderIfNotExist(provider_folder, "apps")
+	createFolderIfNotExist(providerFolder, "apps")
+
+	// Setup logging for the provider itself
+	logger.SetupLogging(logLevel)
+	logger.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", config.Config.EnvConfig.Port))
+
+	// If running on macOS
+	if config.Config.EnvConfig.OS == "darwin" && config.Config.EnvConfig.ProvideIOS {
+		// Check if xcodebuild is available - Xcode and command line tools should be installed
+		if !util.XcodebuildAvailable() {
+			log.Fatal("xcodebuild is not available, you need to set up the host as explained in the readme")
+		}
+
+		if !util.GoIOSAvailable() {
+			log.Fatal("provider", "go-ios is not available, you need to set up the host as explained in the readme")
+		}
+
+		// Check if provided WebDriverAgent repo path exists
+		_, err := os.Stat(config.Config.EnvConfig.WdaRepoPath)
+		if err != nil {
+			log.Fatalf("`%s` does not exist, you need to provide valid path to the WebDriverAgent repo in the provider configuration", config.Config.EnvConfig.WdaRepoPath)
+		}
+
+		// Build the WebDriverAgent using xcodebuild from the provided repo path
+		err = util.BuildWebDriverAgent()
+		if err != nil {
+			log.Fatalf("updateDevices: Could not build WebDriverAgent for testing - %s", err)
+		}
+	}
+
+	// If we want to provide Android devices check if adb is available on PATH
+	if config.Config.EnvConfig.ProvideAndroid {
+		if !util.AdbAvailable() {
+			logger.ProviderLogger.LogError("provider", "adb is not available, you need to set up the host as explained in the readme")
+			fmt.Println("adb is not available, you need to set up the host as explained in the readme")
+			os.Exit(1)
+		}
+	}
+
+	// Try to remove potentially hanging ports forwarded by adb
+	util.RemoveAdbForwardedPorts()
 
 	// Finalize grid configuration if Selenium Grid usage enabled
 	if config.Config.EnvConfig.UseSeleniumGrid {
-		configureSeleniumSettings(provider_folder)
+		configureSeleniumSettings()
 	}
 
-	// Setup logging for the provider itself
-	logger.SetupLogging(log_level)
-	logger.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", config.Config.EnvConfig.Port))
-
 	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa/app
-	configureWebDriverBinary(provider_folder)
+	configureWebDriverBinary(providerFolder)
 
 	// Start a goroutine that will update devices on provider start
-	go devices.DevicesListener()
+	go devices.Listener()
 
 	// Start the provider
-	startHTTPServer()
+	err := startHTTPServer()
+	if err != nil {
+		log.Fatal("HTTP server stopped")
+	}
 }
 
-func startHTTPServer() {
+func startHTTPServer() error {
 	// Handle the endpoints
 	r := router.HandleRequests()
 	// Start periodically updating the provider data in the DB
 	go updateProviderInDB()
 	// Start the provider
-	r.Run(fmt.Sprintf(":%v", config.Config.EnvConfig.Port))
+	err := r.Run(fmt.Sprintf(":%v", config.Config.EnvConfig.Port))
+	if err != nil {
+		return err
+	}
+	return fmt.Errorf("HTTP server stopped due to an unknown reason")
 }
 
 // Create a required provider folder if it doesn't exist
@@ -87,10 +131,10 @@ func createFolderIfNotExist(baseFolder, subFolder string) {
 }
 
 func parseFlags() (string, string, string, string) {
-	log_level := flag.String("log-level", "info", "The log level of the provider app - debug, info, or error")
+	logLevel := flag.String("log-level", "info", "The log level of the provider app - debug, info, or error")
 	nickname := flag.String("nickname", "", "The nickname of the provider")
-	mongo_db := flag.String("mongo-db", "localhost:27017", "The address of the MongoDB instance")
-	provider_folder := flag.String("provider-folder", ".", "The folder where logs and apps are stored")
+	mongoDb := flag.String("mongo-db", "localhost:27017", "The address of the MongoDB instance")
+	providerFolder := flag.String("provider-folder", ".", "The folder where logs and apps are stored")
 	flag.Parse()
 
 	//Nickname is mandatory, this is what we use to get the configuration from the DB
@@ -99,19 +143,19 @@ func parseFlags() (string, string, string, string) {
 	}
 
 	// Print out some info on startup, maybe a flag was missed
-	fmt.Printf("Current log level: %s, use the --log-level flag to change it\n", *log_level)
-	fmt.Printf("Will use `%s` as address for MongoDB instance, use the --mongo-db flag to change it\n", *mongo_db)
-	fmt.Printf("Will use `%s` as provider folder, use the --provider-folder flag to change it\n", *provider_folder)
+	fmt.Printf("Current log level: %s, use the --log-level flag to change it\n", *logLevel)
+	fmt.Printf("Will use `%s` as address for MongoDB instance, use the --mongo-db flag to change it\n", *mongoDb)
+	fmt.Printf("Will use `%s` as provider folder, use the --provider-folder flag to change it\n", *providerFolder)
 
-	// Remove trailing slash if provided, all code assumes its not there
-	*provider_folder, _ = strings.CutSuffix(*provider_folder, "/")
-	return *log_level, *nickname, *mongo_db, *provider_folder
+	// Remove trailing slash if provided, all code assumes it's not there
+	*providerFolder, _ = strings.CutSuffix(*providerFolder, "/")
+	return *logLevel, *nickname, *mongoDb, *providerFolder
 }
 
 // Check for and set up selenium jar file for creating Appium grid nodes in config
-func configureSeleniumSettings(providerFolder string) {
+func configureSeleniumSettings() {
 	seleniumJarFile := ""
-	filepath.Walk(fmt.Sprintf("%s/conf", config.Config.EnvConfig.ProviderFolder), func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(fmt.Sprintf("%s/conf", config.Config.EnvConfig.ProviderFolder), func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -121,6 +165,9 @@ func configureSeleniumSettings(providerFolder string) {
 		}
 		return nil
 	})
+	if err != nil {
+		return
+	}
 	if seleniumJarFile == "" {
 		log.Fatalf("You have enabled Selenium Grid connection but no selenium jar file was found in the `conf` folder in `%s`", config.Config.EnvConfig.ProviderFolder)
 	}
@@ -148,6 +195,9 @@ func configureWebDriverBinary(providerFolder string) {
 
 // Periodically send current provider data updates to MongoDB
 func updateProviderInDB() {
+	ctx, cancel := context.WithCancel(db.MongoCtx())
+	defer cancel()
+
 	for {
 		coll := db.MongoClient().Database("gads").Collection("providers")
 		filter := bson.D{{Key: "nickname", Value: config.Config.EnvConfig.Nickname}}
@@ -165,7 +215,6 @@ func updateProviderInDB() {
 			},
 		}
 		opts := options.Update().SetUpsert(true)
-		ctx, _ := context.WithCancel(db.MongoCtx())
 		_, err := coll.UpdateOne(ctx, filter, update, opts)
 		if err != nil {
 			logger.ProviderLogger.LogError("update_provider", fmt.Sprintf("Failed to upsert provider in DB - %s", err))

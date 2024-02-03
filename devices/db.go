@@ -3,6 +3,7 @@ package devices
 import (
 	"context"
 	"fmt"
+	"log"
 	"slices"
 	"time"
 
@@ -26,8 +27,10 @@ func updateDevicesMongo() {
 
 // Upsert all devices data in Mongo
 func upsertDevicesMongo() {
+	ctx, cancel := context.WithCancel(db.MongoCtx())
+	defer cancel()
+
 	for _, device := range DeviceMap {
-		ctx, _ := context.WithCancel(db.MongoCtx())
 		filter := bson.M{"udid": device.UDID}
 		if device.Connected {
 			device.LastUpdatedTimestamp = time.Now().UnixMilli()
@@ -41,7 +44,7 @@ func upsertDevicesMongo() {
 		_, err := db.MongoClient().Database("gads").Collection("devices").UpdateOne(ctx, filter, update, opts)
 
 		if err != nil {
-			logger.ProviderLogger.LogError("provider", "Failed upserting device data in Mongo - "+err.Error())
+			logger.ProviderLogger.LogError("provider", fmt.Sprintf("upsertDevicesMongo: Failed upserting device data in Mongo - %s", err))
 		}
 	}
 }
@@ -50,10 +53,10 @@ func createMongoLogCollectionsForAllDevices() {
 	ctx, cancel := context.WithCancel(db.MongoCtx())
 	defer cancel()
 
-	db := db.MongoClient().Database("logs")
-	collections, err := db.ListCollectionNames(ctx, bson.M{})
+	database := db.MongoClient().Database("logs")
+	collections, err := database.ListCollectionNames(ctx, bson.M{})
 	if err != nil {
-		panic(fmt.Sprintf("Could not get the list of collection names in the `logs` database in Mongo - %s\n", err))
+		log.Fatalf("createMongoLogCollectionsForAllDevices: Could not get the list of collection names in the `logs` database in Mongo - %s", err)
 	}
 
 	// Loop through the devices from the config
@@ -66,13 +69,13 @@ func createMongoLogCollectionsForAllDevices() {
 		// Seems reasonable for now, I have no idea what is a proper amount
 		collectionOptions := options.CreateCollection()
 		collectionOptions.SetCapped(true)
-		collectionOptions.SetMaxDocuments(30000)
-		collectionOptions.SetSizeInBytes(20 * 1024 * 1024)
+		collectionOptions.SetMaxDocuments(5000)
+		collectionOptions.SetSizeInBytes(10 * 1024 * 1024)
 
 		// Create the actual collection
-		err = db.CreateCollection(ctx, device.UDID, collectionOptions)
+		err = database.CreateCollection(ctx, device.UDID, collectionOptions)
 		if err != nil {
-			panic(fmt.Sprintf("Could not create collection for device `%s` - %s\n", device.UDID, err))
+			log.Fatalf("createMongoLogCollectionsForAllDevices: Could not create capped collection for device `%s` - %s", device.UDID, err)
 		}
 
 		// Define an index for queries based on timestamp in ascending order
@@ -81,9 +84,9 @@ func createMongoLogCollectionsForAllDevices() {
 		}
 
 		// Add the index on the respective device collection
-		_, err = db.Collection(device.UDID).Indexes().CreateOne(ctx, indexModel)
+		_, err = database.Collection(device.UDID).Indexes().CreateOne(ctx, indexModel)
 		if err != nil {
-			panic(fmt.Sprintf("Could not add index on a capped collection for device `%s` - %s\n", device.UDID, err))
+			log.Fatalf("createMongoLogCollectionsForAllDevices: Could not add index on a capped collection for device `%s` - %s", device.UDID, err)
 		}
 	}
 }

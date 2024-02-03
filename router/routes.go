@@ -28,28 +28,6 @@ type JsonResponse struct {
 	Message string `json:"message"`
 }
 
-// Write to a ResponseWriter an event and message with a response code
-func JSONError(w http.ResponseWriter, event string, error_string string, code int) {
-	var errorMessage = JsonErrorResponse{
-		EventName:    event,
-		ErrorMessage: error_string}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(errorMessage)
-}
-
-// Write to a ResponseWriter an event and message with a response code
-func SimpleJSONResponse(w http.ResponseWriter, responseMessage string, code int) {
-	var message = JsonResponse{
-		Message: responseMessage,
-	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(message)
-}
-
 func AppiumReverseProxy(c *gin.Context) {
 	defer func() {
 		if r := recover(); r != nil {
