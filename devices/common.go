@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/shamanec/GADS-devices-provider/ios_sim"
 	"io"
 	"log"
 	"net/http"
@@ -59,6 +60,7 @@ func updateDevices() {
 				newDevice.ProviderState = "init"
 				newDevice.IsResetting = false
 				newDevice.Connected = true
+				newDevice.Type = connectedDevice.Type
 
 				// Add default name for the device
 				if connectedDevice.OS == "ios" {
@@ -162,7 +164,11 @@ func updateDevices() {
 				setContext(device)
 				if device.OS == "ios" {
 					device.WdaReadyChan = make(chan bool, 1)
-					go setupIOSDevice(device)
+					if device.Type == "simulator" {
+						go setupIOSSim(device)
+					} else {
+						go setupIOSDevice(device)
+					}
 				}
 
 				if device.OS == "android" {
@@ -261,6 +267,67 @@ func setupAndroidDevice(device *models.Device) {
 	}
 
 	device.InstalledApps = getInstalledAppsAndroid(device)
+
+	go startAppium(device)
+	if config.Config.EnvConfig.UseSeleniumGrid {
+		go startGridNode(device)
+	}
+
+	// Mark the device as 'live'
+	device.ProviderState = "live"
+}
+
+func setupIOSSim(device *models.Device) {
+	device.ProviderState = "preparing"
+	logger.ProviderLogger.LogInfo("ios_sim_setup", fmt.Sprintf("Running setup for simulator `%v`", device.UDID))
+
+	width, height, err := ios_sim.GetSimScreenSize(device.UDID)
+	if err != nil {
+		resetLocalDevice(device)
+		return
+	}
+	device.ScreenWidth = width
+	device.ScreenHeight = height
+
+	wdaPort, err := util.GetFreePort()
+	if err != nil {
+		logger.ProviderLogger.LogError("ios_sim_setup", fmt.Sprintf("Could not allocate free WebDriverAgent port for device `%v` - %v", device.UDID, err))
+		resetLocalDevice(device)
+		return
+	}
+	device.WDAPort = fmt.Sprint(wdaPort)
+
+	streamPort, err := util.GetFreePort()
+	if err != nil {
+		logger.ProviderLogger.LogError("ios_sim_setup", fmt.Sprintf("Could not allocate free WebDriverAgent stream port for device `%v` - %v", device.UDID, err))
+		resetLocalDevice(device)
+		return
+	}
+	device.StreamPort = fmt.Sprint(streamPort)
+
+	device.InstalledApps = []string{}
+
+	// Start WebDriverAgent with `xcodebuild`
+	go startWdaWithXcodebuildSim(device)
+
+	// Wait until WebDriverAgent successfully starts
+	select {
+	case <-device.WdaReadyChan:
+		logger.ProviderLogger.LogInfo("ios_sim_setup", fmt.Sprintf("Successfully started WebDriverAgent for device `%v` forwarded on port %v", device.UDID, device.WDAPort))
+		break
+	case <-time.After(30 * time.Second):
+		logger.ProviderLogger.LogError("ios_sim_setup", fmt.Sprintf("Did not successfully start WebDriverAgent on device `%v` in 30 seconds", device.UDID))
+		resetLocalDevice(device)
+		return
+	}
+
+	// Create a WebDriverAgent session and update the MJPEG stream settings
+	err = updateWebDriverAgent(device)
+	if err != nil {
+		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Did not successfully create WebDriverAgent session or update its stream settings for device `%v` - %v", device.UDID, err))
+		resetLocalDevice(device)
+		return
+	}
 
 	go startAppium(device)
 	if config.Config.EnvConfig.UseSeleniumGrid {
@@ -396,6 +463,7 @@ func GetConnectedDevicesCommon() []models.ConnectedDevice {
 
 	var androidDevices []models.ConnectedDevice
 	var iosDevices []models.ConnectedDevice
+	var iosSims []models.ConnectedDevice
 
 	if config.Config.EnvConfig.ProvideAndroid {
 		androidDevices = getConnectedDevicesAndroid()
@@ -403,11 +471,29 @@ func GetConnectedDevicesCommon() []models.ConnectedDevice {
 
 	if config.Config.EnvConfig.ProvideIOS {
 		iosDevices = getConnectedDevicesIOS()
+		iosSims = getBootedIOSSims()
 	}
 
 	connectedDevices = append(connectedDevices, iosDevices...)
 	connectedDevices = append(connectedDevices, androidDevices...)
+	connectedDevices = append(connectedDevices, iosSims...)
 
+	return connectedDevices
+}
+
+func getBootedIOSSims() []models.ConnectedDevice {
+	udids, err := ios_sim.GetBootedSimsUDIDs()
+	if err != nil {
+		return []models.ConnectedDevice{}
+	}
+	var connectedDevices []models.ConnectedDevice
+	for _, udid := range udids {
+		connectedDevices = append(connectedDevices, models.ConnectedDevice{
+			OS:   "ios",
+			UDID: udid,
+			Type: "simulator",
+		})
+	}
 	return connectedDevices
 }
 
@@ -422,7 +508,7 @@ func getConnectedDevicesIOS() []models.ConnectedDevice {
 	}
 
 	for _, connDevice := range deviceList.DeviceList {
-		connectedDevices = append(connectedDevices, models.ConnectedDevice{OS: "ios", UDID: connDevice.Properties.SerialNumber})
+		connectedDevices = append(connectedDevices, models.ConnectedDevice{OS: "ios", UDID: connDevice.Properties.SerialNumber, Type: "device"})
 	}
 	return connectedDevices
 }
@@ -451,7 +537,7 @@ func getConnectedDevicesAndroid() []models.ConnectedDevice {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if !strings.Contains(line, "List of devices") && line != "" && strings.Contains(line, "device") {
-			connectedDevices = append(connectedDevices, models.ConnectedDevice{OS: "android", UDID: strings.Fields(line)[0]})
+			connectedDevices = append(connectedDevices, models.ConnectedDevice{OS: "android", UDID: strings.Fields(line)[0], Type: "device"})
 		}
 	}
 
@@ -698,7 +784,11 @@ func getAndroidOSVersion(device *models.Device) {
 
 func UpdateInstalledApps(device *models.Device) {
 	if device.OS == "ios" {
-		device.InstalledApps = getInstalledAppsIOS(device)
+		if device.Type == "simulator" {
+			device.InstalledApps = []string{}
+		} else {
+			device.InstalledApps = getInstalledAppsIOS(device)
+		}
 	} else {
 		device.InstalledApps = getInstalledAppsAndroid(device)
 	}

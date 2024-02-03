@@ -132,6 +132,37 @@ func BuildWebDriverAgent() error {
 	return nil
 }
 
+func BuildWebDriverAgentSim() error {
+	cmd := exec.Command("xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "generic/platform=iOS Simulator", "build-for-testing", "-derivedDataPath", "./build-sim")
+	cmd.Dir = config.Config.EnvConfig.WdaRepoPath
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+
+	logger.ProviderLogger.LogInfo("provider", fmt.Sprintf("Starting WebDriverAgent xcodebuild in path `%s` with command `%s` ", config.Config.EnvConfig.WdaRepoPath, cmd.String()))
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	// Create a scanner to read the command's output line by line
+	scanner := bufio.NewScanner(stdout)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		logger.ProviderLogger.LogDebug("webdriveragent_xcodebuild", line)
+	}
+
+	// Wait for the command to finish
+	if err := cmd.Wait(); err != nil {
+		logger.ProviderLogger.LogError("provider", fmt.Sprintf("buildWebDriverAgent: Error waiting for build WebDriverAgent with `xcodebuild` command to finish - %s", err))
+		logger.ProviderLogger.LogError("provider", "buildWebDriverAgent: Building WebDriverAgent for testing for sims was unsuccessful")
+		os.Exit(1)
+	}
+	return nil
+}
+
 // Remove all adb forwarded ports(if any) on provider start
 func RemoveAdbForwardedPorts() {
 	logger.ProviderLogger.LogInfo("provider", "Attempting to remove all `adb` forwarded ports on provider start")

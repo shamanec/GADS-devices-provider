@@ -68,7 +68,11 @@ func main() {
 		// Build the WebDriverAgent using xcodebuild from the provided repo path
 		err = util.BuildWebDriverAgent()
 		if err != nil {
-			log.Fatalf("updateDevices: Could not build WebDriverAgent for testing - %s", err)
+			log.Fatalf("Could not build WebDriverAgent for testing - %s", err)
+		}
+		err = util.BuildWebDriverAgentSim()
+		if err != nil {
+			log.Fatalf("Could not build WebDriverAgent for testing for sims - %s", err)
 		}
 	}
 

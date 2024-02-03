@@ -42,5 +42,10 @@ func HandleRequests() *gin.Engine {
 	deviceGroup.POST("/:udid/reset", ResetDevice)
 	deviceGroup.POST("/:udid/uploadFile", UploadFile)
 
+	iosSimGroup := r.Group("/sim")
+	iosSimGroup.POST("/:udid/boot", BootSim)
+	iosSimGroup.POST("/:udid/shutdown", ShutdownSim)
+	iosSimGroup.GET("/available-sims", GetAvailableSims)
+
 	return r
 }

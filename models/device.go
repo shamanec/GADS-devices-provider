@@ -47,7 +47,8 @@ type Device struct {
 	AppiumPort           string             `json:"appium_port" bson:"-"`
 	StreamPort           string             `json:"stream_port" bson:"-"`
 	WDAPort              string             `json:"wda_port" bson:"-"`
-	AppiumLogger         AppiumLogger       `json"-" bson:"-"`
+	AppiumLogger         AppiumLogger       `json:"-" bson:"-"`
+	Type                 string             `json:"type" bson:"type"`
 }
 
 type ByUDID []Device
@@ -65,4 +66,5 @@ type IOSModelData struct {
 type ConnectedDevice struct {
 	OS   string
 	UDID string
+	Type string
 }

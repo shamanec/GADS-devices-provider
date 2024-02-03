@@ -50,8 +50,64 @@ func goIOSForward(device *models.Device, hostPort string, devicePort string) {
 
 // Start the prebuilt WebDriverAgent with `xcodebuild`
 func startWdaWithXcodebuild(device *models.Device) {
-	cmd := exec.CommandContext(device.Context, "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.UDID, "test-without-building", "-allowProvisioningUpdates")
+	cmd := exec.CommandContext(device.Context, "xcodebuild",
+		"-project", "WebDriverAgent.xcodeproj",
+		"-scheme", "WebDriverAgentRunner", "-destination",
+		"platform=iOS,id="+device.UDID,
+		"-derivedDataPath", "./build",
+		"test-without-building",
+		"-allowProvisioningUpdates")
 	cmd.Dir = config.Config.EnvConfig.WdaRepoPath
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		device.Logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("startWdaWithXcodebuild: Error creating stdoutpipe while running WebDriverAgent with xcodebuild for device `%v` - %v", device.UDID, err))
+		resetLocalDevice(device)
+		return
+	}
+
+	if err := cmd.Start(); err != nil {
+		device.Logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("startWdaWithXcodebuild: Could not start WebDriverAgent with xcodebuild for device `%v` - %v", device.UDID, err))
+		resetLocalDevice(device)
+		return
+	}
+
+	scanner := bufio.NewScanner(stdout)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// device.Logger.LogInfo("webdriveragent", strings.TrimSpace(line))
+
+		if strings.Contains(line, "Restarting after") {
+			resetLocalDevice(device)
+			return
+		}
+
+		if strings.Contains(line, "ServerURLHere") {
+			// device.DeviceIP = strings.Split(strings.Split(line, "//")[1], ":")[0]
+			device.WdaReadyChan <- true
+		}
+	}
+
+	if err := cmd.Wait(); err != nil {
+		device.Logger.LogError("webdriveragent_xcodebuild", fmt.Sprintf("startWdaWithXcodebuild: Error waiting for WebDriverAgent(xcodebuild) command to finish, it errored out or device `%v` was disconnected - %v", device.UDID, err))
+		resetLocalDevice(device)
+	}
+}
+
+func startWdaWithXcodebuildSim(device *models.Device) {
+	cmd := exec.CommandContext(device.Context, "xcodebuild",
+		"-project", "WebDriverAgent.xcodeproj",
+		"-scheme", "WebDriverAgentRunner",
+		"-destination", "platform=iOS Simulator,id="+device.UDID,
+		"-derivedDataPath", "./build-sim",
+		fmt.Sprintf("USE_PORT=%v", device.WDAPort),
+		fmt.Sprintf("MJPEG_SERVER_PORT=%v", device.StreamPort),
+		"test-without-building")
+	cmd.Dir = config.Config.EnvConfig.WdaRepoPath
+
+	fmt.Println(cmd.Args)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
