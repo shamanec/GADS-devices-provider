@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -212,7 +213,7 @@ func setupAndroidDevice(device *models.Device) {
 		resetLocalDevice(device)
 		return
 	}
-	device.StreamPort = fmt.Sprint(streamPort)
+	device.StreamPort = streamPort
 
 	if !isStreamAvailable {
 		apps := getInstalledAppsAndroid(device)
@@ -311,7 +312,7 @@ func setupIOSDevice(device *models.Device) {
 		resetLocalDevice(device)
 		return
 	}
-	device.WDAPort = fmt.Sprint(wdaPort)
+	device.WDAPort = wdaPort
 
 	streamPort, err := util.GetFreePort()
 	if err != nil {
@@ -319,7 +320,7 @@ func setupIOSDevice(device *models.Device) {
 		resetLocalDevice(device)
 		return
 	}
-	device.StreamPort = fmt.Sprint(streamPort)
+	device.StreamPort = streamPort
 
 	// Forward the WebDriverAgent server and stream to the host
 	go goIOSForward(device, device.WDAPort, "8100")
@@ -472,6 +473,11 @@ func resetLocalDevice(device *models.Device) {
 		device.CtxCancel()
 		device.ProviderState = "init"
 		device.IsResetting = false
+
+		// Free any used ports from the map where we keep them
+		delete(util.UsedPorts, device.WDAPort)
+		delete(util.UsedPorts, device.StreamPort)
+		delete(util.UsedPorts, device.AppiumPort)
 	}
 }
 
@@ -518,7 +524,7 @@ func startAppium(device *models.Device) {
 		resetLocalDevice(device)
 		return
 	}
-	device.AppiumPort = fmt.Sprint(appiumPort)
+	device.AppiumPort = appiumPort
 
 	cmd := exec.CommandContext(device.Context, "appium", "-p", device.AppiumPort, "--log-timestamp", "--session-override", "--log-no-colors", "--default-capabilities", string(capabilitiesJson))
 
@@ -564,9 +570,10 @@ func createGridTOML(device *models.Device) error {
 	configs := fmt.Sprintf(`{"appium:deviceName": "%s", "platformName": "%s", "appium:platformVersion": "%s", "appium:automationName": "%s"}`, device.Name, device.OS, device.OSVersion, automationName)
 
 	port, _ := util.GetFreePort()
+	portInt, _ := strconv.Atoi(port)
 	conf := models.AppiumTomlConfig{
 		Server: models.AppiumTomlServer{
-			Port: port,
+			Port: portInt,
 		},
 		Node: models.AppiumTomlNode{
 			DetectDrivers: false,

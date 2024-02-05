@@ -2,13 +2,13 @@ package util
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"sync"
 	"time"
 
@@ -16,50 +16,33 @@ import (
 	"github.com/shamanec/GADS-devices-provider/logger"
 )
 
-var ProjectDir string
 var mu sync.Mutex
-var usedPorts = make(map[int]bool)
+var UsedPorts = make(map[string]bool)
 var gadsStreamURL = "https://github.com/shamanec/GADS-Android-stream/releases/latest/download/gads-stream.apk"
 
-// Convert an interface{}(struct) into an indented JSON string
-func ConvertToJSONString(data interface{}) (string, error) {
-	b, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
-// Unmarshal provided JSON string into a struct
-func UnmarshalJSONString(jsonString string, v interface{}) error {
-	bs := []byte(jsonString)
-
-	err := json.Unmarshal(bs, v)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func GetFreePort() (port int, err error) {
+func GetFreePort() (string, error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	var a *net.TCPAddr
-	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
-		var l *net.TCPListener
-		if l, err = net.ListenTCP("tcp", a); err == nil {
-			defer l.Close()
-			port = l.Addr().(*net.TCPAddr).Port
-			if _, ok := usedPorts[port]; ok {
-				return GetFreePort()
-			}
-			usedPorts[port] = true
-			return port, nil
-		}
+	a, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return "", fmt.Errorf("Failed to resolve tcp address trying to get new port - %s", err)
 	}
-	return
+
+	var l *net.TCPListener
+	l, err = net.ListenTCP("tcp", a)
+	if err != nil {
+		return "", fmt.Errorf("Failed to listen tcp trying to get new port - %s", err)
+	}
+	defer l.Close()
+
+	portInt := l.Addr().(*net.TCPAddr).Port
+	portString := strconv.Itoa(portInt)
+	if _, ok := UsedPorts[portString]; ok {
+		return GetFreePort()
+	}
+	UsedPorts[portString] = true
+	return portString, nil
 }
 
 // Check if adb is available on the host by starting the server

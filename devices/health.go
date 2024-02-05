@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/shamanec/GADS-devices-provider/models"
-	"github.com/shamanec/GADS-devices-provider/util"
 )
 
 // Check if a device is healthy by checking Appium and WebDriverAgent(for iOS) services
@@ -36,7 +35,7 @@ func checkAppiumSession(device *models.Device) error {
 	responseBody, _ := io.ReadAll(response.Body)
 
 	var responseJson AppiumGetSessionsResponse
-	err = util.UnmarshalJSONString(string(responseBody), &responseJson)
+	err = json.Unmarshal(responseBody, &responseJson)
 	if err != nil {
 		device.AppiumSessionID = ""
 		return fmt.Errorf("checkAppiumSession: Failed unmarshaling response json - %s", err)
@@ -102,7 +101,7 @@ func createAppiumSession(device *models.Device) (string, error) {
 
 	responseBody, _ := io.ReadAll(response.Body)
 	var responseJson AppiumCreateSessionResponse
-	err = util.UnmarshalJSONString(string(responseBody), &responseJson)
+	err = json.Unmarshal(responseBody, &responseJson)
 	if err != nil {
 		return "", fmt.Errorf("createAppiumSession: Failed unmarshalling Appium session response - %s", err)
 	}

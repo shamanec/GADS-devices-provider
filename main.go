@@ -28,6 +28,8 @@ func main() {
 	// Parse command line flags
 	logLevel, nickname, mongoDb, providerFolder := parseFlags()
 
+	fmt.Println("Preparing...")
+
 	// Create a connection to Mongo
 	db.InitMongoClient(mongoDb)
 	defer db.MongoCtxCancel()
