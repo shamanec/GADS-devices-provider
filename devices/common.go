@@ -324,7 +324,7 @@ func setupIOSDevice(device *models.Device) {
 
 	// Forward the WebDriverAgent server and stream to the host
 	go goIOSForward(device, device.WDAPort, "8100")
-	go goIOSForward(device, device.StreamPort, "9100")
+	go goIOSForward(device, device.StreamPort, "9500")
 
 	isAboveIOS17, err := isAboveIOS17(device)
 	if err != nil {

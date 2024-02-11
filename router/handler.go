@@ -36,7 +36,7 @@ func HandleRequests() *gin.Engine {
 	deviceGroup.POST("/:udid/clearText", DeviceClearText)
 	deviceGroup.Any("/:udid/appium/*proxyPath", AppiumReverseProxy)
 	deviceGroup.GET("/:udid/android-stream", AndroidStreamProxy)
-	deviceGroup.GET("/:udid/ios-stream", IosStreamProxy)
+	deviceGroup.GET("/:udid/ios-stream", IosStreamProxy2)
 	deviceGroup.POST("/:udid/uninstallApp", UninstallApp)
 	deviceGroup.POST("/:udid/installApp", InstallApp)
 	deviceGroup.POST("/:udid/reset", ResetDevice)

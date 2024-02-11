@@ -1,14 +1,17 @@
 package router
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"log"
 	"mime"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -61,6 +64,61 @@ func AndroidStreamProxy(c *gin.Context) {
 		err = wsutil.WriteServerMessage(destConn, code, data)
 		if err != nil {
 			return
+		}
+	}
+}
+
+func findJPEGMarkers(data []byte) (int, int) {
+	start := bytes.Index(data, []byte{0xFF, 0xD8})
+	end := bytes.Index(data, []byte{0xFF, 0xD9})
+	return start, end
+}
+
+func IosStreamProxy2(c *gin.Context) {
+	udid := c.Param("udid")
+	device := devices.DeviceMap[udid]
+
+	// Create the new conn
+	wsConn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer wsConn.Close()
+
+	// Read data from device
+	server := "localhost:" + device.StreamPort
+	// Connect to the server
+	conn, err := net.Dial("tcp", server)
+	if err != nil {
+		fmt.Println("Error connecting:", err.Error())
+		os.Exit(1)
+	}
+	defer conn.Close()
+
+	var buffer []byte
+	for {
+		// Read data from the connection
+		tempBuf := make([]byte, 1024)
+		n, err := conn.Read(tempBuf)
+		if err != nil {
+			if err != io.EOF {
+				return
+			}
+			break
+		}
+
+		// Append the read bytes to the buffer
+		buffer = append(buffer, tempBuf[:n]...)
+
+		// Check if buffer has a complete JPEG image
+		start, end := findJPEGMarkers(buffer)
+		if start >= 0 && end > start {
+			// Process the JPEG image
+			jpegImage := buffer[start : end+2] // Include end marker
+			// Keep any remaining data in the buffer for the next image
+			buffer = buffer[end+2:]
+			// Send the jpeg over the websocket
+			wsutil.WriteServerBinary(wsConn, jpegImage)
 		}
 	}
 }
