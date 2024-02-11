@@ -21,6 +21,7 @@ type ProviderDB struct {
 	ProvidedDevices      int    `json:"provided_devices_count" bson:"provided_devices_count"`
 	WebDriverBinary      string `json:"-" bson:"-"`
 	SeleniumJarFile      string `json:"-" bson:"-"`
+	UseGadsIosStream     bool   `json:"use_gads_ios_stream" bson:"use_gads_ios_stream"`
 }
 
 type ProviderData struct {

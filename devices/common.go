@@ -324,7 +324,20 @@ func setupIOSDevice(device *models.Device) {
 
 	// Forward the WebDriverAgent server and stream to the host
 	go goIOSForward(device, device.WDAPort, "8100")
-	go goIOSForward(device, device.StreamPort, "9500")
+	if config.Config.EnvConfig.UseGadsIosStream {
+		go goIOSForward(device, device.StreamPort, "9500")
+	} else {
+		go goIOSForward(device, device.StreamPort, "9100")
+	}
+
+	if config.Config.EnvConfig.UseGadsIosStream {
+		err = startGadsIosBroadcastViaXCTestGoIOS(device)
+		if err != nil {
+			logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not start GADS broadcast with XCTest on device `%s` - %s", device.UDID, err))
+			resetLocalDevice(device)
+			return
+		}
+	}
 
 	isAboveIOS17, err := isAboveIOS17(device)
 	if err != nil {
