@@ -609,7 +609,18 @@ func createGridTOML(device *models.Device) error {
 
 func startGridNode(device *models.Device) {
 	time.Sleep(5 * time.Second)
-	cmd := exec.CommandContext(device.Context, "java", "-jar", fmt.Sprintf("%s/conf/%s", config.Config.EnvConfig.ProviderFolder, config.Config.EnvConfig.SeleniumJarFile), "node", fmt.Sprintf("--host %s", config.Config.EnvConfig.HostAddress), "--config", fmt.Sprintf("%s/conf/%s.toml", config.Config.EnvConfig.ProviderFolder, device.UDID), "--grid-url", config.Config.EnvConfig.SeleniumGrid)
+	cmd := exec.CommandContext(device.Context,
+		"java",
+		"-jar",
+		fmt.Sprintf("%s/conf/%s", config.Config.EnvConfig.ProviderFolder, config.Config.EnvConfig.SeleniumJarFile),
+		"node",
+		"--host",
+		config.Config.EnvConfig.HostAddress,
+		"--config",
+		fmt.Sprintf("%s/conf/%s.toml", config.Config.EnvConfig.ProviderFolder, device.UDID),
+		"--grid-url",
+		config.Config.EnvConfig.SeleniumGrid,
+	)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

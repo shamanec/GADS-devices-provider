@@ -36,6 +36,14 @@ or
 ### Golang
 * Install Go 1.21 or higher
 
+### Appium
+* Install Node > 16
+* Install Appium with `npm install -g appium`
+* Install Appium drivers
+    * iOS devices - `appium install driver xcuitestdriver`
+    * Android devices - `appium install driver uiautomator2`
+* Add any additional Appium dependencies like `ANDROID_HOME`(Android SDK) environment variable, Java, etc.
+
 ### Android debug bridge - Android only
 * Install `adb` (Android debug bridge). It should be available in PATH so it can be directly accessed via Terminal
 
@@ -43,13 +51,9 @@ or
 * On each device activate `Developer options`, open them and enable `Enable USB debugging`
 * Connect each device to the host - a popup will appear on the device to pair - allow it.
 
-### Appium
-* Install Node > 16
-* Install Appium with `npm install -g appium`
-* Install Appium drivers
-    * iOS devices - `appium install driver xcuitestdriver`
-    * Android devices - `appium install driver uiautomator2`
-* Add any additional Appium dependencies like `ANDROID_HOME`(Android SDK) environment variable, etc.
+### Enable Developer mode - iOS 16+ devices only
+* Open Settings > Privacy & Security > Developer Mode
+* Enable the toggle
 
 ### Set up go-ios - iOS only
 1. Download the latest release of [go-ios](https://github.com/danielpaulus/go-ios) and unzip it
@@ -58,7 +62,7 @@ or
 * On Windows - add it to system PATH so its available in Terminal
 
 ### GADS Android stream - Android only
-1. Starting the provider will automatically download the latests GADS-stream release and put the `apk` file in the `./conf` folder. If you want to "update" it, just delete the current file and restart the provider.  
+1. Starting the provider will automatically download the latest GADS-stream release and put the `apk` file in the `./conf` folder. If you want to "update" it, just delete the current file and restart the provider.
 
 ### Supervise devices - iOS only, optional
 **NB** You need a Mac machine to do this!  
@@ -103,9 +107,10 @@ The provider can be initialy set up or updated via the GADS UI.
 ### Devices config
 No configuration needed, at the moment the provider will attempt to provision every device connected to it.
 
-### Selenium Grid - not working, to do
-Devices can be automatically connected to Selenium Grid 4 instance. You need to create the Selenium Grid instance yourself and then setup the provider to connect to it.  
-To setup the provider download the latest Selenium server jar [release](https://github.com/SeleniumHQ/selenium/releases). Copy the downloaded jar and put it in the provider `./conf` folder.  
+### Selenium Grid
+Devices can be automatically connected to Selenium Grid 4 instance. You need to create the Selenium Grid hub instance yourself and then setup the provider to connect to it.  
+To setup the provider download the Selenium server jar [release](https://github.com/SeleniumHQ/selenium/releases/tag/selenium-4.13.0) v4.13. Copy the downloaded jar and put it in the provider `./conf` folder.  
+**NOTE** Currently versions above 4.13 don't work with Appium relay nodes and I haven't tested with lower versions. Use lower versions at your own risk.  
 
 # Additional setup notes
 ## Prepare WebDriverAgent file - Linux, Windows
@@ -125,7 +130,7 @@ You need a paid Apple Developer account to build and sign `WebDriverAgent`. With
 Alternatively:
 7. Copy the `WebDriverAgentRunner-Runner.app` instead of bundling to IPA. `go-ios` allows us to install `app` as well as `ipa` so this might be less painful.
 
-## Supervise the iOS devices - Linux, macOS, Windows
+## Supervise the iOS devices - Linux, macOS, Windows - optional
 This is a non-mandatory but a preferable step - it will reduce the needed device provisioning manual interactions  
 1. Install Apple Configurator 2 on your Mac.
 2. Attach your first device.
