@@ -133,7 +133,7 @@ func IosStreamProxy(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	streamUrl := "http://localhost:" + device.StreamPort
+	streamUrl := "http://localhost:" + device.WDAStreamPort
 
 	req, err := http.NewRequest("GET", streamUrl, nil)
 	if err != nil {

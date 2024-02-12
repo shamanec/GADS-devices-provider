@@ -316,28 +316,34 @@ func setupIOSDevice(device *models.Device) {
 
 	streamPort, err := util.GetFreePort()
 	if err != nil {
-		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent stream port for device `%v` - %v", device.UDID, err))
+		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free iOS stream port for device `%v` - %v", device.UDID, err))
 		resetLocalDevice(device)
 		return
 	}
 	device.StreamPort = streamPort
 
+	wdaStreamPort, err := util.GetFreePort()
+	if err != nil {
+		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not allocate free WebDriverAgent stream port for device `%v` - %v", device.UDID, err))
+		resetLocalDevice(device)
+		return
+	}
+	device.WDAStreamPort = wdaStreamPort
+
 	// Forward the WebDriverAgent server and stream to the host
 	go goIOSForward(device, device.WDAPort, "8100")
-	if config.Config.EnvConfig.UseGadsIosStream {
-		go goIOSForward(device, device.StreamPort, "9500")
-	} else {
-		go goIOSForward(device, device.StreamPort, "9100")
-	}
+	go goIOSForward(device, device.StreamPort, "9500")
+	go goIOSForward(device, device.WDAStreamPort, "9100")
 
-	if config.Config.EnvConfig.UseGadsIosStream {
-		err = startGadsIosBroadcastViaXCTestGoIOS(device)
-		if err != nil {
-			logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not start GADS broadcast with XCTest on device `%s` - %s", device.UDID, err))
-			resetLocalDevice(device)
-			return
-		}
-	}
+	// TODO - finalize this when we can use go-ios to start tests anywhere
+	//if config.Config.EnvConfig.UseGadsIosStream {
+	//	err = startGadsIosBroadcastViaXCTestGoIOS(device)
+	//	if err != nil {
+	//		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not start GADS broadcast with XCTest on device `%s` - %s", device.UDID, err))
+	//		resetLocalDevice(device)
+	//		return
+	//	}
+	//}
 
 	isAboveIOS17, err := isAboveIOS17(device)
 	if err != nil {
@@ -491,6 +497,7 @@ func resetLocalDevice(device *models.Device) {
 		delete(util.UsedPorts, device.WDAPort)
 		delete(util.UsedPorts, device.StreamPort)
 		delete(util.UsedPorts, device.AppiumPort)
+		delete(util.UsedPorts, device.WDAStreamPort)
 	}
 }
 
@@ -508,7 +515,7 @@ func startAppium(device *models.Device) {
 		capabilities = models.AppiumServerCapabilities{
 			UDID:                  device.UDID,
 			WdaURL:                "http://localhost:" + device.WDAPort,
-			WdaMjpegPort:          device.StreamPort,
+			WdaMjpegPort:          device.WDAStreamPort,
 			WdaLocalPort:          device.WDAPort,
 			WdaLaunchTimeout:      "120000",
 			WdaConnectionTimeout:  "240000",
