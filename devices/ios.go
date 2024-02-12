@@ -224,7 +224,7 @@ func startGadsIosBroadcastViaXCTestGoIOS(device *models.Device) error {
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("startGadsIosBroadcastViaXCTestGoIOS: Error creating stdoutpipe while running WebDriverAgent with go-ios for device `%v` - %v", device.UDID, err))
+		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("startGadsIosBroadcastViaXCTestGoIOS: Error creating stdoutpipe while starting GADS broadcast with XCUITest, xcodebuild and go-ios for device `%v` - %v", device.UDID, err))
 		resetLocalDevice(device)
 		return err
 	}
@@ -232,7 +232,7 @@ func startGadsIosBroadcastViaXCTestGoIOS(device *models.Device) error {
 	// Create a pipe to capture the command's error output
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("startGadsIosBroadcastViaXCTestGoIOS: Error creating stderrpipe while running WebDriverAgent with go-ios for device `%v` - %v", device.UDID, err))
+		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("startGadsIosBroadcastViaXCTestGoIOS: Error creating stderrpipe while starting GADS broadcast with XCUITest, xcodebuild and go-ios for device `%v` - %v", device.UDID, err))
 		resetLocalDevice(device)
 		return err
 	}
@@ -261,7 +261,7 @@ func startGadsIosBroadcastViaXCTestGoIOS(device *models.Device) error {
 
 	err = cmd.Wait()
 	if err != nil {
-		device.Logger.LogError("webdriveragent", fmt.Sprintf("startWdaWithGoIOS: Error waiting for `%s` to finish, it errored out or device `%v` was disconnected - %v", cmd.Path, device.UDID, err))
+		device.Logger.LogError("gads_broadcast_startup", fmt.Sprintf("startGadsIosBroadcastViaXCTestGoIOS: Error waiting for `%s` to finish, it errored out or device `%v` was disconnected - %v", cmd.Path, device.UDID, err))
 		resetLocalDevice(device)
 		return err
 	}

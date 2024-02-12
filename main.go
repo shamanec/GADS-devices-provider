@@ -35,7 +35,6 @@ func main() {
 	defer db.MongoCtxCancel()
 	// Set up the provider configuration
 	config.SetupConfig(nickname, providerFolder)
-	config.Config.EnvConfig.UseGadsIosStream = true
 	config.Config.EnvConfig.OS = runtime.GOOS
 	// Defer closing the Mongo connection on provider stopped
 	defer db.CloseMongoConn()
