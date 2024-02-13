@@ -101,15 +101,6 @@ func updateDevices() {
 				}
 				db.AddCollectionIndex("appium_logs", newDevice.UDID, appiumCollectionIndexModel)
 
-				// If Selenium Grid is used attempt to create a TOML file for the grid connection
-				if config.Config.EnvConfig.UseSeleniumGrid {
-					err := createGridTOML(newDevice)
-					if err != nil {
-						logger.ProviderLogger.Errorf("updateDevices: Selenium Grid use is enabled but couldn't create TOML for device `%s` - %s", connectedDevice.UDID, err)
-						continue
-					}
-				}
-
 				// Create logs directory for the device if it doesn't already exist
 				if _, err := os.Stat(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, newDevice.UDID)); os.IsNotExist(err) {
 					err = os.Mkdir(fmt.Sprintf("%s/logs/device_%s", config.Config.EnvConfig.ProviderFolder, newDevice.UDID), os.ModePerm)
@@ -199,6 +190,16 @@ func setupAndroidDevice(device *models.Device) {
 	}
 	getModel(device)
 	getAndroidOSVersion(device)
+
+	// If Selenium Grid is used attempt to create a TOML file for the grid connection
+	if config.Config.EnvConfig.UseSeleniumGrid {
+		err := createGridTOML(device)
+		if err != nil {
+			logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Selenium Grid use is enabled but couldn't create TOML for device `%s` - %s", device.UDID, err))
+			resetLocalDevice(device)
+			return
+		}
+	}
 
 	isStreamAvailable, err := isGadsStreamServiceRunning(device)
 	if err != nil {
@@ -296,6 +297,16 @@ func setupIOSDevice(device *models.Device) {
 	device.HardwareModel = plistValues["HardwareModel"].(string)
 	device.OSVersion = plistValues["ProductVersion"].(string)
 	device.IOSProductType = plistValues["ProductType"].(string)
+
+	// If Selenium Grid is used attempt to create a TOML file for the grid connection
+	if config.Config.EnvConfig.UseSeleniumGrid {
+		err := createGridTOML(device)
+		if err != nil {
+			logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Selenium Grid use is enabled but couldn't create TOML for device `%s` - %s", device.UDID, err))
+			resetLocalDevice(device)
+			return
+		}
+	}
 
 	// Update the screen dimensions of the device using data from the IOSDeviceDimensions map
 	err = updateScreenSize(device)
