@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/shamanec/GADS-devices-provider/config"
 )
 
 func HandleRequests() *gin.Engine {
@@ -11,10 +12,10 @@ func HandleRequests() *gin.Engine {
 	go sendProviderLiveData()
 
 	r := gin.Default()
-	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true
-	config.AllowHeaders = []string{"X-Auth-Token", "Content-Type"}
-	r.Use(cors.New(config))
+	rConfig := cors.DefaultConfig()
+	rConfig.AllowAllOrigins = true
+	rConfig.AllowHeaders = []string{"X-Auth-Token", "Content-Type"}
+	r.Use(cors.New(rConfig))
 
 	r.GET("/info", GetProviderData)
 	r.GET("/info-ws", GetProviderDataWS)
@@ -36,7 +37,11 @@ func HandleRequests() *gin.Engine {
 	deviceGroup.POST("/:udid/clearText", DeviceClearText)
 	deviceGroup.Any("/:udid/appium/*proxyPath", AppiumReverseProxy)
 	deviceGroup.GET("/:udid/android-stream", AndroidStreamProxy)
-	deviceGroup.GET("/:udid/ios-stream", IosStreamProxy)
+	if config.Config.EnvConfig.UseGadsIosStream {
+		deviceGroup.GET("/:udid/ios-stream", IosStreamProxy2)
+	} else {
+		deviceGroup.GET("/:udid/ios-stream", IosStreamProxy)
+	}
 	deviceGroup.POST("/:udid/uninstallApp", UninstallApp)
 	deviceGroup.POST("/:udid/installApp", InstallApp)
 	deviceGroup.POST("/:udid/reset", ResetDevice)

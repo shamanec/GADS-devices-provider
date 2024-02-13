@@ -219,6 +219,56 @@ func startWdaWithGoIOS(device *models.Device) {
 	}
 }
 
+func startGadsIosBroadcastViaXCTestGoIOS(device *models.Device) error {
+	cmd := exec.CommandContext(context.Background(), "ios", "runwda", "--bundleid=com.shamanec.iosstreamUITests.xctrunner", "--testrunnerbundleid=com.shamanec.iosstreamUITests.xctrunner", "--xctestconfig=iosstreamUITests.xctest", "--udid="+device.UDID)
+	// Create a pipe to capture the command's output
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("startGadsIosBroadcastViaXCTestGoIOS: Error creating stdoutpipe while starting GADS broadcast with XCUITest, xcodebuild and go-ios for device `%v` - %v", device.UDID, err))
+		resetLocalDevice(device)
+		return err
+	}
+
+	// Create a pipe to capture the command's error output
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("startGadsIosBroadcastViaXCTestGoIOS: Error creating stderrpipe while starting GADS broadcast with XCUITest, xcodebuild and go-ios for device `%v` - %v", device.UDID, err))
+		resetLocalDevice(device)
+		return err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		logger.ProviderLogger.LogError("device_setup", fmt.Sprintf("startGadsIosBroadcastViaXCTestGoIOS: Failed executing `%s` - %v", cmd.Path, err))
+		resetLocalDevice(device)
+		return err
+	}
+
+	// Create a combined reader from stdout and stderr
+	combinedReader := io.MultiReader(stderr, stdout)
+	// Create a scanner to read the command's output line by line
+	scanner := bufio.NewScanner(combinedReader)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "didFinishExecutingTestPlan received. Closing test.") {
+			if killErr := cmd.Process.Kill(); killErr != nil {
+				return killErr
+			}
+			return nil
+		}
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		device.Logger.LogError("gads_broadcast_startup", fmt.Sprintf("startGadsIosBroadcastViaXCTestGoIOS: Error waiting for `%s` to finish, it errored out or device `%v` was disconnected - %v", cmd.Path, device.UDID, err))
+		resetLocalDevice(device)
+		return err
+	}
+
+	return nil
+}
+
 func mountDeveloperImageIOS(device *models.Device) error {
 	basedir := fmt.Sprintf("%s/devimages", config.Config.EnvConfig.ProviderFolder)
 
