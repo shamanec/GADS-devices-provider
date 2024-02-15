@@ -172,7 +172,7 @@ func createWebDriverAgentSession(device *models.Device) error {
 func startWdaWithGoIOS(device *models.Device) {
 
 	cmd := exec.CommandContext(context.Background(), "ios", "runwda", "--bundleid="+config.Config.EnvConfig.WdaBundleID, "--testrunnerbundleid="+config.Config.EnvConfig.WdaBundleID, "--xctestconfig=WebDriverAgentRunner.xctest", "--udid="+device.UDID)
-
+	logger.ProviderLogger.LogDebug("device_setup", fmt.Sprintf("startWdaWithGoIOS: Starting with command `%v`", cmd.Args))
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -204,7 +204,7 @@ func startWdaWithGoIOS(device *models.Device) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// device.Logger.LogDebug("webdriveragent", strings.TrimSpace(line))
+		device.Logger.LogDebug("webdriveragent", strings.TrimSpace(line))
 
 		if strings.Contains(line, "ServerURLHere") {
 			// device.DeviceIP = strings.Split(strings.Split(line, "//")[1], ":")[0]
@@ -362,9 +362,9 @@ func installAppWithPathIOS(device *models.Device, path string) error {
 	}
 
 	cmd := exec.CommandContext(device.Context, "ios", "install", fmt.Sprintf("--path=%s", path), "--udid="+device.UDID)
-	fmt.Println(cmd.Args)
+	logger.ProviderLogger.LogDebug("install_app", fmt.Sprintf("installAppWithPathIOS: Installing with command `%s`", cmd.Args))
 	if err := cmd.Run(); err != nil {
-		device.Logger.LogError("uninstall_app", fmt.Sprintf("Failed executing `%s` - %v", cmd.Path, err))
+		device.Logger.LogError("install_app", fmt.Sprintf("Failed executing `%s` - %v", cmd.Path, err))
 		return err
 	}
 
