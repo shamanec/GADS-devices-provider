@@ -561,6 +561,7 @@ func startAppium(device *models.Device) {
 
 	cmd := exec.CommandContext(device.Context, "appium", "-p", device.AppiumPort, "--log-timestamp", "--session-override", "--log-no-colors", "--default-capabilities", string(capabilitiesJson))
 
+	logger.ProviderLogger.LogDebug("device_setup", fmt.Sprintf("Starting Appium on device `%s` with command `%s`", device.UDID, cmd.Args))
 	// Create a pipe to capture the command's output
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
