@@ -356,40 +356,42 @@ func setupIOSDevice(device *models.Device) {
 	//	}
 	//}
 
-	isAboveIOS17, err := isAboveIOS17(device)
-	if err != nil {
-		device.Logger.LogError("ios_device_setup", fmt.Sprintf("Could not determine if device `%v` is above iOS 17 - %v", device.UDID, err))
-		resetLocalDevice(device)
-		return
-	}
+	//isAboveIOS17, err := isAboveIOS17(device)
+	//if err != nil {
+	//	device.Logger.LogError("ios_device_setup", fmt.Sprintf("Could not determine if device `%v` is above iOS 17 - %v", device.UDID, err))
+	//	resetLocalDevice(device)
+	//	return
+	//}
 
-	if isAboveIOS17 {
-		if config.Config.EnvConfig.OS != "darwin" {
-			logger.ProviderLogger.LogError("ios_device_setup", "Using iOS >= 17 devices on Linux and Windows is not supported")
-			resetLocalDevice(device)
-			return
-		}
-		// Start WebDriverAgent with `xcodebuild`
-		go startWdaWithXcodebuild(device)
-	} else {
-		wdaPath := ""
-		// If on macOS use the WebDriverAgent app from the xcodebuild output
-		if config.Config.EnvConfig.OS == "darwin" {
-			wdaPath = config.Config.EnvConfig.WdaRepoPath + "build/Build/Products/Debug-iphoneos/WebDriverAgentRunner-Runner.app"
-		} else {
-			// If on Linux or Windows use the prebuilt and provided WebDriverAgent.ipa/app file
-			wdaPath = fmt.Sprintf("%s/conf/%s", config.Config.EnvConfig.ProviderFolder, config.Config.EnvConfig.WebDriverBinary)
-		}
+	go startWdaWithXcodebuild(device)
 
-		err = installAppWithPathIOS(device, wdaPath)
-		if err != nil {
-			logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not install WebDriverAgent on device `%s` - %s", device.UDID, err))
-			resetLocalDevice(device)
-			return
-		}
-
-		go startWdaWithGoIOS(device)
-	}
+	//if isAboveIOS17 {
+	//	if config.Config.EnvConfig.OS != "darwin" {
+	//		logger.ProviderLogger.LogError("ios_device_setup", "Using iOS >= 17 devices on Linux and Windows is not supported")
+	//		resetLocalDevice(device)
+	//		return
+	//	}
+	//	// Start WebDriverAgent with `xcodebuild`
+	//	go startWdaWithXcodebuild(device)
+	//} else {
+	//	wdaPath := ""
+	//	// If on macOS use the WebDriverAgent app from the xcodebuild output
+	//	if config.Config.EnvConfig.OS == "darwin" {
+	//		wdaPath = config.Config.EnvConfig.WdaRepoPath + "build/Build/Products/Debug-iphoneos/WebDriverAgentRunner-Runner.app"
+	//	} else {
+	//		// If on Linux or Windows use the prebuilt and provided WebDriverAgent.ipa/app file
+	//		wdaPath = fmt.Sprintf("%s/conf/%s", config.Config.EnvConfig.ProviderFolder, config.Config.EnvConfig.WebDriverBinary)
+	//	}
+	//
+	//	err = installAppWithPathIOS(device, wdaPath)
+	//	if err != nil {
+	//		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("Could not install WebDriverAgent on device `%s` - %s", device.UDID, err))
+	//		resetLocalDevice(device)
+	//		return
+	//	}
+	//
+	//	go startWdaWithGoIOS(device)
+	//}
 
 	// Wait until WebDriverAgent successfully starts
 	select {
