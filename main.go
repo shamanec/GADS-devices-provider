@@ -52,6 +52,11 @@ func main() {
 
 	// If running on macOS
 	if config.Config.EnvConfig.OS == "darwin" && config.Config.EnvConfig.ProvideIOS {
+		// Add a trailing slash to WDA repo folder if its missing
+		if !strings.HasSuffix(config.Config.EnvConfig.WdaRepoPath, "/") {
+			fmt.Println("Adding slash")
+			config.Config.EnvConfig.WdaRepoPath = fmt.Sprintf("%s/", config.Config.EnvConfig.WdaRepoPath)
+		}
 		// Check if xcodebuild is available - Xcode and command line tools should be installed
 		if !util.XcodebuildAvailable() {
 			log.Fatal("xcodebuild is not available, you need to set up the host as explained in the readme")
