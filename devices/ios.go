@@ -50,8 +50,15 @@ func goIOSForward(device *models.Device, hostPort string, devicePort string) {
 
 // Start the prebuilt WebDriverAgent with `xcodebuild`
 func startWdaWithXcodebuild(device *models.Device) {
-	cmd := exec.CommandContext(device.Context, "xcodebuild", "-project", "WebDriverAgent.xcodeproj", "-scheme", "WebDriverAgentRunner", "-destination", "platform=iOS,id="+device.UDID, "test-without-building", "-allowProvisioningUpdates")
+	cmd := exec.CommandContext(device.Context, "xcodebuild",
+		"-project", "WebDriverAgent.xcodeproj",
+		"-scheme", "WebDriverAgentRunner",
+		"-destination", "platform=iOS,id="+device.UDID,
+		"-derivedDataPath", "./build",
+		"test-without-building",
+		"-allowProvisioningUpdates")
 	cmd.Dir = config.Config.EnvConfig.WdaRepoPath
+	logger.ProviderLogger.LogDebug("webdriveragent_xcodebuild", fmt.Sprintf("Starting WebDriverAgent with command `%v`", cmd.Args))
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
