@@ -23,8 +23,12 @@ import (
 
 // Forward iOS device ports using `go-ios` CLI, for some reason using the library doesn't work properly
 func goIOSForward(device *models.Device, hostPort string, devicePort string) {
-	cmd := exec.CommandContext(device.Context, "ios", "forward", hostPort, devicePort, "--udid="+device.UDID)
-
+	cmd := exec.CommandContext(device.Context, "ios",
+		"forward",
+		hostPort,
+		devicePort,
+		"--udid="+device.UDID)
+	logger.ProviderLogger.LogDebug("ios_device_setup", fmt.Sprintf("goIOSForward: Forwarding port with command `%s`", cmd.Args))
 	// Create a pipe to capture the command's output
 	_, err := cmd.StdoutPipe()
 	if err != nil {
@@ -58,7 +62,7 @@ func startWdaWithXcodebuild(device *models.Device) {
 		"test-without-building",
 		"-allowProvisioningUpdates")
 	cmd.Dir = config.Config.EnvConfig.WdaRepoPath
-	logger.ProviderLogger.LogDebug("webdriveragent_xcodebuild", fmt.Sprintf("Starting WebDriverAgent with command `%v`", cmd.Args))
+	logger.ProviderLogger.LogDebug("webdriveragent_xcodebuild", fmt.Sprintf("startWdaWithXcodebuild: Starting WebDriverAgent with command `%v`", cmd.Args))
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -99,7 +103,7 @@ func startWdaWithXcodebuild(device *models.Device) {
 
 // Create a new WebDriverAgent session and update stream settings
 func updateWebDriverAgent(device *models.Device) error {
-	logger.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Updating WebDriverAgent session and mjpeg stream settings for device `%s`", device.UDID))
+	logger.ProviderLogger.LogDebug("ios_device_setup", fmt.Sprintf("updateWebDriverAgent: Updating WebDriverAgent session and mjpeg stream settings for device `%s`", device.UDID))
 
 	err := createWebDriverAgentSession(device)
 	if err != nil {
@@ -127,6 +131,7 @@ func updateWebDriverAgentStreamSettings(device *models.Device) error {
 		return err
 	}
 
+	// TODO - potentially read the body to supply in the error
 	if response.StatusCode != 200 {
 		return fmt.Errorf("updateWebDriverAgentStreamSettings: Could not successfully update WDA stream settings, status code=%v", response.StatusCode)
 	}
@@ -136,7 +141,6 @@ func updateWebDriverAgentStreamSettings(device *models.Device) error {
 
 // Create a new WebDriverAgent session
 func createWebDriverAgentSession(device *models.Device) error {
-	// TODO see if this JSON can be simplified
 	requestString := `{
 		"capabilities": {
 			"firstMatch": [{}],
@@ -176,8 +180,8 @@ func createWebDriverAgentSession(device *models.Device) error {
 	return nil
 }
 
+// Start WebDriverAgent with the go-ios binary
 func startWdaWithGoIOS(device *models.Device) {
-
 	cmd := exec.CommandContext(context.Background(), "ios", "runwda", "--bundleid="+config.Config.EnvConfig.WdaBundleID, "--testrunnerbundleid="+config.Config.EnvConfig.WdaBundleID, "--xctestconfig=WebDriverAgentRunner.xctest", "--udid="+device.UDID)
 	logger.ProviderLogger.LogDebug("device_setup", fmt.Sprintf("startWdaWithGoIOS: Starting with command `%v`", cmd.Args))
 	// Create a pipe to capture the command's output
@@ -226,6 +230,7 @@ func startWdaWithGoIOS(device *models.Device) {
 	}
 }
 
+// Start an XCUITest(similar to WebDriverAgent) that will enable the broadcast stream if the GADS app is used
 func startGadsIosBroadcastViaXCTestGoIOS(device *models.Device) error {
 	cmd := exec.CommandContext(context.Background(), "ios", "runwda", "--bundleid=com.shamanec.iosstreamUITests.xctrunner", "--testrunnerbundleid=com.shamanec.iosstreamUITests.xctrunner", "--xctestconfig=iosstreamUITests.xctest", "--udid="+device.UDID)
 	// Create a pipe to capture the command's output
@@ -276,6 +281,7 @@ func startGadsIosBroadcastViaXCTestGoIOS(device *models.Device) error {
 	return nil
 }
 
+// Mount a developer disk image on an iOS device with the go-ios library
 func mountDeveloperImageIOS(device *models.Device) error {
 	basedir := fmt.Sprintf("%s/devimages", config.Config.EnvConfig.ProviderFolder)
 
@@ -293,6 +299,7 @@ func mountDeveloperImageIOS(device *models.Device) error {
 	return nil
 }
 
+// Pair an iOS device with host with/without supervision
 func pairIOS(device *models.Device) error {
 	logger.ProviderLogger.LogInfo("ios_device_setup", fmt.Sprintf("Pairing device `%s`", device.UDID))
 
@@ -314,6 +321,7 @@ func pairIOS(device *models.Device) error {
 	return nil
 }
 
+// Get all installed apps on an iOS device
 func getInstalledAppsIOS(device *models.Device) []string {
 	var installedApps []string
 	cmd := exec.CommandContext(device.Context, "ios", "apps", "--udid="+device.UDID)
@@ -350,6 +358,7 @@ func getInstalledAppsIOS(device *models.Device) []string {
 	return installedApps
 }
 
+// Uninstall an app on an iOS device by bundle identifier
 func uninstallAppIOS(device *models.Device, bundleID string) error {
 	cmd := exec.CommandContext(device.Context, "ios", "uninstall", bundleID, "--udid="+device.UDID)
 	err := cmd.Run()
@@ -361,6 +370,7 @@ func uninstallAppIOS(device *models.Device, bundleID string) error {
 	return nil
 }
 
+// Install app with the go-ios binary from provided path
 func installAppWithPathIOS(device *models.Device, path string) error {
 	if config.Config.EnvConfig.OS == "windows" {
 		if strings.HasPrefix(path, "./") {
@@ -388,6 +398,7 @@ func installAppIOS(device *models.Device, appName string) error {
 	return nil
 }
 
+// Check if a device is above iOS 17
 func isAboveIOS17(device *models.Device) (bool, error) {
 	majorVersion := strings.Split(device.OSVersion, ".")[0]
 	convertedVersion, err := strconv.Atoi(majorVersion)
