@@ -1,5 +1,7 @@
 ## Introduction
 
+[![](https://dcbadge.vercel.app/api/server/5amWvknKQd)](https://discord.gg/5amWvknKQd)  
+
 * GADS-device-provider is a server that sets up devices for [Appium](https://github.com/appium/appium) tests execution and remote control with [GADS](https://github.com/shamanec/GADS).
 * Supports both Android and iOS devices
 * Supports Linux, macOS and Windows - notes below
