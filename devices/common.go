@@ -168,7 +168,6 @@ func updateDevices() {
 // Create Mongo collections for all devices for logging
 // Create a map of *device.LocalDevice for easier access across the code
 func Setup() {
-	createMongoLogCollectionsForAllDevices()
 	if config.Config.EnvConfig.ProvideAndroid {
 		err := util.CheckGadsStreamAndDownload()
 		if err != nil {

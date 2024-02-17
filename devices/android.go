@@ -42,6 +42,7 @@ func installGadsStream(device *models.Device) error {
 	return nil
 }
 
+// Uninstall the GADS stream app from the Android device
 func uninstallGadsStream(device *models.Device) error {
 	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Uninstalling GADS-stream from device `%v`", device.UDID))
 
@@ -85,6 +86,7 @@ func pressHomeButton(device *models.Device) {
 	}
 }
 
+// Forward the GADS stream tcp to a host port that is already assigned for the device
 func forwardGadsStream(device *models.Device) error {
 	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Trying to forward GADS-stream port(1991) to host port `%v` for device `%s`", device.StreamPort, device.UDID))
 
@@ -97,6 +99,7 @@ func forwardGadsStream(device *models.Device) error {
 	return nil
 }
 
+// Get the Android device screen size with adb
 func updateAndroidScreenSizeADB(device *models.Device) error {
 	logger.ProviderLogger.LogInfo("android_device_setup", fmt.Sprintf("Attempting to automatically update the screen size for device `%v`", device.UDID))
 
@@ -137,6 +140,7 @@ func updateAndroidScreenSizeADB(device *models.Device) error {
 	return nil
 }
 
+// Get all installed apps on an Android device
 func getInstalledAppsAndroid(device *models.Device) []string {
 	var installedApps []string
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "shell", "cmd", "package", "list", "packages", "-3")
@@ -162,6 +166,7 @@ func getInstalledAppsAndroid(device *models.Device) []string {
 	return installedApps
 }
 
+// Uninstall app from Android device by package name
 func uninstallAppAndroid(device *models.Device, packageName string) error {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "uninstall", packageName)
 
@@ -173,6 +178,7 @@ func uninstallAppAndroid(device *models.Device, packageName string) error {
 	return nil
 }
 
+// Install app on Android device by apk name
 func installAppAndroid(device *models.Device, appName string) error {
 	cmd := exec.CommandContext(device.Context, "adb", "-s", device.UDID, "install", "-r", fmt.Sprintf("%s/apps/%s", config.Config.EnvConfig.ProviderFolder, appName))
 
