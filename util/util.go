@@ -61,11 +61,24 @@ func AdbAvailable() bool {
 
 // Check if xcodebuild is available on the host by checking its version
 func XcodebuildAvailable() bool {
-	logger.ProviderLogger.LogDebug("provider", "Checking if xcodebuild is available on host")
+	logger.ProviderLogger.LogDebug("provider", "Checking if xcodebuild is available on the host")
 
 	cmd := exec.Command("xcodebuild", "-version")
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	if err != nil {
 		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("xcodebuildAvailable: xcodebuild is not available or command failed - %s", err))
+		return false
+	}
+	return true
+}
+
+func AppiumAvailable() bool {
+	logger.ProviderLogger.LogDebug("provider", "Checking if Appium is available on the host")
+
+	cmd := exec.Command("appium", "--version")
+	err := cmd.Run()
+	if err != nil {
+		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("AppiumAvailable: Appium is not available or command failed - %s", err))
 		return false
 	}
 	return true
@@ -76,7 +89,8 @@ func GoIOSAvailable() bool {
 	logger.ProviderLogger.LogDebug("provider", "Checking if go-ios binary is available on host")
 
 	cmd := exec.Command("ios", "-h")
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	if err != nil {
 		logger.ProviderLogger.LogDebug("provider", fmt.Sprintf("goIOSAvailable: go-ios is not available on host or command failed - %s", err))
 		return false
 	}

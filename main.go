@@ -50,32 +50,47 @@ func main() {
 	logger.SetupLogging(logLevel)
 	logger.ProviderLogger.LogInfo("provider_setup", fmt.Sprintf("Starting provider on port `%v`", config.Config.EnvConfig.Port))
 
-	// If running on macOS
+	if !util.AppiumAvailable() {
+		log.Fatal("Appium is not available, set it up on the host as explained in the readme")
+	}
+
+	// If running on macOS and iOS device provisioning is enabled
 	if config.Config.EnvConfig.OS == "darwin" && config.Config.EnvConfig.ProvideIOS {
 		// Add a trailing slash to WDA repo folder if its missing
+		// To avoid issues with the configuration
 		if !strings.HasSuffix(config.Config.EnvConfig.WdaRepoPath, "/") {
-			fmt.Println("Adding slash")
+			logger.ProviderLogger.LogDebug("provider_setup", "Provided WebDriverAgent repo path has no trailing slash, adding it")
 			config.Config.EnvConfig.WdaRepoPath = fmt.Sprintf("%s/", config.Config.EnvConfig.WdaRepoPath)
 		}
-		// Check if xcodebuild is available - Xcode and command line tools should be installed
-		if !util.XcodebuildAvailable() {
-			log.Fatal("xcodebuild is not available, you need to set up the host as explained in the readme")
-		}
 
-		if !util.GoIOSAvailable() {
-			log.Fatal("provider", "go-ios is not available, you need to set up the host as explained in the readme")
-		}
-
-		// Check if provided WebDriverAgent repo path exists
+		// Check if the provided WebDriverAgent repo path exists
 		_, err := os.Stat(config.Config.EnvConfig.WdaRepoPath)
 		if err != nil {
 			log.Fatalf("`%s` does not exist, you need to provide valid path to the WebDriverAgent repo in the provider configuration", config.Config.EnvConfig.WdaRepoPath)
 		}
 
+		// Check if xcodebuild is available - Xcode and command line tools should be installed
+		if !util.XcodebuildAvailable() {
+			log.Fatal("xcodebuild is not available, you need to set it up on the host as explained in the readme")
+		}
+
+		// Check if the `go-ios` binary is available on PATH as explained in the setup readme
+		if !util.GoIOSAvailable() {
+			log.Fatal("go-ios is not available, you need to set it up on the host as explained in the readme")
+		}
+
 		// Build the WebDriverAgent using xcodebuild from the provided repo path
 		err = util.BuildWebDriverAgent()
 		if err != nil {
-			log.Fatalf("updateDevices: Could not build WebDriverAgent for testing - %s", err)
+			log.Fatalf("Could not build WebDriverAgent for testing - %s", err)
+		}
+	}
+
+	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa/app
+	if config.Config.EnvConfig.OS != "darwin" && config.Config.EnvConfig.ProvideIOS {
+		err := configureWebDriverBinary(providerFolder)
+		if err != nil {
+			log.Fatalf("You should put signed WebDriverAgent.ipa/app file in the `conf` folder in `%s`", providerFolder)
 		}
 	}
 
@@ -96,13 +111,10 @@ func main() {
 		configureSeleniumSettings()
 	}
 
-	// If on Linux or Windows and iOS devices provision enabled check for WebDriverAgent.ipa/app
-	configureWebDriverBinary(providerFolder)
-
-	// Start a goroutine that will update devices on provider start
+	// Start a goroutine that will start updating devices on provider start
 	go devices.Listener()
 
-	// Start the provider
+	// Start the provider server
 	err := startHTTPServer()
 	if err != nil {
 		log.Fatal("HTTP server stopped")
@@ -151,8 +163,8 @@ func parseFlags() (string, string, string, string) {
 
 	// Print out some info on startup, maybe a flag was missed
 	fmt.Printf("Current log level: %s, use the --log-level flag to change it\n", *logLevel)
-	fmt.Printf("Will use `%s` as address for MongoDB instance, use the --mongo-db flag to change it\n", *mongoDb)
-	fmt.Printf("Will use `%s` as provider folder, use the --provider-folder flag to change it\n", *providerFolder)
+	fmt.Printf("MongoDB instance: %s, use the --mongo-db flag to change it\n", *mongoDb)
+	fmt.Printf("Provider folder: %s, use the --provider-folder flag to change it\n", *providerFolder)
 
 	// Remove trailing slash if provided, all code assumes it's not there
 	*providerFolder, _ = strings.CutSuffix(*providerFolder, "/")
@@ -182,22 +194,21 @@ func configureSeleniumSettings() {
 }
 
 // Check for and set up WebDriverAgent.ipa/app binary in config
-func configureWebDriverBinary(providerFolder string) {
-	if config.Config.EnvConfig.OS != "darwin" && config.Config.EnvConfig.ProvideIOS {
-		// Check for WDA ipa, then WDA app availability
-		ipaPath := fmt.Sprintf("%s/conf/WebDriverAgent.ipa", providerFolder)
-		_, err := os.Stat(ipaPath)
-		if err != nil {
-			appPath := fmt.Sprintf("%s/conf/WebDriverAgent.app", providerFolder)
-			_, err = os.Stat(appPath)
-			if os.IsNotExist(err) {
-				log.Fatalf("You should put signed WebDriverAgent.ipa/app file in the `conf` folder in `%s`", providerFolder)
-			}
-			config.Config.EnvConfig.WebDriverBinary = "WebDriverAgent.app"
-		} else {
-			config.Config.EnvConfig.WebDriverBinary = "WebDriverAgent.ipa"
+func configureWebDriverBinary(providerFolder string) error {
+	// Check for WDA ipa, then WDA app availability
+	ipaPath := fmt.Sprintf("%s/conf/WebDriverAgent.ipa", providerFolder)
+	_, err := os.Stat(ipaPath)
+	if err != nil {
+		appPath := fmt.Sprintf("%s/conf/WebDriverAgent.app", providerFolder)
+		_, err = os.Stat(appPath)
+		if os.IsNotExist(err) {
+			return err
 		}
+		config.Config.EnvConfig.WebDriverBinary = "WebDriverAgent.app"
+	} else {
+		config.Config.EnvConfig.WebDriverBinary = "WebDriverAgent.ipa"
 	}
+	return nil
 }
 
 // Periodically send current provider data updates to MongoDB
