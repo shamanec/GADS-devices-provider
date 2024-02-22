@@ -70,7 +70,7 @@ func appiumTap(device *models.Device, x float64, y float64) (*http.Response, err
 					},
 					{
 						Type:     "pause",
-						Duration: 50,
+						Duration: 10,
 					},
 					{
 						Type:     "pointerUp",

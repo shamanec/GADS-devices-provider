@@ -59,8 +59,7 @@ func startWdaWithXcodebuild(device *models.Device) {
 		"-scheme", "WebDriverAgentRunner",
 		"-destination", "platform=iOS,id="+device.UDID,
 		"-derivedDataPath", "./build",
-		"test-without-building",
-		"-allowProvisioningUpdates")
+		"test-without-building")
 	cmd.Dir = config.Config.EnvConfig.WdaRepoPath
 	logger.ProviderLogger.LogDebug("webdriveragent_xcodebuild", fmt.Sprintf("startWdaWithXcodebuild: Starting WebDriverAgent with command `%v`", cmd.Args))
 
