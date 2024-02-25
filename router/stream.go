@@ -62,7 +62,7 @@ func findJPEGMarkers(data []byte) (int, int) {
 	return start, end
 }
 
-func IosStreamProxy2(c *gin.Context) {
+func IosStreamProxyGADS(c *gin.Context) {
 	udid := c.Param("udid")
 	device := devices.DeviceMap[udid]
 
@@ -111,7 +111,7 @@ func IosStreamProxy2(c *gin.Context) {
 	}
 }
 
-func IosStreamProxy(c *gin.Context) {
+func IosStreamProxyWDA(c *gin.Context) {
 	udid := c.Param("udid")
 	device := devices.DeviceMap[udid]
 
