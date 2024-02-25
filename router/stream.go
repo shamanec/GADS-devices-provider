@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/shamanec/GADS-devices-provider/logger"
 	"io"
-	"log"
 	"mime"
 	"mime/multipart"
 	"net"
@@ -26,43 +26,31 @@ func AndroidStreamProxy(c *gin.Context) {
 
 	conn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
 	if err != nil {
-		fmt.Println(err)
+		logger.ProviderLogger.LogError("AndroidStreamProxy", fmt.Sprintf("Failed upgrading http to ws for device `%s` - %s", device.UDID, err))
+		return
 	}
-
 	defer conn.Close()
 
 	u := url.URL{Scheme: "ws", Host: "localhost:" + device.StreamPort, Path: ""}
 	destConn, _, _, err := ws.DefaultDialer.Dial(context.Background(), u.String())
 	if err != nil {
-		log.Println("Destination WebSocket connection error:", err)
+		logger.ProviderLogger.LogError("AndroidStreamProxy", fmt.Sprintf("Failed connecting to device `%s` stream port - %s", device.UDID, err))
 		return
 	}
 	defer destConn.Close()
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for {
-			data, code, err := wsutil.ReadServerData(destConn)
-			if err != nil {
-				return
-			}
-
-			err = wsutil.WriteServerMessage(conn, code, data)
-			if err != nil {
-				return
-			}
-		}
-	}()
-
+	// Read messages(jpegs) from the device streaming websocket server
+	// And send them to the provider websocket client
 	for {
-		data, code, err := wsutil.ReadClientData(conn)
+		data, code, err := wsutil.ReadServerData(destConn)
 		if err != nil {
+			logger.ProviderLogger.LogError("AndroidStreamProxy", fmt.Sprintf("Failed reading data from device `%s` ws conn - %s", device.UDID, err))
 			return
 		}
 
-		err = wsutil.WriteServerMessage(destConn, code, data)
+		err = wsutil.WriteServerMessage(conn, code, data)
 		if err != nil {
+			logger.ProviderLogger.LogError("AndroidStreamProxy", fmt.Sprintf("Failed writing data to provider ws connection for device `%s` - %s", device.UDID, err))
 			return
 		}
 	}
