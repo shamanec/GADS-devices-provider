@@ -38,9 +38,9 @@ func HandleRequests() *gin.Engine {
 	deviceGroup.Any("/:udid/appium/*proxyPath", AppiumReverseProxy)
 	deviceGroup.GET("/:udid/android-stream", AndroidStreamProxy)
 	if config.Config.EnvConfig.UseGadsIosStream {
-		deviceGroup.GET("/:udid/ios-stream", IosStreamProxyWDA)
-	} else {
 		deviceGroup.GET("/:udid/ios-stream", IosStreamProxyGADS)
+	} else {
+		deviceGroup.GET("/:udid/ios-stream", IosStreamProxyWDA)
 	}
 	deviceGroup.POST("/:udid/uninstallApp", UninstallApp)
 	deviceGroup.POST("/:udid/installApp", InstallApp)

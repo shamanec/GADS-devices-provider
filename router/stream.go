@@ -106,7 +106,10 @@ func IosStreamProxyGADS(c *gin.Context) {
 			// Keep any remaining data in the buffer for the next image
 			buffer = buffer[end+2:]
 			// Send the jpeg over the websocket
-			wsutil.WriteServerBinary(wsConn, jpegImage)
+			err = wsutil.WriteServerBinary(wsConn, jpegImage)
+			if err != nil {
+				return
+			}
 		}
 	}
 }
