@@ -82,9 +82,11 @@ func monitorConnClose(client net.Conn) {
 func sendProviderLiveData() {
 	for {
 		var deviceData []*models.Device
+		mu.Lock()
 		for _, device := range devices.DeviceMap {
 			deviceData = append(deviceData, device)
 		}
+		mu.Unlock()
 
 		var providerData models.ProviderData
 		providerData.ProviderData = config.Config.EnvConfig
