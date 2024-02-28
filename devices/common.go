@@ -497,7 +497,7 @@ func getConnectedDevicesAndroid() []models.ConnectedDevice {
 }
 
 func resetLocalDevice(device *models.Device) {
-	if !device.IsResetting {
+	if !device.IsResetting && device.ProviderState != "init" {
 		logger.ProviderLogger.LogInfo("provider", fmt.Sprintf("Resetting LocalDevice for device `%v` after error. Cancelling context, setting ProviderState to `init`, Healthy to `false` and updating the DB", device.UDID))
 
 		device.IsResetting = true

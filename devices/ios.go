@@ -27,18 +27,11 @@ func goIOSForward(device *models.Device, hostPort string, devicePort string) {
 		"forward",
 		hostPort,
 		devicePort,
-		"--udid="+device.UDID)
+		fmt.Sprintf("--udid=%s", device.UDID))
 	logger.ProviderLogger.LogDebug("ios_device_setup", fmt.Sprintf("goIOSForward: Forwarding port with command `%s`", cmd.Args))
-	// Create a pipe to capture the command's output
-	_, err := cmd.StdoutPipe()
-	if err != nil {
-		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("goIOSForward: Could not create stdoutpipe executing `ios forward` for device `%v` - %v", device.UDID, err))
-		resetLocalDevice(device)
-		return
-	}
 
 	// Start the port forward command
-	err = cmd.Start()
+	err := cmd.Start()
 	if err != nil {
 		logger.ProviderLogger.LogError("ios_device_setup", fmt.Sprintf("goIOSForward: Error executing `ios forward` for device `%v` - %v", device.UDID, err))
 		resetLocalDevice(device)
@@ -81,7 +74,7 @@ func startWdaWithXcodebuild(device *models.Device) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// device.Logger.LogInfo("webdriveragent", strings.TrimSpace(line))
+		//device.Logger.LogInfo("webdriveragent", strings.TrimSpace(line))
 
 		if strings.Contains(line, "Restarting after") {
 			resetLocalDevice(device)
