@@ -65,13 +65,16 @@ func findJPEGMarkers(data []byte) (int, int) {
 func IosStreamProxyGADS(c *gin.Context) {
 	udid := c.Param("udid")
 	device := devices.DeviceMap[udid]
+	jpegChannel := make(chan []byte, 15)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Create the new conn
 	wsConn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
 	if err != nil {
-		fmt.Println(err)
+		logger.ProviderLogger.LogError("ios_stream", fmt.Sprintf("Failed to upgrade http conn to ws when starting streaming for device `%s` - %s", udid, err))
+		return
 	}
-	defer wsConn.Close()
 
 	// Read data from device
 	server := "localhost:" + device.StreamPort
@@ -81,34 +84,66 @@ func IosStreamProxyGADS(c *gin.Context) {
 		fmt.Println("Error connecting:", err.Error())
 		os.Exit(1)
 	}
-	defer conn.Close()
+
+	defer func() {
+		err := wsConn.Close()
+		if err != nil {
+			logger.ProviderLogger.LogError("ios_stream", fmt.Sprintf("Failed to close websocket connection when finishing streaming for device `%s` - %s", udid, err))
+		}
+		err = conn.Close()
+		if err != nil {
+			logger.ProviderLogger.LogError("ios_stream", fmt.Sprintf("Failed to close broadcast TCP connection when finishing streaming for device `%s` - %s", udid, err))
+		}
+		close(jpegChannel)
+	}()
+
+	// Get data from the jpeg channel and send it over the ws
+	// The channel will act as a buffer for slower consumer because this could crash the broadcast app
+	// Or at least I assume this is the problem in long distance connections
+	go func() {
+		for {
+			select {
+			case jpegImage := <-jpegChannel:
+				// Send the jpeg over the websocket
+				err = wsutil.WriteServerBinary(wsConn, jpegImage)
+				if err != nil {
+					cancel()
+					return
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
 	var buffer []byte
 	for {
-		// Read data from the connection
-		tempBuf := make([]byte, 1024)
-		n, err := conn.Read(tempBuf)
-		if err != nil {
-			if err != io.EOF {
-				return
-			}
-			break
-		}
-
-		// Append the read bytes to the buffer
-		buffer = append(buffer, tempBuf[:n]...)
-
-		// Check if buffer has a complete JPEG image
-		start, end := findJPEGMarkers(buffer)
-		if start >= 0 && end > start {
-			// Process the JPEG image
-			jpegImage := buffer[start : end+2] // Include end marker
-			// Keep any remaining data in the buffer for the next image
-			buffer = buffer[end+2:]
-			// Send the jpeg over the websocket
-			err = wsutil.WriteServerBinary(wsConn, jpegImage)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			// Read data from the connection
+			tempBuf := make([]byte, 1024)
+			n, err := conn.Read(tempBuf)
 			if err != nil {
-				return
+				if err != io.EOF {
+					return
+				}
+				break
+			}
+
+			// Append the read bytes to the buffer
+			buffer = append(buffer, tempBuf[:n]...)
+
+			// Check if buffer has a complete JPEG image
+			start, end := findJPEGMarkers(buffer)
+			if start >= 0 && end > start {
+				// Process the JPEG image
+				jpegImage := buffer[start : end+2] // Include end marker
+				// Keep any remaining data in the buffer for the next image
+				buffer = buffer[end+2:]
+				// Send the jpeg to the channel
+				jpegChannel <- jpegImage
 			}
 		}
 	}
