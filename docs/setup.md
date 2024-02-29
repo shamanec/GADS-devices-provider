@@ -40,8 +40,8 @@ or
 * Install Node > 16
 * Install Appium with `npm install -g appium`
 * Install Appium drivers
-    * iOS devices - `appium install driver xcuitestdriver`
-    * Android devices - `appium install driver uiautomator2`
+    * iOS devices - `appium driver install xcuitestdriver`
+    * Android devices - `appium driver install uiautomator2`
 * Add any additional Appium dependencies like `ANDROID_HOME`(Android SDK) environment variable, Java, etc.
 
 ### Android debug bridge - Android only
