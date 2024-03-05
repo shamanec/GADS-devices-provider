@@ -482,7 +482,7 @@ func getConnectedDevicesAndroid() []models.ConnectedDevice {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		if !strings.Contains(line, "List of devices") && line != "" && strings.Contains(line, "device") {
+		if !strings.Contains(line, "List of devices") && line != "" && strings.Contains(line, "device") && !strings.Contains(line, "emulator") {
 			connectedDevices = append(connectedDevices, models.ConnectedDevice{OS: "android", UDID: strings.Fields(line)[0]})
 		}
 	}
