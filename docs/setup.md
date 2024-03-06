@@ -144,8 +144,15 @@ This is a non-mandatory but a preferable step - it will reduce the needed device
 [] TODO - see if supervising can be automated with `go-ios` to skip this step and make set up more autonomous
 
 # Running the provider
-1. Execute `go build .`
-2. Execute `./GADS-devices-provider` providing the flags:  
+## Prebuilt binary
+1. Download the prebuilt binary for your OS from the releases
+
+## Build from source
+1. Clone the project
+2. Execute `go build .`
+
+## Start the provider
+1. Execute `./GADS-devices-provider` providing the flags:  
     a. `--nickname=` - this is used to get the correct provider configuration from MongoDB
     b. `--mongo-db=` - address and port of the MongoDB instance
     c. `--provider-folder=` - optional, folder where provider should store logs and apps and get needed files for setup. Can be 1) relative path to the folder where provider binary is located or 2) full path on the host. Default is the folder where the binary is currently located
