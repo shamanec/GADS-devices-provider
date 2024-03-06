@@ -1,73 +1,157 @@
 package router
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/shamanec/GADS-devices-provider/logger"
 	"io"
-	"log"
 	"mime"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
-	"github.com/shamanec/GADS-devices-provider/device"
+	"github.com/shamanec/GADS-devices-provider/devices"
 )
 
 func AndroidStreamProxy(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
 	conn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
 	if err != nil {
-		fmt.Println(err)
+		logger.ProviderLogger.LogError("AndroidStreamProxy", fmt.Sprintf("Failed upgrading http to ws for device `%s` - %s", device.UDID, err))
+		return
 	}
-
 	defer conn.Close()
 
-	u := url.URL{Scheme: "ws", Host: "localhost:" + device.Device.StreamPort, Path: ""}
+	u := url.URL{Scheme: "ws", Host: "localhost:" + device.StreamPort, Path: ""}
 	destConn, _, _, err := ws.DefaultDialer.Dial(context.Background(), u.String())
 	if err != nil {
-		log.Println("Destination WebSocket connection error:", err)
+		logger.ProviderLogger.LogError("AndroidStreamProxy", fmt.Sprintf("Failed connecting to device `%s` stream port - %s", device.UDID, err))
 		return
 	}
 	defer destConn.Close()
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for {
-			data, code, err := wsutil.ReadServerData(destConn)
-			if err != nil {
-				return
-			}
-
-			err = wsutil.WriteServerMessage(conn, code, data)
-			if err != nil {
-				return
-			}
-		}
-	}()
-
+	// Read messages(jpegs) from the device streaming websocket server
+	// And send them to the provider websocket client
 	for {
-		data, code, err := wsutil.ReadClientData(conn)
+		data, code, err := wsutil.ReadServerData(destConn)
 		if err != nil {
+			logger.ProviderLogger.LogError("AndroidStreamProxy", fmt.Sprintf("Failed reading data from device `%s` ws conn - %s", device.UDID, err))
 			return
 		}
 
-		err = wsutil.WriteServerMessage(destConn, code, data)
+		err = wsutil.WriteServerMessage(conn, code, data)
 		if err != nil {
+			logger.ProviderLogger.LogError("AndroidStreamProxy", fmt.Sprintf("Failed writing data to provider ws connection for device `%s` - %s", device.UDID, err))
 			return
 		}
 	}
 }
 
-func IosStreamProxy(c *gin.Context) {
+func findJPEGMarkers(data []byte) (int, int) {
+	start := bytes.Index(data, []byte{0xFF, 0xD8})
+	end := bytes.Index(data, []byte{0xFF, 0xD9})
+	return start, end
+}
+
+func IosStreamProxyGADS(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
+	jpegChannel := make(chan []byte, 15)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Create the new conn
+	wsConn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
+	if err != nil {
+		logger.ProviderLogger.LogError("ios_stream", fmt.Sprintf("Failed to upgrade http conn to ws when starting streaming for device `%s` - %s", udid, err))
+		return
+	}
+
+	// Read data from device
+	server := "localhost:" + device.StreamPort
+	// Connect to the server
+	conn, err := net.Dial("tcp", server)
+	if err != nil {
+		fmt.Println("Error connecting:", err.Error())
+		os.Exit(1)
+	}
+
+	defer func() {
+		err := wsConn.Close()
+		if err != nil {
+			logger.ProviderLogger.LogError("ios_stream", fmt.Sprintf("Failed to close websocket connection when finishing streaming for device `%s` - %s", udid, err))
+		}
+		err = conn.Close()
+		if err != nil {
+			logger.ProviderLogger.LogError("ios_stream", fmt.Sprintf("Failed to close broadcast TCP connection when finishing streaming for device `%s` - %s", udid, err))
+		}
+		close(jpegChannel)
+	}()
+
+	// Get data from the jpeg channel and send it over the ws
+	// The channel will act as a buffer for slower consumer because this could crash the broadcast app
+	// Or at least I assume this is the problem in long distance connections
+	go func() {
+		for {
+			select {
+			case jpegImage := <-jpegChannel:
+				// Send the jpeg over the websocket
+				err = wsutil.WriteServerBinary(wsConn, jpegImage)
+				if err != nil {
+					cancel()
+					return
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	var buffer []byte
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			// Read data from the connection
+			tempBuf := make([]byte, 1024)
+			n, err := conn.Read(tempBuf)
+			if err != nil {
+				if err != io.EOF {
+					return
+				}
+				break
+			}
+
+			// Append the read bytes to the buffer
+			buffer = append(buffer, tempBuf[:n]...)
+
+			// Check if buffer has a complete JPEG image
+			start, end := findJPEGMarkers(buffer)
+			if start >= 0 && end > start {
+				// Process the JPEG image
+				jpegImage := buffer[start : end+2] // Include end marker
+				// Keep any remaining data in the buffer for the next image
+				buffer = buffer[end+2:]
+				// Send the jpeg to the channel
+				jpegChannel <- jpegImage
+			}
+		}
+	}
+}
+
+func IosStreamProxyWDA(c *gin.Context) {
+	udid := c.Param("udid")
+	device := devices.DeviceMap[udid]
 
 	conn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
 	if err != nil {
@@ -75,9 +159,9 @@ func IosStreamProxy(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	url := "http://localhost:" + device.Device.StreamPort
+	streamUrl := "http://localhost:" + device.WDAStreamPort
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", streamUrl, nil)
 	if err != nil {
 		fmt.Println("Error creating request:", err)
 		return
@@ -102,7 +186,7 @@ func IosStreamProxy(c *gin.Context) {
 	boundary := strings.Replace(params["boundary"], "--", "", -1)
 
 	// Should be multipart/x-mixed-replace
-	// We know its that one but check just in case
+	// We know it's that one but check just in case
 	if strings.HasPrefix(mediaType, "multipart/") {
 		// Create a multipart reader from the response using the cleaned boundary
 		mr := multipart.NewReader(resp.Body, boundary)

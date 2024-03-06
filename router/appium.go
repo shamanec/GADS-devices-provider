@@ -5,48 +5,59 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"time"
 
-	"github.com/shamanec/GADS-devices-provider/device"
-	"github.com/shamanec/GADS-devices-provider/util"
+	"github.com/shamanec/GADS-devices-provider/models"
 )
 
 var netClient = &http.Client{
 	Timeout: time.Second * 120,
 }
 
-func appiumLockUnlock(device *device.LocalDevice, lock string) (*http.Response, error) {
-	var deviceHomeURL string
-	deviceHomeURL = "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/appium/device/" + lock
-
-	req, err := http.NewRequest(http.MethodPost, deviceHomeURL, nil)
+func appiumRequest(device *models.Device, method, endpoint string, requestBody io.Reader) (*http.Response, error) {
+	url := fmt.Sprintf("http://localhost:%s/session/%s/%s", device.AppiumPort, device.AppiumSessionID, endpoint)
+	req, err := http.NewRequest(method, url, requestBody)
 	if err != nil {
 		return nil, err
 	}
-
-	lockResponse, err := netClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return lockResponse, nil
+	return netClient.Do(req)
 }
 
-func appiumTap(device *device.LocalDevice, x float64, y float64) (*http.Response, error) {
-	appiumRequestURL := "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/actions"
+func wdaRequest(device *models.Device, method, endpoint string, requestBody io.Reader) (*http.Response, error) {
+	url := fmt.Sprintf("http://localhost:%s/%s", device.WDAPort, endpoint)
+	req, err := http.NewRequest(method, url, requestBody)
+	if err != nil {
+		return nil, err
+	}
+	return netClient.Do(req)
+}
 
+func appiumRequestNoSession(device *models.Device, method, endpoint string, requestBody io.Reader) (*http.Response, error) {
+	url := fmt.Sprintf("http://localhost:%s/%s", device.AppiumPort, endpoint)
+	req, err := http.NewRequest(method, url, requestBody)
+	if err != nil {
+		return nil, err
+	}
+	return netClient.Do(req)
+}
+
+func appiumLockUnlock(device *models.Device, lock string) (*http.Response, error) {
+	endpoint := fmt.Sprintf("appium/device/%s", lock)
+	return appiumRequest(device, http.MethodPost, endpoint, nil)
+}
+
+func appiumTap(device *models.Device, x float64, y float64) (*http.Response, error) {
 	// Generate the struct object for the Appium actions JSON request
-	action := devicePointerActions{
-		[]devicePointerAction{
+	action := models.DevicePointerActions{
+		Actions: []models.DevicePointerAction{
 			{
 				Type: "pointer",
 				ID:   "finger1",
-				Parameters: deviceActionParameters{
+				Parameters: models.DeviceActionParameters{
 					PointerType: "touch",
 				},
-				Actions: []deviceAction{
+				Actions: []models.DeviceAction{
 					{
 						Type:     "pointerMove",
 						Duration: 0,
@@ -59,7 +70,7 @@ func appiumTap(device *device.LocalDevice, x float64, y float64) (*http.Response
 					},
 					{
 						Type:     "pause",
-						Duration: 50,
+						Duration: 10,
 					},
 					{
 						Type:     "pointerUp",
@@ -70,37 +81,25 @@ func appiumTap(device *device.LocalDevice, x float64, y float64) (*http.Response
 		},
 	}
 
-	actionJSON, err := util.ConvertToJSONString(action)
+	actionJSON, err := json.MarshalIndent(action, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("Could not convert Appium actions struct to a JSON string: %s", err)
+		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, appiumRequestURL, bytes.NewBuffer([]byte(actionJSON)))
-	if err != nil {
-		return nil, fmt.Errorf("Could not generate http request to Appium /actions endpoint: %s", err)
-	}
-
-	tapResponse, err := netClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("Failed calling Appium /actions endpoint: %s", err)
-	}
-
-	return tapResponse, nil
+	return appiumRequest(device, http.MethodPost, "actions", bytes.NewReader(actionJSON))
 }
 
-func appiumTouchAndHold(device *device.LocalDevice, x float64, y float64) (*http.Response, error) {
-	appiumRequestURL := "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/actions"
-
+func appiumTouchAndHold(device *models.Device, x float64, y float64) (*http.Response, error) {
 	// Generate the struct object for the Appium actions JSON request
-	action := devicePointerActions{
-		[]devicePointerAction{
+	action := models.DevicePointerActions{
+		Actions: []models.DevicePointerAction{
 			{
 				Type: "pointer",
 				ID:   "finger1",
-				Parameters: deviceActionParameters{
+				Parameters: models.DeviceActionParameters{
 					PointerType: "touch",
 				},
-				Actions: []deviceAction{
+				Actions: []models.DeviceAction{
 					{
 						Type:     "pointerMove",
 						Duration: 0,
@@ -124,37 +123,25 @@ func appiumTouchAndHold(device *device.LocalDevice, x float64, y float64) (*http
 		},
 	}
 
-	actionJSON, err := util.ConvertToJSONString(action)
+	actionJSON, err := json.MarshalIndent(action, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("Could not convert Appium actions struct to a JSON string: %s", err)
+		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, appiumRequestURL, bytes.NewBuffer([]byte(actionJSON)))
-	if err != nil {
-		return nil, fmt.Errorf("Could not generate http request to Appium /actions endpoint: %s", err)
-	}
-
-	touchAndHoldResponse, err := netClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("Failed calling Appium /actions endpoint: %s", err)
-	}
-
-	return touchAndHoldResponse, nil
+	return appiumRequest(device, http.MethodPost, "actions", bytes.NewReader(actionJSON))
 }
 
-func appiumSwipe(device *device.LocalDevice, x, y, endX, endY float64) (*http.Response, error) {
-	appiumRequestURL := "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/actions"
-
+func appiumSwipe(device *models.Device, x, y, endX, endY float64) (*http.Response, error) {
 	// Generate the struct object for the Appium actions JSON request
-	action := devicePointerActions{
-		[]devicePointerAction{
+	action := models.DevicePointerActions{
+		Actions: []models.DevicePointerAction{
 			{
 				Type: "pointer",
 				ID:   "finger1",
-				Parameters: deviceActionParameters{
+				Parameters: models.DeviceActionParameters{
 					PointerType: "touch",
 				},
-				Actions: []deviceAction{
+				Actions: []models.DeviceAction{
 					{
 						Type:     "pointerMove",
 						Duration: 0,
@@ -181,172 +168,94 @@ func appiumSwipe(device *device.LocalDevice, x, y, endX, endY float64) (*http.Re
 		},
 	}
 
-	actionJSON, err := util.ConvertToJSONString(action)
-	if err != nil {
-		return nil, fmt.Errorf("Could not convert Appium actions struct to a JSON string: %s", err)
-	}
-
-	req, err := http.NewRequest(http.MethodPost, appiumRequestURL, bytes.NewBuffer([]byte(actionJSON)))
-	if err != nil {
-		return nil, fmt.Errorf("Could not generate http request to Appium /actions endpoint: %s", err)
-	}
-
-	swipeResponse, err := netClient.Do(req)
-	if err != nil {
-		return swipeResponse, fmt.Errorf("Failed calling Appium /actions endpoint: %s", err)
-	}
-
-	return swipeResponse, nil
-}
-
-func appiumSource(device *device.LocalDevice) (*http.Response, error) {
-	sourceURL := "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/source"
-
-	req, err := http.NewRequest(http.MethodGet, sourceURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("Could not generate http request to Appium /source endpoint: %s", err)
-	}
-
-	sourceResponse, err := netClient.Do(req)
-	if err != nil {
-		return sourceResponse, fmt.Errorf("Failed calling Appium /source endpoint: %s", err)
-	}
-
-	return sourceResponse, nil
-}
-
-func appiumScreenshot(device *device.LocalDevice) (*http.Response, error) {
-	screenshotURL := "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/screenshot"
-
-	req, err := http.NewRequest(http.MethodGet, screenshotURL, nil)
+	actionJSON, err := json.MarshalIndent(action, "", "  ")
 	if err != nil {
 		return nil, err
 	}
 
-	screenshotResponse, err := netClient.Do(req)
-	if err != nil {
-		return screenshotResponse, err
-	}
-
-	return screenshotResponse, nil
+	return appiumRequest(device, http.MethodPost, "actions", bytes.NewReader(actionJSON))
 }
 
-type ActiveElementData struct {
-	Value struct {
-		Element string `json:"ELEMENT"`
-	} `json:"value"`
+func appiumSource(device *models.Device) (*http.Response, error) {
+	return appiumRequest(device, http.MethodGet, "source", nil)
 }
 
-func appiumTypeText(device *device.LocalDevice, text string) (*http.Response, error) {
-	activeElementRequestURL := "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/element/active"
+func appiumScreenshot(device *models.Device) (*http.Response, error) {
+	return appiumRequest(device, http.MethodGet, "screenshot", nil)
+}
 
-	activeElReq, err := http.NewRequest(http.MethodGet, activeElementRequestURL, nil)
+func appiumGetActiveElement(device *models.Device) (*http.Response, error) {
+	return appiumRequest(device, http.MethodGet, "element/active", nil)
+}
+
+func getActiveElementID(resp *http.Response) (string, error) {
+	activeElementRespBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	activeElementResp, err := netClient.Do(activeElReq)
+	var activeElementData models.ActiveElementData
+	err = json.Unmarshal(activeElementRespBody, &activeElementData)
+	if err != nil {
+		return "", err
+	}
+
+	return activeElementData.Value.Element, nil
+}
+
+func appiumTypeText(device *models.Device, text string) (*http.Response, error) {
+	activeElementResp, err := appiumGetActiveElement(device)
 	if err != nil {
 		return activeElementResp, err
 	}
 
-	// Read the response body
-	activeElementRespBody, err := ioutil.ReadAll(activeElementResp.Body)
+	activeElementID, err := getActiveElementID(activeElementResp)
 	if err != nil {
 		return nil, err
 	}
 
-	var activeElementData ActiveElementData
-	err = json.Unmarshal(activeElementRespBody, &activeElementData)
+	typeTextPayload := models.AppiumTypeText{
+		Text: text,
+	}
+
+	typeJSON, err := json.MarshalIndent(typeTextPayload, "", "  ")
 	if err != nil {
 		return nil, err
 	}
 
-	activeElementID := activeElementData.Value.Element
-
-	setValueRequestURL := "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/element/" + activeElementID + "/value"
-
-	setValueRequestBody := `{"text":"` + text + `"}`
-
-	setValueReq, err := http.NewRequest(http.MethodPost, setValueRequestURL, bytes.NewBuffer([]byte(setValueRequestBody)))
-	if err != nil {
-		return nil, err
-	}
-
-	setValueResponse, err := netClient.Do(setValueReq)
-	if err != nil {
-		return nil, err
-	}
-
-	return setValueResponse, nil
+	return appiumRequest(device, http.MethodPost, fmt.Sprintf("element/%s/value", activeElementID), bytes.NewBuffer(typeJSON))
 }
 
-func appiumClearText(device *device.LocalDevice) (*http.Response, error) {
-	activeElementRequestURL := "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/element/active"
-
-	activeElReq, err := http.NewRequest(http.MethodGet, activeElementRequestURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	activeElementResp, err := netClient.Do(activeElReq)
+func appiumClearText(device *models.Device) (*http.Response, error) {
+	activeElementResp, err := appiumGetActiveElement(device)
 	if err != nil {
 		return activeElementResp, err
 	}
 
-	activeElementRespBody, err := io.ReadAll(activeElementResp.Body)
+	activeElementID, err := getActiveElementID(activeElementResp)
 	if err != nil {
 		return nil, err
 	}
 
-	var activeElementData map[string]interface{}
-	err = json.Unmarshal(activeElementRespBody, &activeElementData)
-	if err != nil {
-		return nil, err
-	}
-
-	activeElementID := activeElementData["value"].(map[string]interface{})["ELEMENT"].(string)
-
-	clearValueRequestURL := "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/element/" + activeElementID + "/clear"
-
-	clearValueReq, err := http.NewRequest(http.MethodPost, clearValueRequestURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	clearValueResponse, err := netClient.Do(clearValueReq)
-	if err != nil {
-		return clearValueResponse, err
-	}
-
-	return clearValueResponse, nil
+	return appiumRequest(device, http.MethodPost, fmt.Sprintf("element/%s/clear", activeElementID), nil)
 }
 
-func appiumHome(device *device.LocalDevice) (*http.Response, error) {
-	var homeURL string
-	switch device.Device.OS {
+func appiumHome(device *models.Device) (*http.Response, error) {
+	switch device.OS {
 	case "android":
-		homeURL = "http://localhost:" + device.Device.AppiumPort + "/session/" + device.Device.AppiumSessionID + "/appium/device/press_keycode"
+		requestBody := models.AndroidKeycodePayload{
+			Keycode: 3,
+		}
+
+		typeJSON, err := json.MarshalIndent(requestBody, "", "  ")
+		if err != nil {
+			return nil, err
+		}
+
+		return appiumRequest(device, http.MethodPost, "appium/device/press_keycode", bytes.NewReader(typeJSON))
 	case "ios":
-		homeURL = "http://localhost:" + device.Device.WDAPort + "/wda/homescreen"
+		return wdaRequest(device, http.MethodPost, "wda/homescreen", nil)
 	default:
-		return nil, fmt.Errorf("Unsupported device OS: %s", device.Device.OS)
+		return nil, fmt.Errorf("Unsupported device OS: %s", device.OS)
 	}
-
-	requestBody := ""
-	if device.Device.OS == "android" {
-		requestBody = `{"keycode": 3}`
-	}
-
-	homeReq, err := http.NewRequest(http.MethodPost, homeURL, bytes.NewBuffer([]byte(requestBody)))
-	if err != nil {
-		return nil, err
-	}
-
-	homeResponse, err := netClient.Do(homeReq)
-	if err != nil {
-		return homeResponse, err
-	}
-
-	return homeResponse, nil
 }

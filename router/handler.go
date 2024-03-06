@@ -3,15 +3,41 @@ package router
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/shamanec/GADS-devices-provider/config"
+	"net/http/pprof"
 )
 
 func HandleRequests() *gin.Engine {
+	// Start sending live provider data
+	// to connected clients
+	go sendProviderLiveData()
 
 	r := gin.Default()
-	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true
-	config.AllowHeaders = []string{"X-Auth-Token", "Content-Type"}
-	r.Use(cors.New(config))
+	rConfig := cors.DefaultConfig()
+	rConfig.AllowAllOrigins = true
+	rConfig.AllowHeaders = []string{"X-Auth-Token", "Content-Type"}
+	r.Use(cors.New(rConfig))
+
+	r.GET("/info", GetProviderData)
+	r.GET("/info-ws", GetProviderDataWS)
+	r.GET("/devices", DevicesInfo)
+	r.POST("/uploadFile", UploadFile)
+
+	pprofGroup := r.Group("/debug/pprof")
+	{
+		pprofGroup.GET("/", gin.WrapF(pprof.Index))
+		pprofGroup.GET("/cmdline", gin.WrapF(pprof.Cmdline))
+		pprofGroup.GET("/profile", gin.WrapF(pprof.Profile))
+		pprofGroup.POST("/symbol", gin.WrapF(pprof.Symbol))
+		pprofGroup.GET("/symbol", gin.WrapF(pprof.Symbol))
+		pprofGroup.GET("/trace", gin.WrapF(pprof.Trace))
+		pprofGroup.GET("/allocs", gin.WrapF(pprof.Handler("allocs").ServeHTTP))
+		pprofGroup.GET("/block", gin.WrapF(pprof.Handler("block").ServeHTTP))
+		pprofGroup.GET("/goroutine", gin.WrapF(pprof.Handler("goroutine").ServeHTTP))
+		pprofGroup.GET("/heap", gin.WrapF(pprof.Handler("heap").ServeHTTP))
+		pprofGroup.GET("/mutex", gin.WrapF(pprof.Handler("mutex").ServeHTTP))
+		pprofGroup.GET("/threadcreate", gin.WrapF(pprof.Handler("threadcreate").ServeHTTP))
+	}
 
 	deviceGroup := r.Group("/device")
 	deviceGroup.GET("/:udid/info", DeviceInfo)
@@ -28,15 +54,15 @@ func HandleRequests() *gin.Engine {
 	deviceGroup.POST("/:udid/clearText", DeviceClearText)
 	deviceGroup.Any("/:udid/appium/*proxyPath", AppiumReverseProxy)
 	deviceGroup.GET("/:udid/android-stream", AndroidStreamProxy)
-	deviceGroup.GET("/:udid/ios-stream", IosStreamProxy)
+	if config.Config.EnvConfig.UseGadsIosStream {
+		deviceGroup.GET("/:udid/ios-stream", IosStreamProxyGADS)
+	} else {
+		deviceGroup.GET("/:udid/ios-stream", IosStreamProxyWDA)
+	}
 	deviceGroup.POST("/:udid/uninstallApp", UninstallApp)
 	deviceGroup.POST("/:udid/installApp", InstallApp)
 	deviceGroup.POST("/:udid/reset", ResetDevice)
-
-	providerGroup := r.Group("/provider")
-	providerGroup.GET("/", GetProviderData)
-	providerGroup.GET("/devices", DevicesInfo)
-	providerGroup.POST("/uploadFile", UploadFile)
+	deviceGroup.POST("/:udid/uploadFile", UploadFile)
 
 	return r
 }

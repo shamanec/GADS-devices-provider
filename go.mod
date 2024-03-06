@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/gobwas/ws v1.3.0
+	github.com/pelletier/go-toml v1.9.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/swaggo/swag v1.8.1
 	go.mongodb.org/mongo-driver v1.12.1
@@ -22,7 +23,6 @@ require (
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
-	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect

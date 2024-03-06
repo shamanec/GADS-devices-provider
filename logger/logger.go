@@ -1,4 +1,4 @@
-package util
+package logger
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/shamanec/GADS-devices-provider/config"
+	"github.com/shamanec/GADS-devices-provider/db"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
@@ -29,51 +31,53 @@ func SetupLogging(level string) {
 	logLevel = level
 
 	var err error
-	ProviderLogger, err = CreateCustomLogger("./logs/provider.log", Config.EnvConfig.ProviderNickname)
+	fmt.Println(fmt.Sprintf("%s/logs/provider.log", config.Config.EnvConfig.ProviderFolder))
+	ProviderLogger, err = CreateCustomLogger(fmt.Sprintf("%s/logs/provider.log", config.Config.EnvConfig.ProviderFolder), config.Config.EnvConfig.Nickname)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (l CustomLogger) LogDebug(event_name string, message string) {
+func (l CustomLogger) LogDebug(eventName string, message string) {
 	l.WithFields(log.Fields{
-		"event": event_name,
+		"event": eventName,
 	}).Debug(message)
 }
 
-func (l CustomLogger) LogInfo(event_name string, message string) {
+func (l CustomLogger) LogInfo(eventName string, message string) {
 	l.WithFields(log.Fields{
-		"event": event_name,
+		"event": eventName,
 	}).Info(message)
 }
 
-func (l CustomLogger) LogError(event_name string, message string) {
+func (l CustomLogger) LogError(eventName string, message string) {
 	l.WithFields(log.Fields{
-		"event": event_name,
+		"event": eventName,
 	}).Error(message)
 }
 
-func (l CustomLogger) LogWarn(event_name string, message string) {
+func (l CustomLogger) LogWarn(eventName string, message string) {
 	l.WithFields(log.Fields{
-		"event": event_name,
+		"event": eventName,
 	}).Warn(message)
 }
 
-func (l CustomLogger) LogFatal(event_name string, message string) {
+func (l CustomLogger) LogFatal(eventName string, message string) {
 	l.WithFields(log.Fields{
-		"event": event_name,
+		"event": eventName,
 	}).Fatal(message)
 }
 
-func (l CustomLogger) LogPanic(event_name string, message string) {
+func (l CustomLogger) LogPanic(eventName string, message string) {
 	l.WithFields(log.Fields{
-		"event": event_name,
+		"event": eventName,
 	}).Panic(message)
 }
 
 func CreateCustomLogger(logFilePath, collection string) (*CustomLogger, error) {
 	// Create a new logger instance
 	logger := log.New()
+	ctx, _ := context.WithCancel(db.MongoCtx())
 
 	// Configure the logger
 	logger.SetFormatter(&log.JSONFormatter{})
@@ -89,10 +93,10 @@ func CreateCustomLogger(logFilePath, collection string) (*CustomLogger, error) {
 	logger.SetOutput(logFile)
 
 	logger.AddHook(&MongoDBHook{
-		Client:     mongoClient,
+		Client:     db.MongoClient(),
 		DB:         "logs",
 		Collection: collection,
-		Ctx:        mongoClientCtx,
+		Ctx:        ctx,
 	})
 
 	return &CustomLogger{Logger: logger}, nil
@@ -120,7 +124,7 @@ func (hook *MongoDBHook) Fire(entry *log.Entry) error {
 		Level:     entry.Level.String(),
 		Message:   entry.Message,
 		Timestamp: time.Now().UnixMilli(),
-		Host:      Config.EnvConfig.ProviderNickname,
+		Host:      config.Config.EnvConfig.Nickname,
 		EventName: fields["event"].(string),
 	}
 

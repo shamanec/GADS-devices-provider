@@ -1,22 +1,23 @@
 ## Introduction
 
+[![](https://dcbadge.vercel.app/api/server/5amWvknKQd)](https://discord.gg/5amWvknKQd)  
+
 * GADS-device-provider is a server that sets up devices for [Appium](https://github.com/appium/appium) tests execution and remote control with [GADS](https://github.com/shamanec/GADS).
 * Supports both Android and iOS devices
 * Supports Linux, macOS and Windows - notes below
 
 **NB** I've been doing this having only small number of devices available. It looks like everything is pretty much working but I do not know how it would behave on a bigger scale.  
-**NB** Can be used without [GADS](https://github.com/shamanec/GADS) just to set up devices for Appium testing - will still require and do the whole setup for the devices, might clean it up at some point to allow both `GADS` and non-`GADS` deployments.  
 
 ## Features
 * Straighforward setup
-* Automatic provisioning when registered devices are connected
+* Automatic provisioning when devices are connected
   * Dependencies automatically installed on devices
   * Appium server set up and started for each device
   * Optionally Selenium Grid 4 node can be registered for each device Appium server
 * [GADS-UI](https://github.com/shamanec/GADS) remote control support
   * iOS video stream using [WebDriverAgent](https://github.com/appium/WebDriverAgent)
   * Android video stream using [GADS-Android-stream](https://github.com/shamanec/GADS-Android-stream)
-  * Limited interaction wrapped around Appium - tap, swipe, type text, lock and unlock device
+  * Limited interaction wrapped around Appium - tap, swipe, touch&hold, type text, lock and unlock device
 * Appium test execution - each device has its Appium server proxied on a provider endpoint for easier access
 * Linux
   * Supports both Android and iOS < 17
@@ -24,7 +25,7 @@
 * macOS
   * Supports both Android and iOS
 * Windows 10
-  * Supports Android
+  * Supports Android and iOS < 17
 
 Developed and tested on `Ubuntu 18.04 LTS`, `macOS Ventura 13.5.1`, `Windows 10`
 

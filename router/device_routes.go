@@ -7,7 +7,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shamanec/GADS-devices-provider/device"
+	"github.com/shamanec/GADS-devices-provider/devices"
+	"github.com/shamanec/GADS-devices-provider/models"
 )
 
 // Copy the headers from the original endpoint to the proxied endpoint
@@ -22,28 +23,28 @@ func copyHeaders(destination, source http.Header) {
 // Check the device health by checking Appium and WDA(for iOS)
 func DeviceHealth(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
-	bool, err := device.GetDeviceHealth()
+	dev := devices.DeviceMap[udid]
+	bool, err := devices.GetDeviceHealth(dev)
 	if err != nil {
-		device.Logger.LogInfo("device", fmt.Sprintf("Could not check device health - %s", err))
+		dev.Logger.LogInfo("device", fmt.Sprintf("Could not check device health - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	if bool {
-		device.Logger.LogInfo("device", "Device is healthy")
+		dev.Logger.LogInfo("device", "Device is healthy")
 		c.Writer.WriteHeader(200)
 		return
 	}
 
-	device.Logger.LogError("device", "Device is not healthy")
+	dev.Logger.LogError("device", "Device is not healthy")
 	c.Writer.WriteHeader(500)
 }
 
 // Call the respective Appium/WDA endpoint to go to Homescreen
 func DeviceHome(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 	device.Logger.LogInfo("appium_interact", "Navigating to Home/Springboard")
 
 	// Send the request
@@ -71,7 +72,7 @@ func DeviceHome(c *gin.Context) {
 // Call respective Appium/WDA endpoint to lock the device
 func DeviceLock(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 	device.Logger.LogInfo("appium_interact", "Locking device")
 
 	lockResponse, err := appiumLockUnlock(device, "lock")
@@ -98,7 +99,7 @@ func DeviceLock(c *gin.Context) {
 // Call the respective Appium/WDA endpoint to unlock the device
 func DeviceUnlock(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 	device.Logger.LogInfo("appium_interact", "Unlocking device")
 
 	lockResponse, err := appiumLockUnlock(device, "unlock")
@@ -125,7 +126,7 @@ func DeviceUnlock(c *gin.Context) {
 // Call the respective Appium/WDA endpoint to take a screenshot of the device screen
 func DeviceScreenshot(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 	device.Logger.LogInfo("appium_interact", "Getting screenshot from device")
 
 	screenshotResp, err := appiumScreenshot(device)
@@ -149,7 +150,7 @@ func DeviceScreenshot(c *gin.Context) {
 
 func DeviceAppiumSource(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 	device.Logger.LogInfo("appium_interact", "Getting Appium source from device")
 
 	sourceResp, err := appiumSource(device)
@@ -176,43 +177,11 @@ func DeviceAppiumSource(c *gin.Context) {
 //=======================================
 // ACTIONS
 
-type actionData struct {
-	X          float64 `json:"x,omitempty"`
-	Y          float64 `json:"y,omitempty"`
-	EndX       float64 `json:"endX,omitempty"`
-	EndY       float64 `json:"endY,omitempty"`
-	TextToType string  `json:"text,omitempty"`
-}
-
-type deviceAction struct {
-	Type     string  `json:"type"`
-	Duration int     `json:"duration"`
-	X        float64 `json:"x,omitempty"`
-	Y        float64 `json:"y,omitempty"`
-	Button   int     `json:"button"`
-	Origin   string  `json:"origin,omitempty"`
-}
-
-type deviceActionParameters struct {
-	PointerType string `json:"pointerType"`
-}
-
-type devicePointerAction struct {
-	Type       string                 `json:"type"`
-	ID         string                 `json:"id"`
-	Parameters deviceActionParameters `json:"parameters"`
-	Actions    []deviceAction         `json:"actions"`
-}
-
-type devicePointerActions struct {
-	Actions []devicePointerAction `json:"actions"`
-}
-
 func DeviceTypeText(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
-	var requestBody actionData
+	var requestBody models.ActionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
 		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to type text to active element - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())
@@ -243,7 +212,7 @@ func DeviceTypeText(c *gin.Context) {
 
 func DeviceClearText(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 	device.Logger.LogInfo("appium_interact", "Clearing text from active element")
 
 	clearResp, err := appiumClearText(device)
@@ -268,9 +237,9 @@ func DeviceClearText(c *gin.Context) {
 
 func DeviceTap(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
-	var requestBody actionData
+	var requestBody models.ActionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -301,9 +270,9 @@ func DeviceTap(c *gin.Context) {
 
 func DeviceTouchAndHold(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
-	var requestBody actionData
+	var requestBody models.ActionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -334,9 +303,9 @@ func DeviceTouchAndHold(c *gin.Context) {
 
 func DeviceSwipe(c *gin.Context) {
 	udid := c.Param("udid")
-	device := device.DeviceMap[udid]
+	device := devices.DeviceMap[udid]
 
-	var requestBody actionData
+	var requestBody models.ActionData
 	if err := json.NewDecoder(c.Request.Body).Decode(&requestBody); err != nil {
 		device.Logger.LogError("appium_interact", fmt.Sprintf("Failed to decode request body when performing swipe - %s", err))
 		c.String(http.StatusInternalServerError, err.Error())

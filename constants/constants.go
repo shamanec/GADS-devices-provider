@@ -1,4 +1,13 @@
-package util
+package constants
+
+import "github.com/shamanec/GADS-devices-provider/models"
+
+type IndexSort int
+
+const (
+	SortAscending  IndexSort = 1
+	SortDescending IndexSort = -1
+)
 
 var AndroidVersionToSDK = map[string]string{
 	"23": "6",
@@ -15,13 +24,7 @@ var AndroidVersionToSDK = map[string]string{
 	"34": "14",
 }
 
-type ModelData struct {
-	Width  string
-	Height string
-	Model  string
-}
-
-var IOSDeviceInfoMap = map[string]ModelData{
+var IOSDeviceInfoMap = map[string]models.IOSModelData{
 	"iPhone12,8": {
 		Width:  "375",
 		Height: "667",
