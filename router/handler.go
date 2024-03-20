@@ -59,6 +59,7 @@ func HandleRequests() *gin.Engine {
 	} else {
 		deviceGroup.GET("/:udid/ios-stream", IosStreamProxyWDA)
 	}
+	deviceGroup.GET("/:udid/other-stream", IOSStreamMJPEG)
 	deviceGroup.POST("/:udid/uninstallApp", UninstallApp)
 	deviceGroup.POST("/:udid/installApp", InstallApp)
 	deviceGroup.POST("/:udid/reset", ResetDevice)

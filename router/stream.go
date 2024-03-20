@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/gobwas/ws"
+	"github.com/gobwas/ws/wsutil"
+	"github.com/shamanec/GADS-devices-provider/devices"
 	"github.com/shamanec/GADS-devices-provider/logger"
 	"io"
 	"mime"
@@ -13,11 +17,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-
-	"github.com/gin-gonic/gin"
-	"github.com/gobwas/ws"
-	"github.com/gobwas/ws/wsutil"
-	"github.com/shamanec/GADS-devices-provider/devices"
 )
 
 func AndroidStreamProxy(c *gin.Context) {
@@ -60,6 +59,98 @@ func findJPEGMarkers(data []byte) (int, int) {
 	start := bytes.Index(data, []byte{0xFF, 0xD8})
 	end := bytes.Index(data, []byte{0xFF, 0xD9})
 	return start, end
+}
+
+func IOSStreamMJPEG(c *gin.Context) {
+	// Set the necessary headers for MJPEG streaming
+	// Note: The "boundary" is arbitrary but must be unique and consistent.
+	c.Header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+	c.Writer.WriteHeader(http.StatusOK)
+	jpegChannel := make(chan []byte, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	udid := c.Param("udid")
+	device := devices.DeviceMap[udid]
+
+	// Read data from device
+	server := "localhost:" + device.StreamPort
+	// Connect to the server
+	conn, err := net.Dial("tcp", server)
+	if err != nil {
+		fmt.Println("Error connecting:", err.Error())
+		os.Exit(1)
+	}
+	defer conn.Close()
+
+	go func() {
+		for {
+			select {
+			case jpegImage := <-jpegChannel:
+				// Write the boundary and content type for each frame
+				_, err = c.Writer.Write([]byte("\r\n--frame\r\nContent-Type: image/jpeg\r\n\r\n"))
+				if err != nil {
+					fmt.Println("GOT ERROR 2 : " + err.Error())
+					break
+				}
+
+				// Write the image to the response
+				_, err = c.Writer.Write(jpegImage)
+				if err != nil {
+					fmt.Println("GOT ERROR 3 : " + err.Error())
+					break
+				}
+
+				// Flush the response writer to ensure the client receives the frame immediately
+				c.Writer.Flush()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	var buffer []byte
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			// Read data from the connection
+			tempBuf := make([]byte, 1024)
+			n, err := conn.Read(tempBuf)
+			if err != nil {
+				if err != io.EOF {
+					return
+				}
+				break
+			}
+
+			// Append the read bytes to the buffer
+			buffer = append(buffer, tempBuf[:n]...)
+
+			// Check if buffer has a complete JPEG image
+			start, end := findJPEGMarkers(buffer)
+			if start >= 0 && end > start {
+				// Process the JPEG image
+				jpegImage := buffer[start : end+2] // Include end marker
+				// Keep any remaining data in the buffer for the next image
+				buffer = buffer[end+2:]
+				// Send the jpeg to the channel
+				if len(jpegChannel) == 1 {
+					_, err := conn.Write([]byte("ping"))
+					if err != nil {
+						fmt.Println("Error sending ping: ", err)
+					}
+					continue
+				}
+				jpegChannel <- jpegImage
+				_, err := conn.Write([]byte("ping"))
+				if err != nil {
+					fmt.Println("Error sending ping: ", err)
+				}
+			}
+		}
+	}
 }
 
 func IosStreamProxyGADS(c *gin.Context) {
@@ -143,6 +234,9 @@ func IosStreamProxyGADS(c *gin.Context) {
 				// Keep any remaining data in the buffer for the next image
 				buffer = buffer[end+2:]
 				// Send the jpeg to the channel
+				if len(jpegChannel) == 15 {
+					continue
+				}
 				jpegChannel <- jpegImage
 			}
 		}
