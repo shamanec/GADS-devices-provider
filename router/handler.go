@@ -56,6 +56,7 @@ func HandleRequests() *gin.Engine {
 	deviceGroup.GET("/:udid/android-stream", AndroidStreamProxy)
 	if config.Config.EnvConfig.UseGadsIosStream {
 		deviceGroup.GET("/:udid/ios-stream", IosStreamProxyGADS)
+		deviceGroup.GET("/:udid/ios-stream-mjpeg", IOSStreamMJPEG)
 	} else {
 		deviceGroup.GET("/:udid/ios-stream", IosStreamProxyWDA)
 	}
