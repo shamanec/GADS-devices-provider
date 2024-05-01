@@ -95,7 +95,6 @@ func appiumTap(device *models.Device, x float64, y float64) (*http.Response, err
 				},
 			},
 		}
-
 		actionJSON, err := json.MarshalIndent(action, "", "  ")
 		if err != nil {
 			return nil, err
@@ -259,7 +258,6 @@ func appiumTypeText(device *models.Device, text string) (*http.Response, error) 
 	if err != nil {
 		return nil, err
 	}
-
 	return appiumRequest(device, http.MethodPost, fmt.Sprintf("element/%s/value", activeElementID), bytes.NewBuffer(typeJSON))
 }
 
