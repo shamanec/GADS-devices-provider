@@ -30,7 +30,7 @@ func main() {
 
 	fmt.Println("Preparing...")
 
-	// Create a connection to Mongo
+	// Create a connection to Mongoo
 	db.InitMongoClient(mongoDb)
 	defer db.MongoCtxCancel()
 	// Set up the provider configuration
