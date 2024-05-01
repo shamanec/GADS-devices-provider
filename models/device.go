@@ -48,7 +48,7 @@ type Device struct {
 	StreamPort           string             `json:"stream_port" bson:"-"`
 	WDAStreamPort        string             `json:"wda_stream_port" bson:"-"`
 	WDAPort              string             `json:"wda_port" bson:"-"`
-	AppiumLogger         AppiumLogger       `json"-" bson:"-"`
+	AppiumLogger         AppiumLogger       `json:"-" bson:"-"`
 }
 
 type ByUDID []Device

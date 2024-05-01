@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/shamanec/GADS-devices-provider/config"
 	"io"
 	"net/http"
 	"time"
@@ -25,7 +26,7 @@ func appiumRequest(device *models.Device, method, endpoint string, requestBody i
 }
 
 func wdaRequest(device *models.Device, method, endpoint string, requestBody io.Reader) (*http.Response, error) {
-	url := fmt.Sprintf("http://localhost:%s/%s", device.WDAPort, endpoint)
+	url := fmt.Sprintf("http://localhost:%v/%s", device.WDAPort, endpoint)
 	req, err := http.NewRequest(method, url, requestBody)
 	if err != nil {
 		return nil, err
@@ -48,45 +49,60 @@ func appiumLockUnlock(device *models.Device, lock string) (*http.Response, error
 }
 
 func appiumTap(device *models.Device, x float64, y float64) (*http.Response, error) {
-	// Generate the struct object for the Appium actions JSON request
-	action := models.DevicePointerActions{
-		Actions: []models.DevicePointerAction{
-			{
-				Type: "pointer",
-				ID:   "finger1",
-				Parameters: models.DeviceActionParameters{
-					PointerType: "touch",
-				},
-				Actions: []models.DeviceAction{
-					{
-						Type:     "pointerMove",
-						Duration: 0,
-						X:        x,
-						Y:        y,
+	if config.Config.EnvConfig.UseCustomWDA && device.OS == "ios" {
+		requestBody := struct {
+			X float64 `json:"x"`
+			Y float64 `json:"y"`
+		}{
+			X: x,
+			Y: y,
+		}
+		actionJSON, err := json.MarshalIndent(requestBody, "", "  ")
+		if err != nil {
+			return nil, err
+		}
+		return wdaRequest(device, http.MethodPost, "wda/tap", bytes.NewReader(actionJSON))
+	} else {
+		// Generate the struct object for the Appium actions JSON request
+		action := models.DevicePointerActions{
+			Actions: []models.DevicePointerAction{
+				{
+					Type: "pointer",
+					ID:   "finger1",
+					Parameters: models.DeviceActionParameters{
+						PointerType: "touch",
 					},
-					{
-						Type:   "pointerDown",
-						Button: 0,
-					},
-					{
-						Type:     "pause",
-						Duration: 10,
-					},
-					{
-						Type:     "pointerUp",
-						Duration: 0,
+					Actions: []models.DeviceAction{
+						{
+							Type:     "pointerMove",
+							Duration: 0,
+							X:        x,
+							Y:        y,
+						},
+						{
+							Type:   "pointerDown",
+							Button: 0,
+						},
+						{
+							Type:     "pause",
+							Duration: 10,
+						},
+						{
+							Type:     "pointerUp",
+							Duration: 0,
+						},
 					},
 				},
 			},
-		},
-	}
+		}
 
-	actionJSON, err := json.MarshalIndent(action, "", "  ")
-	if err != nil {
-		return nil, err
-	}
+		actionJSON, err := json.MarshalIndent(action, "", "  ")
+		if err != nil {
+			return nil, err
+		}
 
-	return appiumRequest(device, http.MethodPost, "actions", bytes.NewReader(actionJSON))
+		return appiumRequest(device, http.MethodPost, "actions", bytes.NewReader(actionJSON))
+	}
 }
 
 func appiumTouchAndHold(device *models.Device, x float64, y float64) (*http.Response, error) {
@@ -132,48 +148,69 @@ func appiumTouchAndHold(device *models.Device, x float64, y float64) (*http.Resp
 }
 
 func appiumSwipe(device *models.Device, x, y, endX, endY float64) (*http.Response, error) {
-	// Generate the struct object for the Appium actions JSON request
-	action := models.DevicePointerActions{
-		Actions: []models.DevicePointerAction{
-			{
-				Type: "pointer",
-				ID:   "finger1",
-				Parameters: models.DeviceActionParameters{
-					PointerType: "touch",
-				},
-				Actions: []models.DeviceAction{
-					{
-						Type:     "pointerMove",
-						Duration: 0,
-						X:        x,
-						Y:        y,
+	if config.Config.EnvConfig.UseCustomWDA && device.OS == "ios" {
+		requestBody := struct {
+			X     float64 `json:"startX"`
+			Y     float64 `json:"startY"`
+			EndX  float64 `json:"endX"`
+			EndY  float64 `json:"endY"`
+			Delay float64 `json:"delay"`
+		}{
+			X:     x,
+			Y:     y,
+			EndX:  endX,
+			EndY:  endY,
+			Delay: 1,
+		}
+		actionJSON, err := json.MarshalIndent(requestBody, "", "  ")
+		if err != nil {
+			return nil, err
+		}
+		return wdaRequest(device, http.MethodPost, "wda/swipe", bytes.NewReader(actionJSON))
+	} else {
+		// Generate the struct object for the Appium actions JSON request
+		action := models.DevicePointerActions{
+			Actions: []models.DevicePointerAction{
+				{
+					Type: "pointer",
+					ID:   "finger1",
+					Parameters: models.DeviceActionParameters{
+						PointerType: "touch",
 					},
-					{
-						Type:   "pointerDown",
-						Button: 0,
-					},
-					{
-						Type:     "pointerMove",
-						Duration: 500,
-						Origin:   "viewport",
-						X:        endX,
-						Y:        endY,
-					},
-					{
-						Type:     "pointerUp",
-						Duration: 0,
+					Actions: []models.DeviceAction{
+						{
+							Type:     "pointerMove",
+							Duration: 0,
+							X:        x,
+							Y:        y,
+						},
+						{
+							Type:   "pointerDown",
+							Button: 0,
+						},
+						{
+							Type:     "pointerMove",
+							Duration: 500,
+							Origin:   "viewport",
+							X:        endX,
+							Y:        endY,
+						},
+						{
+							Type:     "pointerUp",
+							Duration: 0,
+						},
 					},
 				},
 			},
-		},
-	}
+		}
 
-	actionJSON, err := json.MarshalIndent(action, "", "  ")
-	if err != nil {
-		return nil, err
-	}
+		actionJSON, err := json.MarshalIndent(action, "", "  ")
+		if err != nil {
+			return nil, err
+		}
 
-	return appiumRequest(device, http.MethodPost, "actions", bytes.NewReader(actionJSON))
+		return appiumRequest(device, http.MethodPost, "actions", bytes.NewReader(actionJSON))
+	}
 }
 
 func appiumSource(device *models.Device) (*http.Response, error) {
