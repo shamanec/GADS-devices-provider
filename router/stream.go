@@ -56,6 +56,48 @@ func AndroidStreamProxy(c *gin.Context) {
 	}
 }
 
+func AndroidStreamMJPEG(c *gin.Context) {
+	c.Header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+	c.Writer.WriteHeader(http.StatusOK)
+	c.Deadline()
+
+	udid := c.Param("udid")
+	device := devices.DeviceMap[udid]
+
+	u := url.URL{Scheme: "ws", Host: "localhost:" + device.StreamPort, Path: ""}
+	conn, _, _, err := ws.DefaultDialer.Dial(context.Background(), u.String())
+	if err != nil {
+		logger.ProviderLogger.LogError("AndroidStreamProxy", fmt.Sprintf("Failed connecting to device `%s` stream port - %s", device.UDID, err))
+		return
+	}
+	defer conn.Close()
+
+	// Read messages(jpegs) from the device streaming websocket server
+	// And send them to the provider websocket client
+	for {
+		data, _, err := wsutil.ReadServerData(conn)
+		if err != nil {
+			logger.ProviderLogger.LogError("AndroidStreamProxy", fmt.Sprintf("Failed reading data from device `%s` ws conn - %s", device.UDID, err))
+			return
+		}
+
+		// Write the boundary and content type for each frame
+		_, err = c.Writer.Write([]byte("\r\n--frame\r\nContent-Type: image/jpeg\r\n\r\n"))
+		if err != nil {
+			break
+		}
+
+		// Write the image to the response
+		_, err = c.Writer.Write(data)
+		if err != nil {
+			break
+		}
+
+		// Flush the response writer to ensure the client receives the frame immediately
+		c.Writer.Flush()
+	}
+}
+
 func findJPEGMarkers(data []byte) (int, int) {
 	start := bytes.Index(data, []byte{0xFF, 0xD8})
 	end := bytes.Index(data, []byte{0xFF, 0xD9})
@@ -119,6 +161,75 @@ func IOSStreamMJPEG(c *gin.Context) {
 
 			// Flush the response writer to ensure the client receives the frame immediately
 			c.Writer.Flush()
+		}
+	}
+}
+
+func IOSStreamMJPEGWda(c *gin.Context) {
+	udid := c.Param("udid")
+	device := devices.DeviceMap[udid]
+
+	// Set the necessary headers for MJPEG streaming
+	// Note: The "boundary" is arbitrary but must be unique and consistent.
+	c.Header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+	c.Writer.WriteHeader(http.StatusOK)
+	c.Deadline()
+
+	streamUrl := "http://localhost:" + device.WDAStreamPort
+
+	req, err := http.NewRequest("GET", streamUrl, nil)
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Println("Error making request:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Get the media type and params after connecting to WebDriverAgent stream
+	mediaType, params, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+	if err != nil {
+		fmt.Println("Error getting request mediaType and params:", err)
+		return
+	}
+
+	// Get the boundary string
+	// It has leading slashes -- that need to be removed for it to work properly
+	boundary := strings.Replace(params["boundary"], "--", "", -1)
+
+	if strings.HasPrefix(mediaType, "multipart/") {
+		// Create a multipart reader from the response using the cleaned boundary
+		mr := multipart.NewReader(resp.Body, boundary)
+
+		// Loop and for each part in the multpart reader read the image and send it over the ws
+		for {
+			part, err := mr.NextPart()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				break
+			}
+			jpegImage, err := io.ReadAll(part)
+			if err != nil {
+				break
+			}
+
+			// Write the boundary and content type for each frame
+			_, err = c.Writer.Write([]byte("\r\n--frame\r\nContent-Type: image/jpeg\r\n\r\n"))
+			if err != nil {
+				break
+			}
+
+			// Write the image to the response
+			_, err = c.Writer.Write(jpegImage)
+			if err != nil {
+				break
+			}
 		}
 	}
 }

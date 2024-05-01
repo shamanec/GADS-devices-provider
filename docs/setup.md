@@ -96,6 +96,15 @@ or
 4. Select signing profiles for WebDriverAgentLib and WebDriverAgentRunner.
 5. Run the WebDriverAgentRunner with `Build > Test` on a device at least once to validate it builds and runs as expected.
 
+or
+*NB* Using my custom WebDriverAgent you can have faster tap/swipe interactions on iOS devices.  
+*NB* The provider configuration should be set to use the custom WebDriverAgent in Mongo - either set it through GADS UI or using any db tool to update the provider config in Mongo for `use_custom_wda` with `true`  
+1. Download the code of the `main` branch from my fork of [WebDriverAgent](https://github.com/shamanec/WebDriverAgent)
+2. Unzip the code in any folder.
+3. Open WebDriverAgent.xcodeproj in Xcode
+4. Select signing profiles for WebDriverAgentLib and WebDriverAgentRunner.
+5. Run the WebDriverAgentRunner with `Build > Test` on a device at least once to validate it builds and runs as expected.
+
 ## Windows
 ### iTunes - iOS only
 * Install `iTunes` to be able to provision iOS < 17 devices
@@ -118,6 +127,7 @@ You need a Mac machine to at least build and sign WebDriverAgent, currently we c
 You need a paid Apple Developer account to build and sign `WebDriverAgent`. With latest Apple changes it might be possible to do it with free accounts but maybe you'll have to sign the `ipa` file each week and other limitations might apply as well  
 
 1. Download and install [iOS App Signer](https://dantheman827.github.io/ios-app-signer/)  
+2. Download the code of the lates mainstream [WebDriverAgent](https://github.com/appium/WebDriverAgent/releases) release or alternatively the code from the `main` branch of my fork of [WebDriverAgent](https://github.com/shamanec/WebDriverAgent) for faster tap/swipe interactions.
 2. Open `WebDriverAgent.xcodeproj` in Xcode.  
 3. Ensure a team is selected before building the application. To do this go to: *Targets* and select each target one at a time. There should be a field for assigning teams certificates to the target.  
 4. Remove your `WebDriverAgent` folder from `DerivedData` and run `Clean build folder` (just in case)  

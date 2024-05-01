@@ -54,11 +54,13 @@ func HandleRequests() *gin.Engine {
 	deviceGroup.POST("/:udid/clearText", DeviceClearText)
 	deviceGroup.Any("/:udid/appium/*proxyPath", AppiumReverseProxy)
 	deviceGroup.GET("/:udid/android-stream", AndroidStreamProxy)
+	deviceGroup.GET("/:udid/android-stream-mjpeg", AndroidStreamMJPEG)
 	if config.Config.EnvConfig.UseGadsIosStream {
 		deviceGroup.GET("/:udid/ios-stream", IosStreamProxyGADS)
 		deviceGroup.GET("/:udid/ios-stream-mjpeg", IOSStreamMJPEG)
 	} else {
 		deviceGroup.GET("/:udid/ios-stream", IosStreamProxyWDA)
+		deviceGroup.GET("/:udid/ios-stream-mjpeg", IOSStreamMJPEGWda)
 	}
 	deviceGroup.POST("/:udid/uninstallApp", UninstallApp)
 	deviceGroup.POST("/:udid/installApp", InstallApp)
