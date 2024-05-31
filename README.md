@@ -1,3 +1,6 @@
+## NOTE
+The project is no longer maintained - the provider is now part of the mainstream [GADS](https://github.com/shamanec/GADS) project
+
 ## Introduction
 
 [![](https://dcbadge.vercel.app/api/server/5amWvknKQd)](https://discord.gg/5amWvknKQd)  
